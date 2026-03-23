@@ -4,31 +4,31 @@ export function remarkPythonPlayground() {
 	return (tree) => {
 		visit(tree, "code", (node) => {
 			const normalizedLang = (node.lang || "").toLowerCase();
-			if (normalizedLang !== "python") {
-				return;
-			}
-
-			node.lang = normalizedLang;
-			const options = parseMeta(node.meta);
-			if (!options.runnable) {
+			if (!isPythonFence(normalizedLang)) {
 				return;
 			}
 
 			node.type = "html";
-			node.value = renderPythonCodeCard(node.value, options);
+			node.value = renderPythonCodeCard(
+				node.value,
+				parseMeta(node.meta, normalizedLang),
+			);
 		});
 	};
 }
 
-function parseMeta(meta = "") {
+function isPythonFence(lang = "") {
+	return lang === "python" || lang === "python3" || lang === "py";
+}
+
+function parseMeta(meta = "", lang = "python") {
 	const rawMeta = typeof meta === "string" ? meta : "";
-	const tokens = rawMeta.split(/\s+/).filter(Boolean);
 	const titleMatch = rawMeta.match(/title\s*(?:=)?\s*"([^"]+)"/);
 	const packagesMatch = rawMeta.match(/packages=([^\s"]+)/);
+	const defaultTitle = "Python3";
 
 	return {
-		runnable: tokens.includes("run") || tokens.includes("runnable"),
-		title: titleMatch?.[1] || "Python Playground",
+		title: titleMatch?.[1] || defaultTitle,
 		packages: packagesMatch?.[1]
 			? packagesMatch[1]
 					.split(",")
@@ -48,7 +48,7 @@ function renderPythonCodeCard(source, options) {
 	return `<div class="python-code-card" data-python-code-card="true" data-python-title="${escapeAttribute(options.title)}" data-python-packages="${escapeAttribute(options.packages.join(","))}">
 	<div class="python-code-card__toolbar">
 		<div class="python-code-card__toolbar-meta">
-			<span class="python-code-card__badge">Python Example</span>
+			<span class="python-code-card__badge">Python3</span>
 			<strong class="python-code-card__title">${escapeHtml(options.title)}</strong>
 		</div>
 		<div class="python-code-card__toolbar-side">
@@ -56,13 +56,13 @@ function renderPythonCodeCard(source, options) {
 			<span class="python-code-card__meta">${lines} lines</span>
 		</div>
 	</div>
-	<details class="python-code-card__details" open>
+	<details class="python-code-card__details">
 		<summary class="python-code-card__summary">
 			<div class="python-code-card__summary-copy">
-				<span class="python-code-card__summary-label">Code Block</span>
-				<span class="python-code-card__summary-note">折叠阅读或展开查看完整代码</span>
+				<span class="python-code-card__summary-label">Frozen Editor</span>
+				<span class="python-code-card__summary-note">默认折叠，点击展开查看完整代码</span>
 			</div>
-			<span class="python-code-card__summary-toggle">折叠代码</span>
+			<span class="python-code-card__summary-toggle">展开代码</span>
 		</summary>
 		<div class="python-code-card__body">
 			<div class="python-code-card__utility">

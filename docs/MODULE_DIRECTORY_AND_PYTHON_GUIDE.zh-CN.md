@@ -105,12 +105,12 @@ draft: false
 
 ## 5. 可运行 Python 代码块
 
-现在支持在 Markdown 里直接写可运行的 Python 面板。
+现在支持在 Markdown 里直接写统一的 Python3 代码卡。
 
 最简单的写法：
 
 ````md
-```python run
+```python3
 print("Hello from Pyodide")
 ```
 ````
@@ -118,7 +118,7 @@ print("Hello from Pyodide")
 带标题：
 
 ````md
-```python run title="Quick Demo"
+```python3 title="Quick Demo"
 total = sum(i * i for i in range(6))
 print(total)
 ```
@@ -127,11 +127,13 @@ print(total)
 手动声明需要的包：
 
 ````md
-```python run title="NumPy Demo" packages=numpy
+```python3 title="NumPy Demo" packages=numpy
 import numpy as np
 print(np.arange(5))
 ```
 ````
+
+页面里的代码卡现在默认是展示用途；如果你想真正运行代码，请使用页面右侧的 `Python Lab` 悬浮工作区。
 
 ## 6. 当前这版 Python 运行能力的边界
 

@@ -11,7 +11,7 @@ comment: true
 # 一、单行输入
 对10个整数从小到大排序，处理10个整数，并打印出来
 
-```python run title="case1"
+```python3 title="case1"
 # 程序入口
 # 输入
 if __name__=="__main__":
@@ -27,7 +27,7 @@ if __name__=="__main__":
 # 二、多行输入，不确定行数
 给定正整数A和B，计算A+B
 
-```python run title="case2"
+```python3 title="case2"
 if __name__ == "__main__":
     # 不确定函数，我们需要while循环
     # 输入元素：
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 # 三、多行输入，确定行数
 输入一个n，然后再输入n组数据样例，返回他们的和
 
-```python run title="case3"
+```python3 title="case3"
 if __name__ == "__main__":
     n = int(input().strip())
     for i in range(n):
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 # 四、多行输入，指定结束符号
 还是两数之和，指定0 0结束
 
-```python run title = "case4"
+```python3 title = "case4"
 if __name__ == "__main__":
     n = int(input().strip())
     for i in range(n):
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 # 五、不确定行数，不确定个数
 输入多组数据样例，每组数据占一行，每一行的输入划分为第一个数和其他数，第一个数代表后面多少数求和，返回和。
 
-```python run title="case5"
+```python3 title="case5"
 if __name__ == "__main__":
     while True:
         try:
@@ -85,7 +85,7 @@ if __name__ == "__main__":
 # 六、确定行数不确定个数
 先输入n，然后给n行，每行个数不确定，返回和
 
-```python run title= "case6"
+```python3 title= "case6"
 if __name__ == "__main__":
     n = int(input().strip())
     for _ in range(n):
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
 输出三行，第一行语文最好的学生姓名学科分数，第二行数学成绩最好的学生姓名学科分数，第三行英语成绩最好的学生姓名学科分数。
 
-```python run title="case7"
+```python3 title="case7"
 def number_or_chars(x):
     if x.isdigit():
         return int(x)
@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
 ## 1. 逐行读到 EOF
 
-```python run title="case8"
+```python3 title="case8"
 import sys
 
 for line in sys.stdin:
@@ -150,7 +150,7 @@ for line in sys.stdin:
 
 ## 2. 一次性读完
 
-```python run title="case9"
+```python3 title="case9"
 import sys
 
 data = sys.stdin.read().split()
@@ -160,7 +160,7 @@ print(sum(nums))
 
 ## 3. 代替 `input()` 提速
 
-```python run title="case10"
+```python3 title="case10"
 import sys
 
 input = sys.stdin.readline
@@ -188,7 +188,7 @@ for _ in range(n):
 
 它的作用是：安全地把“字符串形式的字面量”解析成真正的 Python 数据结构。
 
-```python run title="case11"
+```python3 title="case11"
 import ast
 
 if __name__ == "__main__":
@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
 如果输入里有 `null`，Python 不认识，需要先替换成 `None`：
 
-```python run title="case12"
+```python3 title="case12"
 import ast
 
 if __name__ == "__main__":

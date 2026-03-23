@@ -87,7 +87,7 @@ draft: false
 
 如果你想在文章里插入可运行的 Python 代码块，可以直接这样写：
 
-```python run title="Quick Demo"
+```python3 title="Quick Demo"
 total = sum(i * i for i in range(6))
 print("sum =", total)
 ```
