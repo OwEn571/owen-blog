@@ -6,6 +6,7 @@
 	import { i18n } from "../../../i18n/translation";
 	import { navigateToPage } from "../../../utils/navigation-utils";
 	import { panelManager } from "../../../utils/panel-manager.js";
+	import { findTOCGroupParentId, groupTOCItems } from "./utils/toc-groups";
 	import {
 		checkIsHomePage,
 		generatePostItems,
@@ -16,7 +17,14 @@
 		type TOCItem,
 	} from "./hooks/useMobileTOC";
 
+	type TOCGroup = {
+		parent: TOCItem;
+		children: TOCItem[];
+	};
+
 	let tocItems: TOCItem[] = $state([]);
+	let tocGroups: TOCGroup[] = $state([]);
+	let expandedGroups: string[] = $state([]);
 	let postItems: PostItem[] = $state([]);
 	let activeId = $state("");
 	let isHomePage = $state(false);
@@ -32,6 +40,30 @@
 		await panelManager.togglePanel("mobile-toc-panel", show);
 	};
 
+	const isGroupExpanded = (id: string): boolean => expandedGroups.includes(id);
+
+	const toggleGroup = (id: string) => {
+		if (isGroupExpanded(id)) {
+			expandedGroups = expandedGroups.filter((groupId) => groupId !== id);
+			return;
+		}
+
+		expandedGroups = [...expandedGroups, id];
+	};
+
+	const ensureActiveGroupExpanded = (id: string) => {
+		const parentId = findTOCGroupParentId(tocGroups, id);
+		if (!parentId || expandedGroups.includes(parentId)) {
+			return;
+		}
+
+		expandedGroups = [...expandedGroups, parentId];
+	};
+
+	const isGroupActive = (group: TOCGroup): boolean =>
+		group.parent.id === activeId ||
+		group.children.some((child) => child.id === activeId);
+
 	const scrollToHeading = (id: string) => {
 		setPanelVisibility(false);
 		scrollToHeadingUtil(id);
@@ -42,7 +74,7 @@
 		navigateToPage(url);
 	};
 
-	const updateActiveHeading = () => {
+	const syncCurrentHeading = () => {
 		const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
 		const scrollTop = window.scrollY;
 		const offset = 100;
@@ -58,6 +90,9 @@
 		});
 
 		activeId = currentActiveId;
+		if (currentActiveId) {
+			ensureActiveGroupExpanded(currentActiveId);
+		}
 	};
 
 	const setupIntersectionObserver = () => {
@@ -72,13 +107,14 @@
 				entries.forEach((entry) => {
 					if (entry.isIntersecting) {
 						activeId = entry.target.id;
+						ensureActiveGroupExpanded(entry.target.id);
 					}
 				});
 			},
 			{
 				rootMargin: "-80px 0px -80% 0px",
 				threshold: 0,
-			}
+			},
 		);
 
 		headings.forEach((heading) => {
@@ -91,10 +127,14 @@
 	const setupSwupListeners = () => {
 		if (
 			typeof window !== "undefined" &&
-			(window as unknown as { swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } } }).swup &&
+			(window as unknown as {
+				swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } };
+			}).swup &&
 			!swupListenersRegistered
 		) {
-			const swup = (window as unknown as { swup: { hooks: { on: (event: string, cb: () => void) => void } } }).swup;
+			const swup = (window as unknown as {
+				swup: { hooks: { on: (event: string, cb: () => void) => void } };
+			}).swup;
 
 			swup.hooks.on("page:view", () => {
 				setTimeout(() => init(), 200);
@@ -111,7 +151,9 @@
 
 	const checkSwupAvailability = () => {
 		if (typeof window !== "undefined") {
-			const w = window as unknown as { swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } } };
+			const w = window as unknown as {
+				swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } };
+			};
 			if (w.swup) {
 				setupSwupListeners();
 			} else {
@@ -139,25 +181,32 @@
 
 		if (isHomePage) {
 			tocItems = [];
+			tocGroups = [];
+			expandedGroups = [];
 			postItems = generatePostItems();
-		} else {
-			const config = getTOCConfig();
-			tocItems = generateTOCItems(config);
-			postItems = [];
-			setupIntersectionObserver();
-			updateActiveHeading();
+			return;
 		}
+
+		const config = getTOCConfig();
+		tocItems = generateTOCItems(config);
+		tocGroups = groupTOCItems(tocItems);
+		expandedGroups = [];
+		postItems = [];
+		setupIntersectionObserver();
+		syncCurrentHeading();
 	};
 
 	onMount(() => {
 		setTimeout(init, 100);
-		window.addEventListener("scroll", updateActiveHeading, { passive: true });
+		window.addEventListener("scroll", syncCurrentHeading, { passive: true });
 
 		return () => {
 			observer?.disconnect();
-			window.removeEventListener("scroll", updateActiveHeading);
+			window.removeEventListener("scroll", syncCurrentHeading);
 
-			const w = window as unknown as { swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } } };
+			const w = window as unknown as {
+				swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } };
+			};
 			if (w.swup) {
 				w.swup.hooks.off("page:view");
 			}
@@ -170,34 +219,12 @@
 		(window as unknown as { mobileTOCInit?: () => void }).mobileTOCInit = init;
 	}
 
-	const getLevelPadding = (level: number): string => {
-		const base = "12px";
-		const levelPadding: Record<number, string> = {
-			1: "12px",
-			2: "28px",
-			3: "36px",
-			4: "44px",
-			5: "52px",
-			6: "52px",
-		};
-		return levelPadding[level] || base;
-	};
-
-	const getActivePadding = (level: number): string => {
-		const activePadding: Record<number, string> = {
-			1: "9px",
-			2: "25px",
-			3: "33px",
-			4: "41px",
-			5: "49px",
-			6: "49px",
-		};
-		return activePadding[level] || "9px";
-	};
+	const getItemPadding = (depth: number, isActive: boolean): string =>
+		`${Math.max(12, 12 + depth * 16 - (isActive ? 3 : 0))}px`;
 </script>
 
 <button
-	on:click={togglePanel}
+	onclick={togglePanel}
 	aria-label="Table of Contents"
 	id="mobile-toc-switch"
 	class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90 lg:!hidden theme-switch-btn"
@@ -214,7 +241,7 @@
 			{isHomePage ? i18n(I18nKey.postList) : i18n(I18nKey.tableOfContents)}
 		</h3>
 		<button
-			on:click={togglePanel}
+			onclick={togglePanel}
 			aria-label="Close TOC"
 			class="btn-plain rounded-lg h-8 w-8 active:scale-90 theme-switch-btn"
 		>
@@ -231,7 +258,7 @@
 		{:else}
 			<div class="post-content">
 				{#each postItems as post}
-					<button on:click={() => navigateToPost(post.url)} class="post-item">
+					<button onclick={() => navigateToPost(post.url)} class="post-item">
 						<div class="post-title">
 							{#if post.pinned}
 								<Icon icon="mdi:pin" class="pinned-icon" />
@@ -246,28 +273,61 @@
 			</div>
 		{/if}
 	{:else}
-		{#if tocItems.length === 0}
+		{#if tocGroups.length === 0}
 			<div class="text-center py-8 text-black/50 dark:text-white/50">
 				<p>{i18n(I18nKey.tocEmpty)}</p>
 			</div>
 		{:else}
 			<div class="toc-content">
-				{#each tocItems as item}
-					<button
-						on:click={() => scrollToHeading(item.id)}
-						class="toc-item level-{item.level}"
-						class:active={activeId === item.id}
-						style="padding-left: {activeId === item.id ? getActivePadding(item.level) : getLevelPadding(item.level)}"
-					>
-						{#if item.level === 1}
-							<span class="badge">{item.badge}</span>
-						{:else if item.level === 2}
-							<span class="dot-square"></span>
-						{:else}
-							<span class="dot-small"></span>
+				{#each tocGroups as group}
+					<div class="toc-group" class:active-branch={isGroupActive(group)}>
+						<div class="toc-group-header">
+								<button
+									onclick={() => scrollToHeading(group.parent.id)}
+								class="toc-item toc-parent"
+								class:active={activeId === group.parent.id}
+								style="padding-left: {getItemPadding(0, activeId === group.parent.id)}"
+							>
+								<span class="badge">{group.parent.badge}</span>
+								<span class="toc-text">{group.parent.text}</span>
+							</button>
+							{#if group.children.length > 0}
+									<button
+										type="button"
+										class="toc-toggle"
+										class:expanded={isGroupExpanded(group.parent.id)}
+										aria-label={isGroupExpanded(group.parent.id) ? "收起子目录" : "展开子目录"}
+										aria-expanded={isGroupExpanded(group.parent.id)}
+										onclick={(event) => {
+											event.stopPropagation();
+											toggleGroup(group.parent.id);
+										}}
+									>
+									<Icon icon="material-symbols:keyboard-arrow-down-rounded" class="text-[1rem]" />
+								</button>
+							{/if}
+						</div>
+
+						{#if group.children.length > 0 && isGroupExpanded(group.parent.id)}
+							<div class="toc-children">
+								{#each group.children as item}
+										<button
+											onclick={() => scrollToHeading(item.id)}
+										class="toc-item toc-child depth-{item.depth}"
+										class:active={activeId === item.id}
+										style="padding-left: {getItemPadding(item.depth, activeId === item.id)}"
+									>
+										{#if item.depth === 1}
+											<span class="dot-square"></span>
+										{:else}
+											<span class="dot-small"></span>
+										{/if}
+										<span class="toc-text">{item.text}</span>
+									</button>
+								{/each}
+							</div>
 						{/if}
-						<span class="toc-text">{item.text}</span>
-					</button>
+					</div>
 				{/each}
 			</div>
 		{/if}
@@ -298,13 +358,35 @@
 		gap: 4px;
 	}
 
+	.toc-group {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 2px 0;
+	}
+
+	.toc-group-header {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.toc-children {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding-left: 6px;
+		border-left: 1px solid color-mix(in srgb, var(--line-color) 75%, transparent);
+		margin-left: 10px;
+	}
+
 	.toc-item {
 		display: flex;
 		align-items: center;
 		width: 100%;
 		text-align: left;
 		padding: 8px 12px;
-		border-radius: 8px;
+		border-radius: 10px;
 		transition: all 0.2s ease;
 		border: none;
 		background: transparent;
@@ -330,36 +412,62 @@
 		border-left: 3px solid var(--primary);
 	}
 
-	.toc-item.level-1 {
+	.toc-parent {
 		font-weight: 600;
 		font-size: 1rem;
 		gap: 8px;
 	}
 
-	.toc-item.level-2 {
+	.toc-child {
 		gap: 6px;
 	}
 
-	.toc-item.level-3,
-	.toc-item.level-4 {
-		font-size: 0.85rem;
-		gap: 6px;
+	.toc-child.depth-1 {
+		font-size: 0.9rem;
 	}
 
-	.toc-item.level-4 {
+	.toc-child.depth-2,
+	.toc-child.depth-3 {
+		font-size: 0.84rem;
+	}
+
+	.toc-child.depth-4,
+	.toc-child.depth-5 {
 		font-size: 0.8rem;
+		color: rgba(0, 0, 0, 0.55);
 	}
 
-	.toc-item.level-5,
-	.toc-item.level-6 {
-		font-size: 0.75rem;
-		color: rgba(0, 0, 0, 0.5);
-		gap: 6px;
+	:global(.dark) .toc-child.depth-4,
+	:global(.dark) .toc-child.depth-5 {
+		color: rgba(255, 255, 255, 0.55);
 	}
 
-	:global(.dark) .toc-item.level-5,
-	:global(.dark) .toc-item.level-6 {
-		color: rgba(255, 255, 255, 0.5);
+	.toc-toggle {
+		width: 2rem;
+		height: 2rem;
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid color-mix(in srgb, var(--line-color) 75%, transparent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+		color: var(--primary);
+		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+	}
+
+	.toc-toggle:hover {
+		background: var(--btn-plain-bg-hover);
+		border-color: color-mix(in srgb, var(--primary) 32%, transparent);
+	}
+
+	.toc-toggle.expanded {
+		transform: rotate(180deg);
+	}
+
+	.active-branch .toc-toggle {
+		border-color: color-mix(in srgb, var(--primary) 36%, transparent);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 16%, transparent);
 	}
 
 	.badge {

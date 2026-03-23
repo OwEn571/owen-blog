@@ -7,6 +7,7 @@ export interface TOCItem {
 	id: string;
 	text: string;
 	level: number;
+	depth: number;
 	badge?: string;
 }
 
@@ -49,23 +50,32 @@ export function generateTOCItems(config: TOCConfig): TOCItem[] {
 		"ト",
 	];
 
-	const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
+	const headings = Array.from(
+		document.querySelectorAll("h1, h2, h3, h4, h5, h6"),
+	).filter((heading) => heading.id);
+
+	if (headings.length === 0) {
+		return [];
+	}
+
+	const minLevel = Math.min(
+		...headings.map((heading) => parseInt(heading.tagName.charAt(1), 10)),
+	);
 	const items: TOCItem[] = [];
 	let h1Count = 0;
 
 	headings.forEach((heading) => {
-		if (!heading.id) {return;}
-
 		const level = parseInt(heading.tagName.charAt(1), 10);
+		const depth = level - minLevel;
 
 		// 根据 depth 配置过滤标题
-		if (level > config.depth) {return;}
+		if (depth >= config.depth) {return;}
 
 		const text = (heading.textContent || "").replace(/#+\s*$/, "");
 		let badge = "";
 
-		// 只为 H1 标题生成 badge
-		if (level === 1) {
+		// 只为顶级标题生成 badge
+		if (depth === 0) {
 			h1Count++;
 			if (
 				config.useJapaneseBadge &&
@@ -77,7 +87,7 @@ export function generateTOCItems(config: TOCConfig): TOCItem[] {
 			}
 		}
 
-		items.push({ id: heading.id, text, level, badge });
+		items.push({ id: heading.id, text, level, depth, badge });
 	});
 
 	return items;

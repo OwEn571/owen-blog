@@ -166,16 +166,22 @@ const {
 			if (!href) {
 				return;
 			}
-			const targetId = href.replace(/^#/, "");
-			const target = document.getElementById(targetId);
-			if (target) {
-				target.scrollIntoView({
-					behavior: "smooth",
-					block: "start",
-				});
-			}
-			window.history.replaceState(null, "", `#${targetId}`);
-		};
+				const targetId = href.replace(/^#/, "");
+				const target = document.getElementById(targetId);
+				if (target) {
+					window.requestAnimationFrame(() => {
+						const top =
+							window.scrollY +
+							target.getBoundingClientRect().top -
+							Math.max(84, window.innerHeight * 0.12);
+						window.scrollTo({
+							top: Math.max(0, top),
+							behavior: "auto",
+						});
+					});
+				}
+				window.history.replaceState(null, "", `#${targetId}`);
+			};
 
 		window.addEventListener(
 			"moduleDirectory:filterchange",

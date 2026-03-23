@@ -18,7 +18,7 @@ const { class: className } = Astro.props;
 </table-of-contents>
 
 <script>
-import { JAPANESE_KATAKANA } from "./utils/japanese-katakana";
+import { groupTOCItems, findTOCGroupParentId } from "./utils/toc-groups";
 import {
 	extractHeadings,
 	generateTOCItems,
@@ -47,13 +47,15 @@ class TableOfContents extends HTMLElement {
 	tocEntries: HTMLAnchorElement[] = [];
 	active: boolean[] = [];
 	activeIndicator: HTMLElement | null = null;
+	expandedGroups = new Set<string>();
+	tocGroups: Array<{ parent: { id: string; level: number; depth: number; text: string; badge?: string }; children: Array<{ id: string; level: number; depth: number; text: string; badge?: string }> }> = [];
 	navbarHeight = 80;
 
 	constructor() {
 		super();
 		this.observer = new IntersectionObserver(
 			this.markVisibleSection.bind(this),
-			{ threshold: 0 }
+			{ threshold: 0 },
 		);
 	}
 
@@ -79,7 +81,52 @@ class TableOfContents extends HTMLElement {
 		this.update();
 	};
 
+	getActiveHeadingIds = () =>
+		this.tocEntries
+			.map((entry, index) => (this.active[index] ? decodeURIComponent(entry.hash?.substring(1) || "") : null))
+			.filter((id): id is string => !!id);
+
+	syncExpandedGroups = () => {
+		this.querySelectorAll<HTMLElement>("[data-toc-children]").forEach((container) => {
+			const groupId = container.dataset.tocChildren || "";
+			const expanded = this.expandedGroups.has(groupId);
+			container.hidden = !expanded;
+		});
+
+		this.querySelectorAll<HTMLButtonElement>("[data-toc-toggle]").forEach((button) => {
+			const groupId = button.dataset.tocToggle || "";
+			const expanded = this.expandedGroups.has(groupId);
+			button.classList.toggle("expanded", expanded);
+			button.setAttribute("aria-expanded", expanded ? "true" : "false");
+		});
+	};
+
+	ensureVisibleGroups = (headingIds: string[]) => {
+		let changed = false;
+
+		headingIds.forEach((headingId) => {
+			const groupId = findTOCGroupParentId(this.tocGroups, headingId);
+			if (!groupId) {
+				return;
+			}
+
+			const targetGroup = this.tocGroups.find((group) => group.parent.id === groupId);
+			if (!targetGroup || targetGroup.children.length === 0 || this.expandedGroups.has(groupId)) {
+				return;
+			}
+
+			this.expandedGroups.add(groupId);
+			changed = true;
+		});
+
+		if (changed) {
+			this.syncExpandedGroups();
+		}
+	};
+
 	toggleActiveHeading = () => {
+		this.ensureVisibleGroups(this.getActiveHeadingIds());
+
 		const { min, max } = calculateActiveHeadingRange(this.active);
 
 		this.tocEntries.forEach((entry, i) => {
@@ -99,11 +146,11 @@ class TableOfContents extends HTMLElement {
 				const { top, height } = calculateActiveIndicatorPosition(
 					this.tocEl,
 					minEntry,
-					maxEntry
+					maxEntry,
 				);
 				this.activeIndicator?.setAttribute(
 					"style",
-					`top: ${top}px; height: ${height}px`
+					`top: ${top}px; height: ${height}px`,
 				);
 			}
 		}
@@ -113,7 +160,7 @@ class TableOfContents extends HTMLElement {
 		if (this.anchorNavTarget || !this.tocEl) return;
 
 		const activeEntries = this.tocEntries.filter((entry) =>
-			entry.classList.contains(this.visibleClass)
+			entry.classList.contains(this.visibleClass),
 		);
 		if (activeEntries.length === 0) return;
 
@@ -159,15 +206,42 @@ class TableOfContents extends HTMLElement {
 		}
 	};
 
-	handleAnchorClick = (event: Event) => {
+	handleClick = (event: Event) => {
+		const toggleButton = (event.target as HTMLElement)?.closest?.("[data-toc-toggle]") as HTMLButtonElement | null;
+		if (toggleButton) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const groupId = toggleButton.dataset.tocToggle || "";
+			if (!groupId) {
+				return;
+			}
+
+			if (this.expandedGroups.has(groupId)) {
+				this.expandedGroups.delete(groupId);
+			} else {
+				this.expandedGroups.add(groupId);
+			}
+
+			this.syncExpandedGroups();
+			this.update();
+			return;
+		}
+
 		const anchor = (event.composedPath() as EventTarget[]).find(
-			(el) => el instanceof HTMLAnchorElement
+			(el) => el instanceof HTMLAnchorElement,
 		) as HTMLAnchorElement | undefined;
 
 		if (anchor) {
 			event.preventDefault();
 			const id = decodeURIComponent(anchor.hash?.substring(1) || "");
 			scrollToHeading(id, this.navbarHeight);
+
+			const groupId = findTOCGroupParentId(this.tocGroups, id);
+			if (groupId) {
+				this.expandedGroups.add(groupId);
+				this.syncExpandedGroups();
+			}
 
 			const idx = this.headingIdxMap.get(id);
 			this.anchorNavTarget = idx !== undefined ? this.headings[idx] : null;
@@ -201,14 +275,14 @@ class TableOfContents extends HTMLElement {
 		this.regenerateTOC();
 		this.tocEl = this;
 
-		this.tocEl.addEventListener("click", this.handleAnchorClick, {
+		this.tocEl.addEventListener("click", this.handleClick, {
 			capture: true,
 		});
 
-		this.activeIndicator = document.getElementById("active-indicator");
+		this.activeIndicator = this.querySelector("#active-indicator");
 
 		this.tocEntries = Array.from(
-			this.querySelectorAll<HTMLAnchorElement>("a[href^='#']")
+			this.querySelectorAll<HTMLAnchorElement>("a[href^='#']"),
 		);
 
 		if (this.tocEntries.length === 0) return;
@@ -218,7 +292,7 @@ class TableOfContents extends HTMLElement {
 
 		for (let i = 0; i < this.tocEntries.length; i++) {
 			const id = decodeURIComponent(
-				this.tocEntries[i].hash?.substring(1) || ""
+				this.tocEntries[i].hash?.substring(1) || "",
 			);
 			const heading = document.getElementById(id);
 			const section = heading?.parentElement;
@@ -234,6 +308,62 @@ class TableOfContents extends HTMLElement {
 
 		this.fallback();
 		this.update();
+	}
+
+	renderItem(item: { id: string; text: string; depth: number; badge?: string }) {
+		const badgeContent =
+			item.depth === 0
+				? item.badge || ""
+				: item.depth === 1
+					? '<div class="toc-dot toc-dot-square"></div>'
+					: '<div class="toc-dot toc-dot-small"></div>';
+
+		const badgeClass =
+			item.depth === 0
+				? "toc-badge-parent"
+				: item.depth === 1
+					? "toc-badge-secondary"
+					: "toc-badge-tertiary";
+
+		return `<a
+			href="#${item.id}"
+			class="toc-link ${item.depth === 0 ? "toc-link-parent" : "toc-link-child"}"
+			data-toc-depth="${item.depth}"
+			style="${item.depth > 0 ? `--toc-indent:${Math.min(item.depth, 4)};` : ""}"
+		>
+			<div class="toc-badge ${badgeClass}">
+				${badgeContent}
+			</div>
+			<div class="toc-label ${item.depth <= 1 ? "text-50" : "text-30"}">${item.text}</div>
+		</a>`;
+	}
+
+	renderGroup(group: { parent: { id: string; text: string; depth: number; badge?: string }; children: Array<{ id: string; text: string; depth: number; badge?: string }> }) {
+		return `<div class="toc-group" data-toc-group="${group.parent.id}">
+			<div class="toc-group-header">
+				${this.renderItem(group.parent)}
+				${
+					group.children.length > 0
+						? `<button
+							type="button"
+							class="toc-toggle"
+							data-toc-toggle="${group.parent.id}"
+							aria-label="展开子目录"
+							aria-expanded="false"
+						>
+							<span class="toc-toggle-icon">⌄</span>
+						</button>`
+						: ""
+				}
+			</div>
+			${
+				group.children.length > 0
+					? `<div class="toc-children" data-toc-children="${group.parent.id}" hidden>
+						${group.children.map((item) => this.renderItem(item)).join("")}
+					</div>`
+					: ""
+			}
+		</div>`;
 	}
 
 	regenerateTOC(retryCount = 0) {
@@ -261,50 +391,24 @@ class TableOfContents extends HTMLElement {
 
 		const config = getTOCConfig();
 		const tocItems = generateTOCItems(headings, config);
+		this.tocGroups = groupTOCItems(tocItems);
+		this.expandedGroups = new Set();
 
-		let h1Count = 1;
-		const tocHTML = tocItems
-			.map((item) => {
-				const depthClass =
-					item.depth === 0 ? "" : item.depth === 1 ? "ml-4" : "ml-8";
-
-				let badgeContent: string;
-				if (item.depth === 0) {
-					badgeContent =
-						config.useJapaneseBadge &&
-						h1Count - 1 < JAPANESE_KATAKANA.length
-							? JAPANESE_KATAKANA[h1Count - 1]
-							: h1Count.toString();
-					h1Count++;
-				} else if (item.depth === 1) {
-					badgeContent =
-						'<div class="transition w-2 h-2 rounded-[0.1875rem] bg-[var(--toc-badge-bg)]"></div>';
-				} else {
-					badgeContent =
-						'<div class="transition w-1.5 h-1.5 rounded-sm bg-black/5 dark:bg-white/10"></div>';
-				}
-
-				return `<a href="#${item.id}" class="px-2 flex gap-2 relative transition w-full min-h-9 rounded-xl hover:bg-[var(--toc-btn-hover)] active:bg-[var(--toc-btn-active)] py-2">
-					<div class="transition w-5 h-5 shrink-0 rounded-lg text-xs flex items-center justify-center font-bold ${depthClass} ${item.depth === 0 ? "bg-[var(--toc-badge-bg)] text-[var(--btn-content)]" : ""}">
-						${badgeContent}
-					</div>
-					<div class="transition text-sm ${item.depth <= 1 ? "text-50" : "text-30"}">${item.text}</div>
-				</a>`;
-			})
-			.join("");
+		const tocHTML = this.tocGroups.map((group) => this.renderGroup(group)).join("");
 
 		this.innerHTML =
 			tocHTML +
 			'<div id="active-indicator" style="opacity: 0" class="-z-10 absolute bg-[var(--toc-btn-hover)] left-0 right-0 rounded-xl transition-all group-hover:bg-transparent border-2 border-[var(--toc-btn-hover)] group-hover:border-[var(--toc-btn-active)] border-dashed"></div>';
 		this.dataset.loaded = "true";
+		this.syncExpandedGroups();
 	}
 
 	disconnectedCallback() {
 		this.sections.forEach((section) =>
-			this.observer.unobserve(section)
+			this.observer.unobserve(section),
 		);
 		this.observer.disconnect();
-		this.tocEl?.removeEventListener("click", this.handleAnchorClick);
+		this.tocEl?.removeEventListener("click", this.handleClick);
 	}
 }
 
@@ -324,5 +428,132 @@ if (!customElements.get("table-of-contents")) {
 
 	table-of-contents#toc::-webkit-scrollbar {
 		display: none;
+	}
+
+	table-of-contents#toc .toc-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		padding: 0.125rem 0;
+	}
+
+	table-of-contents#toc .toc-group-header {
+		display: flex;
+		align-items: stretch;
+		gap: 0.375rem;
+	}
+
+	table-of-contents#toc .toc-children {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		margin-left: 0.875rem;
+		padding-left: 0.625rem;
+		border-left: 1px solid color-mix(in srgb, var(--line-color) 78%, transparent);
+	}
+
+	table-of-contents#toc .toc-link {
+		padding: 0.5rem 0.625rem;
+		display: flex;
+		gap: 0.5rem;
+		position: relative;
+		transition:
+			background-color 0.2s ease,
+			color 0.2s ease,
+			transform 0.2s ease;
+		width: 100%;
+		min-height: 2.25rem;
+		border-radius: 0.875rem;
+		align-items: center;
+	}
+
+	table-of-contents#toc .toc-link-child {
+		padding-left: calc(0.75rem + (var(--toc-indent, 1) * 0.75rem));
+	}
+
+	table-of-contents#toc .toc-link:hover {
+		background: var(--toc-btn-hover);
+	}
+
+	table-of-contents#toc .toc-badge {
+		width: 1.25rem;
+		height: 1.25rem;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	table-of-contents#toc .toc-badge-parent {
+		border-radius: 0.625rem;
+		background: var(--toc-badge-bg);
+		color: var(--btn-content);
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+
+	table-of-contents#toc .toc-badge-secondary,
+	table-of-contents#toc .toc-badge-tertiary {
+		background: transparent;
+	}
+
+	table-of-contents#toc .toc-dot {
+		display: inline-flex;
+	}
+
+	table-of-contents#toc .toc-dot-square {
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 0.1875rem;
+		background: var(--toc-badge-bg);
+	}
+
+	table-of-contents#toc .toc-dot-small {
+		width: 0.375rem;
+		height: 0.375rem;
+		border-radius: 0.125rem;
+		background: rgb(255 255 255 / 0.14);
+	}
+
+	:global(.light) table-of-contents#toc .toc-dot-small {
+		background: rgb(0 0 0 / 0.08);
+	}
+
+	table-of-contents#toc .toc-label {
+		font-size: 0.875rem;
+		line-height: 1.45;
+	}
+
+	table-of-contents#toc .toc-toggle {
+		width: 2rem;
+		min-width: 2rem;
+		align-self: center;
+		height: 2rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--line-color) 76%, transparent);
+		color: var(--primary);
+		background: color-mix(in srgb, var(--card-bg) 78%, transparent);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition:
+			transform 0.2s ease,
+			border-color 0.2s ease,
+			background-color 0.2s ease;
+	}
+
+	table-of-contents#toc .toc-toggle:hover {
+		border-color: color-mix(in srgb, var(--primary) 38%, transparent);
+		background: var(--toc-btn-hover);
+	}
+
+	table-of-contents#toc .toc-toggle.expanded {
+		transform: rotate(180deg);
+	}
+
+	table-of-contents#toc .toc-toggle-icon {
+		font-size: 1rem;
+		line-height: 1;
+		transform: translateY(-1px);
 	}
 </style>
