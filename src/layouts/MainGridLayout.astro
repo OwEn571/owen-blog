@@ -190,6 +190,22 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					if (!shell || !(video instanceof HTMLVideoElement)) return;
 
 					const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+					const mobileRenderQuery = window.matchMedia("(max-width: 820px), (pointer: coarse)");
+					let resumeTimer = 0;
+
+					const tryPlayVideo = () => {
+						video.play().catch(() => {});
+					};
+
+					const scheduleResume = (delay = 0) => {
+						window.clearTimeout(resumeTimer);
+						resumeTimer = window.setTimeout(() => {
+							if (document.hidden || mediaQuery.matches) {
+								return;
+							}
+							tryPlayVideo();
+						}, delay);
+					};
 
 					const syncMotionPreference = () => {
 						if (mediaQuery.matches) {
@@ -200,34 +216,54 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 
 						shell.removeAttribute("hidden");
 						video.muted = true;
-						video.defaultMuted = true;
-						video.playsInline = true;
-						video.setAttribute("muted", "");
-						video.setAttribute("playsinline", "");
+							video.defaultMuted = true;
+							video.playsInline = true;
+							video.setAttribute("muted", "");
+							video.setAttribute("playsinline", "");
 
-						const tryPlay = () => {
-							video.play().catch(() => {});
+							if (video.readyState >= 2) {
+								scheduleResume(mobileRenderQuery.matches ? 120 : 0);
+							} else {
+								video.addEventListener("canplay", () => {
+									scheduleResume(mobileRenderQuery.matches ? 120 : 0);
+								}, { once: true });
+							}
 						};
 
-						if (video.readyState >= 2) {
-							tryPlay();
-						} else {
-							video.addEventListener("canplay", tryPlay, { once: true });
-						}
-					};
+						syncMotionPreference();
+						mediaQuery.addEventListener?.("change", syncMotionPreference);
+						mobileRenderQuery.addEventListener?.("change", syncMotionPreference);
 
-					syncMotionPreference();
-					mediaQuery.addEventListener?.("change", syncMotionPreference);
+						document.addEventListener("visibilitychange", () => {
+							if (document.hidden) {
+								video.pause();
+							} else {
+								syncMotionPreference();
+							}
+						});
 
-					document.addEventListener("visibilitychange", () => {
-						if (document.hidden) {
-							video.pause();
-						} else {
-							syncMotionPreference();
-						}
-					});
-				})();
-			</script>
+						window.addEventListener(
+							"scroll",
+							() => {
+								if (mediaQuery.matches) {
+									return;
+								}
+								video.pause();
+								scheduleResume(mobileRenderQuery.matches ? 180 : 90);
+							},
+							{ passive: true },
+						);
+
+						window.addEventListener(
+							"pagehide",
+							() => {
+								window.clearTimeout(resumeTimer);
+								video.pause();
+							},
+							{ once: true },
+						);
+					})();
+				</script>
 
 			<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto">
 				<div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">

@@ -35,11 +35,11 @@ const overviewCards = [
 				首页现在只做总览与承接，不再代替开屏。你进入站点时先通过全屏开屏选择方向，回到首页时看到的是整个系统的结构概览。
 			</p>
 			<div class="home-actions">
-				<a href="/study/" class="home-primary-action">
+				<a href="/study/" class="home-primary-action" data-no-swup>
 					进入 Study
 					<Icon name="material-symbols:arrow-forward-rounded" class="text-lg" />
 				</a>
-				<a href="/archive/" class="home-secondary-action">浏览 Archive</a>
+				<a href="/archive/" class="home-secondary-action" data-no-swup>浏览 Archive</a>
 			</div>
 		</div>
 
@@ -60,6 +60,7 @@ const overviewCards = [
 							href={section.href}
 							class="home-viewport-row"
 							style={`--home-accent: ${section.accent};`}
+							data-no-swup
 						>
 							<div class="home-viewport-icon">
 								<Icon name={section.icon} class="text-[1.2rem]" />
@@ -86,6 +87,7 @@ const overviewCards = [
 					href={section.href}
 					class="card-base surface-card home-entry-card"
 					style={`--home-accent: ${section.accent};`}
+					data-no-swup
 				>
 					<div class="surface-card-top">
 						<span class="surface-kicker">{section.eyebrow}</span>

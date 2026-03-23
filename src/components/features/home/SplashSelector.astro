@@ -50,6 +50,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 						class="splash-choice"
 						style={`--splash-accent: ${section.accent}; --splash-delay: ${index * 90}ms;`}
 						data-splash-target
+						data-no-swup
 					>
 						<div class="splash-choice-top">
 							<span class="splash-choice-eyebrow">{section.eyebrow}</span>
@@ -127,9 +128,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			isNavigating = true;
 			root.dataset.state = "navigating";
 
-			window.setTimeout(() => {
-				window.location.assign(href);
-			}, prefersReducedMotion ? 0 : 70);
+			window.location.assign(href);
 		};
 
 		lockPage();
