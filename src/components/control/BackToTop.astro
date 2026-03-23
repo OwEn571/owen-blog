@@ -63,6 +63,67 @@ import { Icon } from "astro-icon/components";
 
 <script is:inline>
 	(() => {
+		const animateToTop = () => {
+			const startTop = window.scrollY || document.documentElement.scrollTop;
+			if (startTop <= 0) {
+				return;
+			}
+
+			if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+				window.scrollTo({ top: 0, behavior: "auto" });
+				return;
+			}
+
+			const startTime = performance.now();
+			const duration = Math.min(420, Math.max(220, startTop * 0.18));
+			const easeInOutCubic = (value) =>
+				value < 0.5
+					? 4 * value * value * value
+					: 1 - ((-2 * value + 2) ** 3) / 2;
+			const cleanupUserInterrupts = () => {
+				window.removeEventListener("wheel", cancelScrollAnimation);
+				window.removeEventListener("touchstart", cancelScrollAnimation);
+				window.removeEventListener("keydown", cancelScrollAnimation);
+				window.removeEventListener("mousedown", cancelScrollAnimation);
+			};
+
+			const cancelScrollAnimation = () => {
+				if (window.__mizukiBackToTopRaf) {
+					window.cancelAnimationFrame(window.__mizukiBackToTopRaf);
+					delete window.__mizukiBackToTopRaf;
+				}
+				cleanupUserInterrupts();
+			};
+
+			const step = (now) => {
+				const progress = Math.min((now - startTime) / duration, 1);
+				const eased = easeInOutCubic(progress);
+				window.scrollTo({
+					top: startTop * (1 - eased),
+					behavior: "auto",
+				});
+
+				if (progress < 1) {
+					window.__mizukiBackToTopRaf = window.requestAnimationFrame(step);
+					return;
+				}
+
+				cleanupUserInterrupts();
+				delete window.__mizukiBackToTopRaf;
+			};
+
+			if (window.__mizukiBackToTopRaf) {
+				window.cancelAnimationFrame(window.__mizukiBackToTopRaf);
+			}
+
+			window.addEventListener("wheel", cancelScrollAnimation, { passive: true });
+			window.addEventListener("touchstart", cancelScrollAnimation, { passive: true });
+			window.addEventListener("keydown", cancelScrollAnimation);
+			window.addEventListener("mousedown", cancelScrollAnimation);
+
+			window.__mizukiBackToTopRaf = window.requestAnimationFrame(step);
+		};
+
 		const bindBackToTop = () => {
 			const button = document.getElementById("back-to-top-btn");
 			if (!(button instanceof HTMLButtonElement) || button.dataset.bound === "true") {
@@ -71,7 +132,7 @@ import { Icon } from "astro-icon/components";
 
 			button.dataset.bound = "true";
 			button.addEventListener("click", () => {
-				window.scrollTo({ top: 0, behavior: "smooth" });
+				animateToTop();
 			});
 		};
 

@@ -85,10 +85,84 @@ export function scrollToHeading(id: string, offset = 80): void {
 
 	const targetTop =
 		element.getBoundingClientRect().top + window.scrollY - offset;
-	window.scrollTo({
-		top: targetTop,
-		behavior: "auto",
-	});
+	animateWindowScrollTo(targetTop);
+}
+
+export function animateWindowScrollTo(
+	targetTop: number,
+	options: { duration?: number } = {},
+): void {
+	const startTop = window.scrollY || document.documentElement.scrollTop;
+	const maxTop = Math.max(
+		0,
+		document.documentElement.scrollHeight - window.innerHeight,
+	);
+	const finalTop = Math.min(Math.max(0, targetTop), maxTop);
+	const distance = finalTop - startTop;
+	const duration =
+		options.duration ??
+		Math.min(420, Math.max(180, Math.abs(distance) * 0.22));
+
+	if (
+		Math.abs(distance) < 2 ||
+		window.matchMedia("(prefers-reduced-motion: reduce)").matches
+	) {
+		window.scrollTo({ top: finalTop, behavior: "auto" });
+		return;
+	}
+
+	const existingFrame = (window as Window & { __mizukiScrollRaf?: number })
+		.__mizukiScrollRaf;
+	if (existingFrame) {
+		window.cancelAnimationFrame(existingFrame);
+	}
+
+	const cleanupUserInterrupts = () => {
+		window.removeEventListener("wheel", cancelScrollAnimation);
+		window.removeEventListener("touchstart", cancelScrollAnimation);
+		window.removeEventListener("keydown", cancelScrollAnimation);
+		window.removeEventListener("mousedown", cancelScrollAnimation);
+	};
+
+	const cancelScrollAnimation = () => {
+		const activeFrame = (window as Window & { __mizukiScrollRaf?: number })
+			.__mizukiScrollRaf;
+		if (activeFrame) {
+			window.cancelAnimationFrame(activeFrame);
+			delete (window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf;
+		}
+		cleanupUserInterrupts();
+	};
+
+	const startTime = performance.now();
+	const easeInOutCubic = (value: number) =>
+		value < 0.5 ? 4 * value * value * value : 1 - ((-2 * value + 2) ** 3) / 2;
+
+	const step = (now: number) => {
+		const progress = Math.min((now - startTime) / duration, 1);
+		const eased = easeInOutCubic(progress);
+		window.scrollTo({
+			top: startTop + distance * eased,
+			behavior: "auto",
+		});
+
+		if (progress < 1) {
+			(window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf =
+				window.requestAnimationFrame(step);
+			return;
+		}
+
+		cleanupUserInterrupts();
+		delete (window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf;
+	};
+
+	window.addEventListener("wheel", cancelScrollAnimation, { passive: true });
+	window.addEventListener("touchstart", cancelScrollAnimation, { passive: true });
+	window.addEventListener("keydown", cancelScrollAnimation);
+	window.addEventListener("mousedown", cancelScrollAnimation);
+
+	(window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf =
+		window.requestAnimationFrame(step);
 }
 
 /**

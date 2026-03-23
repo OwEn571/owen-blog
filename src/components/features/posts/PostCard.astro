@@ -148,6 +148,7 @@ const { remarkPluginFrontmatter } = await render(entry);
 					src={image}
 					basePath={getFileDirFromPath(entry.filePath || "")}
 					alt="Cover Image of the Post"
+					loading="eager"
 					class="w-full h-full"
 				/>
 			</a>

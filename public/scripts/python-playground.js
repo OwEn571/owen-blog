@@ -317,9 +317,11 @@
 		if (!state.pyodidePromise) {
 			state.pyodidePromise = (async () => {
 				await loadRuntimeScript();
-				return window.loadPyodide({
+				const pyodide = await window.loadPyodide({
 					indexURL: PYODIDE_BASE_URL,
 				});
+				state.pyodideLoaded = true;
+				return pyodide;
 			})();
 		}
 
@@ -552,6 +554,20 @@
 		state.monacoSignatureRegistered = true;
 	}
 
+	function shouldRunLiveValidation(root) {
+		const editorState = getEditorState(root);
+		if (!editorState?.monacoEditor) {
+			return false;
+		}
+
+		const state = getState();
+		if (!state.pyodidePromise) {
+			return false;
+		}
+
+		return editorState.monacoEditor.getValue().length <= 16000;
+	}
+
 	async function ensureMonaco() {
 		const state = getState();
 		if (window.monaco?.editor) {
@@ -668,14 +684,26 @@ except SyntaxError as exc:
 
 	function scheduleMonacoValidation(root) {
 		const editorState = getEditorState(root);
-		if (!editorState?.monacoEditor) {
+		if (!editorState?.monacoEditor || !shouldRunLiveValidation(root)) {
 			return;
 		}
 
 		window.clearTimeout(editorState.monacoValidationTimer);
 		editorState.monacoValidationTimer = window.setTimeout(() => {
 			void validateMonacoSyntax(root);
-		}, 700);
+		}, 1400);
+	}
+
+	function scheduleMonacoLayout(root) {
+		const editorState = getEditorState(root);
+		if (!editorState?.monacoEditor) {
+			return;
+		}
+
+		window.clearTimeout(editorState.monacoLayoutTimer);
+		editorState.monacoLayoutTimer = window.setTimeout(() => {
+			layoutMonacoEditor(root);
+		}, 16);
 	}
 
 	function queueExecution(task) {
@@ -1214,10 +1242,7 @@ except SyntaxError as exc:
 		}
 
 		if (editorState.monacoEditor) {
-			window.clearTimeout(editorState.monacoLayoutTimer);
-			editorState.monacoLayoutTimer = window.setTimeout(() => {
-				layoutMonacoEditor(root);
-			}, 0);
+			scheduleMonacoLayout(root);
 			return;
 		}
 
@@ -1255,11 +1280,11 @@ except SyntaxError as exc:
 		};
 
 		if (idle && "requestIdleCallback" in window) {
-			window.requestIdleCallback(startUpgrade, { timeout: 1200 });
+			window.requestIdleCallback(startUpgrade, { timeout: 2200 });
 			return;
 		}
 
-		window.setTimeout(startUpgrade, idle ? 180 : 0);
+		window.setTimeout(startUpgrade, idle ? 900 : 0);
 	}
 
 	async function maybeEnableMonaco(root) {
@@ -1286,10 +1311,11 @@ except SyntaxError as exc:
 					value: editorState.source.value,
 					language: "python",
 					theme: getMonacoThemeName(),
-					automaticLayout: true,
+					automaticLayout: false,
 					minimap: { enabled: false },
 					scrollBeyondLastLine: false,
-					wordWrap: "on",
+					wordWrap: "off",
+					wrappingStrategy: "simple",
 					fontFamily:
 						'"SF Mono", "JetBrains Mono Variable", "JetBrains Mono", Menlo, Monaco, ui-monospace, Consolas, "Liberation Mono", "Courier New", monospace',
 					fontSize: 15,
@@ -1305,6 +1331,7 @@ except SyntaxError as exc:
 						comments: false,
 						strings: false,
 					},
+					quickSuggestionsDelay: 160,
 					wordBasedSuggestions: "currentDocument",
 					suggestOnTriggerCharacters: true,
 					acceptSuggestionOnEnter: "on",
@@ -1313,7 +1340,25 @@ except SyntaxError as exc:
 					glyphMargin: false,
 					lineNumbersMinChars: 2,
 					renderLineHighlight: "line",
+					renderLineHighlightOnlyWhenFocus: true,
 					folding: false,
+					selectionHighlight: false,
+					occurrencesHighlight: "off",
+					unicodeHighlight: {
+						ambiguousCharacters: false,
+						invisibleCharacters: false,
+						nonBasicASCII: false,
+					},
+					guides: {
+						indentation: false,
+						highlightActiveIndentation: false,
+						bracketPairs: false,
+					},
+					bracketPairColorization: {
+						enabled: false,
+					},
+					smoothScrolling: false,
+					cursorSmoothCaretAnimation: "off",
 					hover: {
 						enabled: true,
 						delay: 180,
@@ -1331,20 +1376,25 @@ except SyntaxError as exc:
 					stickyScroll: {
 						enabled: false,
 					},
+					mouseWheelZoom: false,
+					links: false,
 				},
 			);
 
 			root.classList.add("python-playground--monaco");
 			editorState.editor.hidden = true;
 			editorState.editor.contentEditable = "false";
+			editorState.monacoModel = editorState.monacoEditor.getModel();
 
 			editorState.monacoEditor.onDidFocusEditorText(() => {
 				hideAutocomplete(root);
 			});
 			editorState.monacoEditor.onDidChangeModelContent(() => {
 				editorState.source.value = editorState.monacoEditor.getValue();
-				refreshEditor(root);
 				scheduleMonacoValidation(root);
+			});
+			editorState.monacoEditor.onDidContentSizeChange(() => {
+				scheduleMonacoLayout(root);
 			});
 
 			layoutMonacoEditor(root);
@@ -1889,15 +1939,19 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		editor.addEventListener("input", () => {
 			syncSourceFromEditor(root);
 			updateAutocomplete(root);
+			if (
+				root.querySelector(".python-playground__details[open]") &&
+				editorState?.source.value.length > 32
+			) {
+				requestMonacoUpgrade(root, { idle: true });
+			}
 		});
 		editor.addEventListener("click", () => {
 			updateAutocomplete(root);
-			requestMonacoUpgrade(root);
 		});
 		editor.addEventListener("keyup", () => updateAutocomplete(root));
 		editor.addEventListener("focus", () => {
 			updateAutocomplete(root);
-			requestMonacoUpgrade(root);
 		});
 		editor.addEventListener("paste", (event) => {
 			event.preventDefault();
@@ -1948,7 +2002,5 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 	}
 
 	document.addEventListener("DOMContentLoaded", initPythonPlaygrounds);
-	document.addEventListener("swup:contentReplaced", initPythonPlaygrounds);
-	document.addEventListener("swup:pageView", initPythonPlaygrounds);
 	initPythonPlaygrounds();
 })();

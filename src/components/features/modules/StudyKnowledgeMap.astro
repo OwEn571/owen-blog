@@ -47,6 +47,7 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 	const mapWindow = window as Window & {
 		__mizukiStudyKnowledgeMapBound?: boolean;
 		__mizukiStudyKnowledgeMapSwupBound?: boolean;
+		__mizukiStudyMapScrollRaf?: number;
 		swup?: Swup;
 	};
 
@@ -186,6 +187,71 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 		drawLines(root);
 	}
 
+	function animateWindowScrollTo(targetTop: number, duration?: number) {
+		const startTop = window.scrollY || document.documentElement.scrollTop;
+		const maxTop = Math.max(
+			0,
+			document.documentElement.scrollHeight - window.innerHeight,
+		);
+		const finalTop = Math.min(Math.max(0, targetTop), maxTop);
+		const distance = finalTop - startTop;
+		const effectiveDuration =
+			duration ??
+			Math.min(420, Math.max(180, Math.abs(distance) * 0.22));
+
+		if (
+			Math.abs(distance) < 2 ||
+			window.matchMedia("(prefers-reduced-motion: reduce)").matches
+		) {
+			window.scrollTo({ top: finalTop, behavior: "auto" });
+			return;
+		}
+
+		const startTime = performance.now();
+		const easeInOutCubic = (value: number) =>
+			value < 0.5 ? 4 * value * value * value : 1 - ((-2 * value + 2) ** 3) / 2;
+		const cleanupUserInterrupts = () => {
+			window.removeEventListener("wheel", cancelScrollAnimation);
+			window.removeEventListener("touchstart", cancelScrollAnimation);
+			window.removeEventListener("keydown", cancelScrollAnimation);
+			window.removeEventListener("mousedown", cancelScrollAnimation);
+		};
+
+		const cancelScrollAnimation = () => {
+			if (mapWindow.__mizukiStudyMapScrollRaf) {
+				window.cancelAnimationFrame(mapWindow.__mizukiStudyMapScrollRaf);
+				delete mapWindow.__mizukiStudyMapScrollRaf;
+			}
+			cleanupUserInterrupts();
+		};
+
+		const step = (now: number) => {
+			const progress = Math.min((now - startTime) / effectiveDuration, 1);
+			const eased = easeInOutCubic(progress);
+			window.scrollTo({
+				top: startTop + distance * eased,
+				behavior: "auto",
+			});
+			if (progress < 1) {
+				mapWindow.__mizukiStudyMapScrollRaf = window.requestAnimationFrame(step);
+				return;
+			}
+
+			cleanupUserInterrupts();
+			delete mapWindow.__mizukiStudyMapScrollRaf;
+		};
+
+		if (mapWindow.__mizukiStudyMapScrollRaf) {
+			window.cancelAnimationFrame(mapWindow.__mizukiStudyMapScrollRaf);
+		}
+
+		window.addEventListener("wheel", cancelScrollAnimation, { passive: true });
+		window.addEventListener("touchstart", cancelScrollAnimation, { passive: true });
+		window.addEventListener("keydown", cancelScrollAnimation);
+		window.addEventListener("mousedown", cancelScrollAnimation);
+		mapWindow.__mizukiStudyMapScrollRaf = window.requestAnimationFrame(step);
+	}
+
 	function focusCard(root: HTMLElement, directoryName: string) {
 		const moduleKey = root.dataset.moduleKey || "study";
 		mapWindow.dispatchEvent(
@@ -209,10 +275,7 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 			target.getBoundingClientRect().top -
 			Math.max(96, window.innerHeight * 0.16);
 		window.requestAnimationFrame(() => {
-			window.scrollTo({
-				top: Math.max(0, top),
-				behavior: "auto",
-			});
+			animateWindowScrollTo(Math.max(0, top));
 			target.classList.remove("is-filter-targeted");
 			void target.offsetWidth;
 			target.classList.add("is-filter-targeted");
