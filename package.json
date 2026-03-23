@@ -3,10 +3,9 @@
 	"type": "module",
 	"version": "8.2",
 	"scripts": {
+		"reset-content-cache": "node scripts/reset-astro-content-cache.mjs",
 		"sync-content": "node scripts/sync-content.js",
 		"init-content": "node scripts/init-content-repo.js",
-		"predev": "node scripts/sync-content.js || true",
-		"prebuild": "node scripts/sync-content.js || true",
 		"dev": "astro dev",
 		"start": "astro dev",
 		"check": "astro check",

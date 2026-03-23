@@ -1,0 +1,9 @@
+{
+  "title": "LLM Base",
+  "eyebrow": "Core Models",
+  "description": "放 LLM 基础、Transformer、推理机制和模型学习笔记。",
+  "size": "wide",
+  "accent": "110 164 255",
+  "icon": "mdi:brain",
+  "order": 20
+}

@@ -1,39 +1,646 @@
 ---
 import ArchivePanel from "@components/features/archive/ArchivePanel.svelte";
-import I18nKey from "@i18n/i18nKey";
-import { i18n } from "@i18n/translation";
-import MainGridLayout from "@layouts/MainGridLayout.astro";
-import { getSortedPostsList } from "@utils/content-utils";
+import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
+import { Icon } from "astro-icon/components";
+
+import {
+	archiveResourceGroups,
+	archiveShortcuts,
+} from "../data/module-blueprint";
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import { getSortedPostsList } from "../utils/content-utils";
+import {
+	getModuleDirectoryCards,
+	getModulePostsList,
+	getModuleWriteRoot,
+} from "../utils/module-content-utils";
+import { getCategoryUrl, getTagUrl } from "../utils/url-utils";
 
 const sortedPostsList = await getSortedPostsList();
-
-// 1. 修复类型兼容性：将 category 的 null 转换为 undefined
+const archivePosts = await getModulePostsList("archive");
+const archiveCards = await getModuleDirectoryCards("archive", archivePosts);
 const posts = sortedPostsList.map((post) => ({
-    ...post,
-    data: {
-        ...post.data,
-        category: post.data.category === null ? undefined : post.data.category,
-    },
+	...post,
+	data: {
+		...post.data,
+		category: post.data.category === null ? undefined : post.data.category,
+	},
 }));
 
-// 2. 提取所有标签 (去重)
-const tags = [...new Set(posts.flatMap(post => post.data.tags))];
+const tags = [...new Set(posts.flatMap((post) => post.data.tags))];
+const categories = [
+	...new Set(
+		posts
+			.map((post) => post.data.category)
+			.filter(
+				(category): category is string => typeof category === "string",
+			),
+	),
+];
 
-// 3. 提取所有分类 (去重且过滤掉 undefined)
-const categories = [...new Set(posts.map(post => post.data.category).filter((c): c is string => typeof c === "string"))];
+const topTags = tags.slice(0, 6);
+const topCategories = categories.slice(0, 6);
+const heroSummary = [
+	{ label: "入口方式", value: "Control Center" },
+	{ label: "目录卡片", value: `${archiveCards.length}` },
+	{ label: "标签数量", value: `${tags.length}` },
+	{ label: "文章总数", value: `${posts.length}` },
+];
 ---
 
-<MainGridLayout title={i18n(I18nKey.archive)}>
-    <!-- 引入右侧边栏布局管理器 -->
-    <script>
-        import('../scripts/right-sidebar-layout.js');
-    </script>
+<MainGridLayout
+	immersiveLayout={true}
+	title="Archive"
+	description="控制中心、外链面板与完整时间归档"
+>
+	<script>
+		import("../scripts/right-sidebar-layout.js");
+	</script>
 
-    <!-- 修复：补全缺失的 tags 和 categories 属性 -->
-    <ArchivePanel
-            sortedPosts={posts}
-            tags={tags}
-            categories={categories}
-            client:only="svelte"
-    ></ArchivePanel>
+	<div class="module-page" style="--module-accent: 156 174 255;">
+		<section class="module-hero module-hero-split">
+			<div class="module-copy">
+				<p class="module-eyebrow">Archive</p>
+				<h1 class="module-title">
+					把资源、外链和长期索引做成一块舒服的控制面板
+				</h1>
+				<p class="module-description">
+					这里承担的不只是“按年份归档”。它也应该是你的控制中心，负责收纳常用链接、订阅入口、分类索引和完整时间线。
+				</p>
+				<div class="module-copy-grid">
+					{
+						heroSummary.map((item) => (
+							<article class="module-copy-item">
+								<span class="module-copy-label">
+									{item.label}
+								</span>
+								<strong class="module-copy-value">
+									{item.value}
+								</strong>
+							</article>
+						))
+					}
+				</div>
+			</div>
+
+			<div class="module-stage archive-stage">
+				<div class="module-stage-top">
+					<div class="module-dots" aria-hidden="true">
+						<span></span>
+						<span></span>
+						<span></span>
+					</div>
+					<span class="module-badge">Control Center</span>
+				</div>
+				<div class="archive-stage-grid" aria-hidden="true">
+					<span></span>
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<p class="module-stage-caption">
+					比起传统的“归档页”，我把它做成一层更像 Finder / Control
+					Center 的入口面板。你可以先点资源，再往下回到时间线。
+				</p>
+			</div>
+		</section>
+
+		<ModuleDirectoryDeck
+			eyebrow="Directory Deck"
+			title="Archive 写作目录"
+			description="Archive 现在也支持目录驱动。你在 src/content/posts/archive/ 下新建一级目录，就会自动出现一张新的资源卡片。"
+			badge={`${archiveCards.length} Directories`}
+			cards={archiveCards}
+			emptyTitle="Archive 还没有目录卡片"
+			emptyDescription="先在 Archive 根目录下新建一级文件夹，再把资源索引或说明文章放进去。"
+			emptyWritePath={getModuleWriteRoot("archive")}
+		/>
+
+		<section class="archive-shortcut-grid" id="archive-shortcuts">
+			{
+				archiveShortcuts.map((item) =>
+					item.href ? (
+						<a
+							href={item.href}
+							target={
+								item.href.startsWith("http")
+									? "_blank"
+									: undefined
+							}
+							rel={
+								item.href.startsWith("http")
+									? "noopener noreferrer"
+									: undefined
+							}
+							class="archive-shortcut"
+							style={`--archive-shortcut-accent: ${item.accent};`}
+						>
+							<div class="archive-shortcut-top">
+								<div class="archive-shortcut-icon">
+									<Icon
+										name={item.icon}
+										class="text-[1.5rem]"
+									/>
+								</div>
+								<span class="module-panel-badge">
+									{item.badge}
+								</span>
+							</div>
+							<h2>{item.title}</h2>
+							<p>{item.description}</p>
+						</a>
+					) : (
+						<div
+							class="archive-shortcut archive-shortcut--disabled"
+							style={`--archive-shortcut-accent: ${item.accent};`}
+						>
+							<div class="archive-shortcut-top">
+								<div class="archive-shortcut-icon">
+									<Icon
+										name={item.icon}
+										class="text-[1.5rem]"
+									/>
+								</div>
+								<span class="module-panel-badge">
+									{item.badge}
+								</span>
+							</div>
+							<h2>{item.title}</h2>
+							<p>{item.description}</p>
+						</div>
+					),
+				)
+			}
+		</section>
+
+		<section class="archive-board-grid" id="archive-resource">
+			{
+				archiveResourceGroups.map((group) => (
+					<article class="archive-board">
+						<div class="archive-board-head">
+							<div>
+								<p class="module-stream-label">{group.title}</p>
+								<h2 class="module-content-title">
+									{group.title}
+								</h2>
+							</div>
+						</div>
+						<p class="archive-board-copy">{group.description}</p>
+						<div class="archive-board-list">
+							{group.items.map((item) => (
+								<a
+									href={item.href}
+									class="archive-resource-item"
+								>
+									<div>
+										<strong>{item.label}</strong>
+										<p>{item.note}</p>
+									</div>
+									<Icon
+										name="mdi:arrow-top-right"
+										class="text-[1.05rem]"
+									/>
+								</a>
+							))}
+						</div>
+					</article>
+				))
+			}
+
+			<article class="archive-board" id="archive-filters">
+				<div class="archive-board-head">
+					<div>
+						<p class="module-stream-label">Filters</p>
+						<h2 class="module-content-title">快速筛选</h2>
+					</div>
+				</div>
+				<p class="archive-board-copy">
+					把常用标签和分类先收成一组按钮，你就不用每次都先下沉到时间线里找。
+				</p>
+				<div class="archive-filter-group">
+					<span class="archive-filter-label">Tags</span>
+					<div class="archive-chip-list">
+						{
+							topTags.map((tag) => (
+								<a href={getTagUrl(tag)} class="archive-chip">
+									{tag}
+								</a>
+							))
+						}
+					</div>
+				</div>
+				<div class="archive-filter-group">
+					<span class="archive-filter-label">Categories</span>
+					<div class="archive-chip-list">
+						{
+							topCategories.map((category) => (
+								<a
+									href={getCategoryUrl(category)}
+									class="archive-chip"
+								>
+									{category}
+								</a>
+							))
+						}
+					</div>
+				</div>
+			</article>
+		</section>
+
+		<section
+			class="module-content-shell archive-shell"
+			id="archive-timeline"
+		>
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">Archive Timeline</p>
+					<h2 class="module-content-title">完整时间归档</h2>
+					<p class="module-content-description">
+						控制面板负责分发入口，真正的长期沉淀还在这里。按年份、标签和分类看文章，仍然是这页最底层但最重要的功能。
+					</p>
+				</div>
+				<span class="module-panel-badge">{posts.length} Posts</span>
+			</div>
+
+			<div class="archive-panel-wrap">
+				<ArchivePanel
+					sortedPosts={posts}
+					tags={tags}
+					categories={categories}
+					client:only="svelte"
+				/>
+			</div>
+		</section>
+	</div>
 </MainGridLayout>
+
+<style is:global>
+	.archive-stage {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.archive-stage-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.7rem;
+	}
+
+	.archive-stage-grid span {
+		min-height: 5.2rem;
+		border-radius: 1.1rem;
+		border: 1px solid rgba(156, 174, 255, 0.14);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.08),
+				rgba(255, 255, 255, 0.02)
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(156, 174, 255, 0.2),
+				transparent 10rem
+			);
+	}
+
+	.archive-shortcut-grid,
+	.archive-board-grid {
+		display: grid;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.archive-shortcut {
+		display: flex;
+		flex-direction: column;
+		grid-column: span 3;
+		min-height: 14rem;
+		padding: 1.25rem;
+		border-radius: 1.6rem;
+		border: 1px solid rgb(var(--archive-shortcut-accent) / 0.14);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(9, 12, 19, 0.36),
+				rgba(5, 8, 14, 0.14)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--archive-shortcut-accent) / 0.2),
+				transparent 12rem
+			);
+		box-shadow:
+			0 28px 80px rgba(0, 0, 0, 0.24),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		backdrop-filter: blur(38px) saturate(1.16);
+		-webkit-backdrop-filter: blur(38px) saturate(1.16);
+		transition:
+			transform 260ms ease,
+			border-color 260ms ease,
+			box-shadow 260ms ease;
+	}
+
+	.archive-shortcut:hover {
+		transform: translateY(-4px) scale(1.012);
+		border-color: rgb(var(--archive-shortcut-accent) / 0.22);
+		box-shadow:
+			0 34px 90px rgba(0, 0, 0, 0.28),
+			0 0 18px rgb(var(--archive-shortcut-accent) / 0.14),
+			0 0 42px rgb(var(--archive-shortcut-accent) / 0.12);
+	}
+
+	.archive-shortcut-top,
+	.archive-board-head,
+	.archive-resource-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.archive-shortcut-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 999px;
+		background: rgb(var(--archive-shortcut-accent) / 0.14);
+		color: rgb(var(--archive-shortcut-accent) / 1);
+		box-shadow:
+			0 0 0 1px rgb(var(--archive-shortcut-accent) / 0.14),
+			0 0 22px rgb(var(--archive-shortcut-accent) / 0.14);
+	}
+
+	.archive-shortcut h2 {
+		margin-top: auto;
+		padding-top: 2rem;
+		font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+		line-height: 1.04;
+		font-weight: 680;
+		letter-spacing: -0.04em;
+		color: rgba(248, 250, 255, 0.94);
+	}
+
+	.archive-shortcut p,
+	.archive-board-copy,
+	.archive-resource-item p {
+		margin-top: 0.8rem;
+		line-height: 1.74;
+		color: rgba(223, 231, 244, 0.64);
+	}
+
+	.archive-shortcut--disabled {
+		opacity: 0.7;
+	}
+
+	.archive-board {
+		grid-column: span 4;
+		padding: 1.2rem;
+		border-radius: 1.55rem;
+		border: 1px solid rgba(156, 174, 255, 0.12);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(9, 12, 19, 0.34),
+				rgba(5, 8, 14, 0.12)
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(156, 174, 255, 0.16),
+				transparent 14rem
+			);
+		box-shadow:
+			0 28px 76px rgba(0, 0, 0, 0.22),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		backdrop-filter: blur(36px) saturate(1.14);
+		-webkit-backdrop-filter: blur(36px) saturate(1.14);
+	}
+
+	.archive-board-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-top: 1rem;
+	}
+
+	.archive-resource-item {
+		padding: 0.95rem 1rem;
+		border-radius: 1rem;
+		border: 1px solid rgba(156, 174, 255, 0.1);
+		background: rgba(255, 255, 255, 0.04);
+		transition:
+			transform 220ms ease,
+			border-color 220ms ease,
+			box-shadow 220ms ease;
+	}
+
+	.archive-resource-item strong {
+		font-size: 1rem;
+		font-weight: 620;
+		color: rgba(248, 250, 255, 0.9);
+	}
+
+	.archive-resource-item:hover {
+		transform: translateX(4px);
+		border-color: rgba(156, 174, 255, 0.18);
+		box-shadow: 0 0 22px rgba(156, 174, 255, 0.12);
+	}
+
+	.archive-filter-group + .archive-filter-group {
+		margin-top: 1.1rem;
+	}
+
+	.archive-filter-label {
+		display: inline-block;
+		font-size: 0.74rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(223, 231, 244, 0.44);
+	}
+
+	.archive-chip-list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-top: 0.75rem;
+	}
+
+	.archive-chip {
+		display: inline-flex;
+		align-items: center;
+		min-height: 2rem;
+		padding: 0 0.78rem;
+		border-radius: 999px;
+		border: 1px solid rgba(156, 174, 255, 0.12);
+		background: rgba(255, 255, 255, 0.05);
+		color: rgba(232, 238, 248, 0.72);
+		font-size: 0.86rem;
+		transition:
+			transform 200ms ease,
+			border-color 200ms ease,
+			box-shadow 200ms ease;
+	}
+
+	.archive-chip:hover {
+		transform: translateY(-2px);
+		border-color: rgba(156, 174, 255, 0.18);
+		box-shadow: 0 0 18px rgba(156, 174, 255, 0.12);
+	}
+
+	.archive-panel-wrap .card-base {
+		border-radius: 1.45rem;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(9, 12, 19, 0.24),
+				rgba(5, 8, 14, 0.08)
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(122, 156, 255, 0.1),
+				transparent 18rem
+			) !important;
+		box-shadow:
+			0 24px 64px rgba(0, 0, 0, 0.18),
+			inset 0 1px 0 rgba(255, 255, 255, 0.12);
+		backdrop-filter: blur(28px) saturate(1.14);
+		-webkit-backdrop-filter: blur(28px) saturate(1.14);
+	}
+
+	.archive-panel-wrap .text-75 {
+		color: rgba(248, 250, 255, 0.88) !important;
+	}
+
+	.archive-panel-wrap .text-50,
+	.archive-panel-wrap .text-30 {
+		color: rgba(223, 231, 244, 0.58) !important;
+	}
+
+	.archive-panel-wrap .dash-line {
+		position: relative;
+	}
+
+	.archive-panel-wrap .dash-line::before {
+		content: "";
+		position: absolute;
+		left: 50%;
+		top: 0;
+		bottom: 0;
+		width: 1px;
+		transform: translateX(-50%);
+		background: linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.12),
+			rgba(122, 156, 255, 0.2),
+			rgba(255, 255, 255, 0.06)
+		);
+	}
+
+	.archive-panel-wrap a.group.btn-plain {
+		border-radius: 0.95rem;
+	}
+
+	.archive-panel-wrap a.group.btn-plain:hover {
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	:root:not(.dark) .archive-shortcut,
+	:root:not(.dark) .archive-board {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.38),
+				rgba(247, 250, 255, 0.16)
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(156, 174, 255, 0.1),
+				transparent 14rem
+			);
+		box-shadow:
+			0 24px 60px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+	}
+
+	:root:not(.dark) .archive-shortcut h2,
+	:root:not(.dark) .archive-resource-item strong {
+		color: rgba(15, 23, 42, 0.9);
+	}
+
+	:root:not(.dark) .archive-shortcut p,
+	:root:not(.dark) .archive-board-copy,
+	:root:not(.dark) .archive-resource-item p,
+	:root:not(.dark) .archive-filter-label {
+		color: rgba(15, 23, 42, 0.58);
+	}
+
+	:root:not(.dark) .archive-chip {
+		background: rgba(255, 255, 255, 0.54);
+		color: rgba(15, 23, 42, 0.72);
+	}
+
+	:root:not(.dark) .archive-panel-wrap .card-base {
+		border-color: rgba(255, 255, 255, 0.42);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.52),
+				rgba(247, 250, 255, 0.24)
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(122, 156, 255, 0.08),
+				transparent 18rem
+			) !important;
+		box-shadow:
+			0 22px 56px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.78);
+	}
+
+	:root:not(.dark) .archive-panel-wrap .text-75 {
+		color: rgba(15, 23, 42, 0.88) !important;
+	}
+
+	:root:not(.dark) .archive-panel-wrap .text-50,
+	:root:not(.dark) .archive-panel-wrap .text-30 {
+		color: rgba(15, 23, 42, 0.52) !important;
+	}
+
+	:root:not(.dark) .archive-panel-wrap .dash-line::before {
+		background: linear-gradient(
+			180deg,
+			rgba(15, 23, 42, 0.08),
+			rgba(122, 156, 255, 0.18),
+			rgba(15, 23, 42, 0.04)
+		);
+	}
+
+	:root:not(.dark) .archive-panel-wrap a.group.btn-plain:hover {
+		background: rgba(15, 23, 42, 0.04);
+	}
+
+	@media (max-width: 1080px) {
+		.archive-shortcut {
+			grid-column: span 6;
+		}
+
+		.archive-board {
+			grid-column: span 6;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.archive-shortcut-grid,
+		.archive-board-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.archive-shortcut,
+		.archive-board {
+			grid-column: span 1;
+		}
+	}
+</style>

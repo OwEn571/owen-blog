@@ -1,0 +1,9 @@
+{
+  "title": "Python Base",
+  "eyebrow": "Language",
+  "description": "放 Python 基础、语法、标准库和常用脚本整理。",
+  "size": "wide",
+  "accent": "116 188 255",
+  "icon": "mdi:language-python",
+  "order": 10
+}

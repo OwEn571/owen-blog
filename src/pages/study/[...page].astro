@@ -1,0 +1,286 @@
+---
+import ModuleFilteredPostList from "@components/features/modules/ModuleFilteredPostList.astro";
+import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
+import StudyKnowledgeMap from "@components/features/modules/StudyKnowledgeMap.astro";
+import { initPostIdMap } from "@utils/permalink-utils";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import type { GetStaticPaths } from "astro";
+
+import { studyPageContent } from "../../data/module-blueprint";
+import {
+	getModuleDirectoryCards,
+	getModuleWriteRoot,
+} from "../../utils/module-content-utils";
+import {
+	getStudyPosts,
+	getStudyPostsList,
+	getStudyTotalWords,
+} from "../../utils/study-utils";
+
+export const getStaticPaths = (async ({ paginate }) => {
+	const allBlogPosts = await getStudyPosts();
+	initPostIdMap(allBlogPosts);
+	return paginate(allBlogPosts, {
+		pageSize: Math.max(allBlogPosts.length, 1),
+	});
+}) satisfies GetStaticPaths;
+
+const { page } = Astro.props;
+const allPosts = await getStudyPostsList();
+const totalWords = await getStudyTotalWords();
+const tiles = await getModuleDirectoryCards("study", allPosts);
+const focusDeckCards = tiles.map((card) => ({
+	...card,
+	href: "#study-notes",
+}));
+
+const latestPost = allPosts[0];
+
+const heroSummary = [
+	{
+		label: studyPageContent.metricLabels.published,
+		value: allPosts.length.toLocaleString("zh-CN"),
+	},
+	{
+		label: studyPageContent.metricLabels.words,
+		value: totalWords.toLocaleString("zh-CN"),
+	},
+	{
+		label: studyPageContent.metricLabels.views,
+		value: studyPageContent.pageViewsLoading,
+		dynamicId: "study-pageviews",
+	},
+];
+---
+
+<MainGridLayout
+	immersiveLayout={true}
+	title="Study"
+	description="知识便当盒、专题与长期笔记"
+>
+	<script>
+		import("../../scripts/right-sidebar-layout.js");
+	</script>
+
+	<div class="module-page" style="--module-accent: 108 166 255;">
+		<section class="module-hero module-hero-split">
+			<div class="module-copy">
+				<p class="module-eyebrow">{studyPageContent.heroEyebrow}</p>
+				<h1 class="module-title">{studyPageContent.heroTitle}</h1>
+				<p class="module-description">
+					{studyPageContent.heroDescription}
+				</p>
+				<div class="module-copy-grid">
+					{
+						heroSummary.map((item) => (
+							<article class="module-copy-item">
+								<span class="module-copy-label">
+									{item.label}
+								</span>
+								<strong class="module-copy-value">
+									{item.dynamicId ? (
+										<span data-study-stat={item.dynamicId}>
+											{item.value}
+										</span>
+									) : (
+										item.value
+									)}
+								</strong>
+							</article>
+						))
+					}
+				</div>
+			</div>
+
+			<div class="module-stage study-stage">
+				<div class="module-stage-top">
+					<div class="module-dots" aria-hidden="true">
+						<span></span>
+						<span></span>
+						<span></span>
+					</div>
+					<span class="module-badge">
+						{studyPageContent.stageBadge}
+					</span>
+				</div>
+
+				<StudyKnowledgeMap cards={tiles} moduleKey="study" />
+
+				<div class="study-stage-meta">
+					<div>
+						<span>{studyPageContent.latestLabel}</span>
+						<strong
+							>{latestPost?.data.title ?? "准备开始写作"}</strong
+						>
+					</div>
+					<div>
+						<span>{studyPageContent.currentLearning.label}</span>
+						<strong>{studyPageContent.currentLearning.title}</strong
+						>
+						<p>{studyPageContent.currentLearning.note}</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<ModuleDirectoryDeck
+			id="study-focus"
+			eyebrow={studyPageContent.deckEyebrow}
+			title={studyPageContent.deckTitle}
+			description={studyPageContent.deckDescription}
+			badge={`${tiles.length} Directories`}
+			cards={focusDeckCards}
+			emptyTitle="Study 还没有任何主题目录"
+			emptyDescription="先在 Study 目录下新建一级文件夹，再把 Markdown 放进去。"
+			emptyWritePath={getModuleWriteRoot("study")}
+		/>
+
+		<ModuleFilteredPostList
+			id="study-notes"
+			moduleKey="study"
+			eyebrow={studyPageContent.filterEyebrow}
+			title={studyPageContent.filterTitle}
+			description={studyPageContent.filterDescription}
+			badge={`${page.data.length} Posts`}
+			allLabel="全部文章"
+			cards={tiles}
+			entries={page.data}
+		/>
+	</div>
+</MainGridLayout>
+
+<script
+	is:inline
+	define:vars={{
+		pageViewsUnavailable: studyPageContent.pageViewsUnavailable,
+	}}
+>
+	const studyWindow = window;
+
+	async function syncStudyPageViews(retries = 0) {
+		const targets = document.querySelectorAll(
+			"[data-study-stat='study-pageviews']",
+		);
+		if (targets.length === 0) {
+			return;
+		}
+
+		if (!studyWindow["oddmisc"]) {
+			if (retries < 8) {
+				window.setTimeout(() => {
+					syncStudyPageViews(retries + 1);
+				}, 450);
+			}
+			return;
+		}
+
+		try {
+			const stats = await studyWindow["oddmisc"].getSiteStats();
+			const pageViews = Number(stats?.pageviews || 0);
+			const text =
+				pageViews > 0
+					? pageViews.toLocaleString("zh-CN")
+					: pageViewsUnavailable;
+
+			targets.forEach((element) => {
+				element.textContent = text;
+			});
+		} catch (error) {
+			console.error("Failed to load study page views:", error);
+			targets.forEach((element) => {
+				element.textContent = pageViewsUnavailable;
+			});
+		}
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", () => {
+			syncStudyPageViews();
+		});
+	} else {
+		syncStudyPageViews();
+	}
+</script>
+
+<style>
+	.study-stage {
+		display: grid;
+		grid-template-rows: auto minmax(18rem, 1fr) auto;
+		gap: 1rem;
+	}
+
+	.study-stage-meta {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.75rem;
+	}
+
+	.study-stage-meta div {
+		display: flex;
+		flex-direction: column;
+		padding: 0.95rem 1rem;
+		border-radius: 1.1rem;
+		border: 1px solid rgba(108, 166, 255, 0.12);
+		background: linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.06),
+			rgba(255, 255, 255, 0.02)
+		);
+	}
+
+	.study-stage-meta span {
+		font-size: 0.72rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(223, 231, 244, 0.44);
+	}
+
+	.study-stage-meta strong {
+		margin-top: 0.6rem;
+		font-size: 0.98rem;
+		line-height: 1.45;
+		font-weight: 650;
+		color: rgba(248, 250, 255, 0.9);
+	}
+
+	.study-stage-meta p {
+		margin-top: 0.48rem;
+		line-height: 1.72;
+		color: rgba(223, 231, 244, 0.62);
+	}
+
+	:global(:root:not(.dark)) .study-stage-meta div {
+		background: linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.48),
+			rgba(247, 250, 255, 0.22)
+		);
+		box-shadow:
+			0 22px 56px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+	}
+
+	:global(:root:not(.dark)) .study-stage-meta span {
+		color: rgba(15, 23, 42, 0.44);
+	}
+
+	:global(:root:not(.dark)) .study-stage-meta strong {
+		color: rgba(15, 23, 42, 0.9);
+	}
+
+	:global(:root:not(.dark)) .study-stage-meta p {
+		color: rgba(15, 23, 42, 0.62);
+	}
+
+	@media (max-width: 900px) {
+		.study-stage {
+			grid-template-rows: auto minmax(16rem, 1fr) auto;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.study-stage-meta {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

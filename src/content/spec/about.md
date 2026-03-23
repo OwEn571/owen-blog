@@ -1,49 +1,41 @@
+## 关于我
 
-This website is built with the **Astro** framework using the [Mizuki](https://github.com/matsuzaka-yuki/mizuki) theme.
+这里是你的个人介绍页。
 
-::github{repo="matsuzaka-yuki/Mizuki"}
+你可以把这一页改成下面几种结构中的任意一种：
 
-## 🌟 Theme Features
+- 一段简短自我介绍
+- 你的职业方向、研究兴趣或长期关注的话题
+- 你的写作范围，比如技术、阅读、产品、生活记录
+- 你常用的联系方式与社交平台
 
-### 🎨 Design & User Experience
-- **Modern & Elegant Design** - Clean, minimalist interface with beautiful typography
-- **Fully Responsive** - Optimized for all devices from mobile to desktop
-- **Dark/Light Mode** - Automatic theme switching with smooth transitions
-- **Beautiful Typography** - Enhanced readability with JetBrains Mono font
-- **Smooth Animations** - Fluid page transitions and interactive elements
+## 我在写什么
 
-### 🔍 Content & Search
-- **Advanced Search** - Powered by [Pagefind](https://pagefind.app/) for fast, accurate results
-- **Enhanced Markdown** - Extended syntax with code highlighting and math support
-- **Interactive Table of Contents** - Auto-scroll navigation for long articles
-- **RSS Feed Generation** - Stay updated with automatic feed generation
-- **Reading Time Estimation** - Know how long articles take to read
-- **Post Categorization** - Organize content with tags and categories
+这部分适合回答“为什么要做这个博客”。
 
+你可以写：
 
+- 你希望长期记录什么
+- 你想把这里做成知识库、作品集，还是生活博客
+- 你希望读者在这里看到什么内容
 
-### 📱 Special Pages
-- **Anime Tracking Page** - Track your anime watching progress with ratings
-- **Friends Links Page** - Showcase friend websites with beautiful cards
-- **Diary/Moments Page** - Share life moments like social media posts
-- **Archive Page** - Organized timeline view of all posts
-- **About Page** - Customizable personal introduction (this page!)
+## 我做过什么
 
-### 🛠 Technical Features
-- **Enhanced Code Blocks** - Powered by [Expressive Code](https://expressive-code.com/)
-- **Math Support** - LaTeX rendering with KaTeX for mathematical expressions
-- **Image Optimization** - PhotoSwipe gallery with lazy loading
-- **SEO Optimized** - Built-in sitemap and meta tags for better search visibility
-- **Performance Optimized** - Fast loading with caching and optimization
-- **Comment System Ready** - Integration support for Twikoo comments
+如果你希望这个博客也承担作品展示功能，可以在这里放：
 
-### 🎯 Advanced Markdown Features
-- **Callouts & Admonitions** - Beautiful info boxes with `> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`
-- **Mathematical Equations** - Write LaTeX math with `$inline$` and `$$block$$` syntax
-- **GitHub Cards** - Embed repository cards with `::github{repo="user/repo"}`
-- **Syntax Highlighting** - Advanced code highlighting with line numbers
-- **Copy Code Buttons** - Easy code copying functionality
+- 做过的项目
+- 工作或学习经历
+- 你比较满意的几项成果
+
+## 联系方式
+
+建议至少保留一种稳定联系方式：
+
+- 邮箱
+- GitHub
+- 即时通讯
+- 社交媒体主页
 
 ---
 
-*Built with ❤️ using Astro and inspired by modern web design principles.*
+这是一份占位内容。你可以直接编辑这个文件，把它替换成你自己的版本。

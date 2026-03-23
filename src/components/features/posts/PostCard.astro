@@ -34,14 +34,14 @@ const { remarkPluginFrontmatter } = await render(entry);
 
 <div
 	class:list={[
-		"card-base flex flex-col-reverse md:flex-col w-full rounded-[var(--radius-large)] overflow-hidden relative",
+		"apple-post-card card-base flex flex-col-reverse md:flex-col w-full rounded-[var(--radius-large)] overflow-hidden relative border border-transparent",
 		className,
 	]}
 	style={style}
 >
 	<div
 		class:list={[
-			"pl-6 md:pl-9 pr-6 md:pr-2 pt-6 md:pt-7 pb-6 relative",
+			"pl-6 md:pl-8 pr-6 md:pr-4 pt-6 md:pt-8 pb-6 md:pb-8 relative",
 			{
 				"w-full md:w-[calc(100%_-_3.25rem_-_0.75rem)]": !hasCover,
 				"w-full md:w-[calc(100%_-_var(--coverWidth)_-_0.75rem)]": hasCover,
@@ -50,12 +50,13 @@ const { remarkPluginFrontmatter } = await render(entry);
 	>
 		<a
 			href={url}
-			class="transition group w-full block font-bold mb-3 text-3xl text-90
+			data-no-swup
+			class="transition group w-full block font-bold mb-3 text-[1.82rem] md:text-[2.05rem] leading-[1.03] tracking-[-0.05em] text-90
         hover:text-[var(--primary)] dark:hover:text-[var(--primary)]
         active:text-[var(--title-active)] dark:active:text-[var(--title-active)]
-        before:w-1 before:h-5 before:rounded-md before:bg-[var(--primary)]
+        before:w-1 before:h-6 before:rounded-md before:bg-[var(--primary)]
         before:absolute
-        before:top-[2.1875rem] before:left-[1.125rem] before:hidden md:before:block"
+        before:top-[2.35rem] before:left-[1.05rem] before:hidden md:before:block"
 		>
 			{
 				pinned && (
@@ -91,8 +92,8 @@ const { remarkPluginFrontmatter } = await render(entry);
 
 		<div
 			class:list={[
-				"transition text-75 mb-3.5 pr-4",
-				{ "line-clamp-2 md:line-clamp-1": !description },
+				"transition text-75 mb-4 pr-4 text-[0.98rem] leading-7",
+				{ "line-clamp-3 md:line-clamp-2": !description },
 			]}
 		>
 			{description || remarkPluginFrontmatter.excerpt}
@@ -104,10 +105,11 @@ const { remarkPluginFrontmatter } = await render(entry);
 					tags.map((tag) => (
 						<a
 							href={getTagUrl(tag)}
+							data-no-swup
 							class:list={[
 								siteConfig.tagStyle?.useNewStyle
-									? "link-lg transition text-50 text-xs font-medium px-2 py-1 rounded-lg hover:text-[var(--primary)] dark:hover:text-[var(--primary)] active:text-[var(--primary)] dark:active:text-[var(--primary)] group/tag whitespace-nowrap"
-									: "btn-regular h-6 text-xs px-2 rounded-lg",
+									? "link-lg transition text-50 text-xs font-medium px-2.5 py-1 rounded-full hover:text-[var(--primary)] dark:hover:text-[var(--primary)] active:text-[var(--primary)] dark:active:text-[var(--primary)] group/tag whitespace-nowrap"
+									: "btn-regular h-7 text-xs px-2.5 rounded-full",
 							]}
 							aria-label={`View all posts tagged with ${tag.trim()}`}
 						>
@@ -127,11 +129,12 @@ const { remarkPluginFrontmatter } = await render(entry);
 		hasCover && (
 			<a
 				href={url}
+				data-no-swup
 				aria-label={title}
 				class:list={[
 					"group",
 					"max-h-[20vh] md:max-h-none mx-4 mt-4 -mb-2 md:mb-0 md:mx-0 md:mt-0",
-					"md:w-[var(--coverWidth)] relative md:absolute md:top-3 md:bottom-3 md:right-3 rounded-xl overflow-hidden active:scale-95",
+					"md:w-[var(--coverWidth)] relative md:absolute md:top-3 md:bottom-3 md:right-3 rounded-[1.35rem] overflow-hidden active:scale-95",
 				]}
 			>
 				<div class="absolute pointer-events-none z-10 w-full h-full group-hover:bg-black/30 group-active:bg-black/50 transition" />
@@ -155,6 +158,7 @@ const { remarkPluginFrontmatter } = await render(entry);
 		!hasCover && (
 			<a
 				href={url}
+				data-no-swup
 				aria-label={title}
 				class="!hidden md:!flex btn-regular w-[3.25rem]
          absolute right-3 top-3 bottom-3 rounded-xl bg-[var(--enter-btn-bg)]
@@ -169,9 +173,69 @@ const { remarkPluginFrontmatter } = await render(entry);
 		)
 	}
 </div>
-<div
-	class="transition border-t-[1px] border-dashed mx-6 border-black/10 dark:border-white/[0.15] last:border-t-0 md:hidden"
->
-</div>
-
 <style define:vars={{ coverWidth }}></style>
+<style>
+	.apple-post-card {
+		position: relative;
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72));
+		border-color: rgba(118, 156, 255, 0.12);
+		box-shadow:
+			0 24px 56px rgba(15, 23, 42, 0.08),
+			0 0 18px rgba(118, 156, 255, 0.06);
+		backdrop-filter: blur(26px);
+		-webkit-backdrop-filter: blur(26px);
+		transition:
+			transform 280ms ease,
+			box-shadow 280ms ease,
+			border-color 280ms ease;
+	}
+
+	.apple-post-card::before {
+		content: "";
+		position: absolute;
+		inset: 0 0 auto;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, rgba(118, 156, 255, 0.78), transparent);
+		opacity: 0.72;
+		pointer-events: none;
+	}
+
+	:root.dark .apple-post-card {
+		background:
+			linear-gradient(180deg, rgba(22, 24, 31, 0.94), rgba(17, 19, 26, 0.82));
+		border-color: rgba(118, 156, 255, 0.14);
+		box-shadow:
+			0 30px 64px rgba(0, 0, 0, 0.22),
+			0 0 18px rgba(118, 156, 255, 0.08);
+	}
+
+	.apple-post-card:hover {
+		transform: translateY(-3px) scale(1.008);
+		border-color: rgba(118, 156, 255, 0.2);
+		box-shadow:
+			0 34px 70px rgba(15, 23, 42, 0.12),
+			0 0 18px rgba(118, 156, 255, 0.14),
+			0 0 36px rgba(118, 156, 255, 0.12),
+			0 0 72px rgba(118, 156, 255, 0.06);
+	}
+
+	:root.dark .apple-post-card:hover {
+		box-shadow:
+			0 36px 76px rgba(0, 0, 0, 0.28),
+			0 0 18px rgba(118, 156, 255, 0.16),
+			0 0 40px rgba(118, 156, 255, 0.14),
+			0 0 80px rgba(118, 156, 255, 0.08);
+	}
+
+	.apple-post-card :global(img) {
+		transition:
+			transform 320ms ease,
+			filter 320ms ease;
+	}
+
+	.apple-post-card:hover :global(img) {
+		transform: scale(1.03);
+		filter: saturate(1.05) contrast(1.02);
+	}
+</style>

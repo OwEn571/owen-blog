@@ -1,0 +1,540 @@
+---
+import { Icon } from "astro-icon/components";
+
+import type { ModuleDirectoryCard } from "../../../utils/module-content-utils";
+
+interface Props {
+	id?: string;
+	eyebrow?: string;
+	title: string;
+	description: string;
+	badge?: string;
+	cards: ModuleDirectoryCard[];
+	emptyTitle?: string;
+	emptyDescription?: string;
+	emptyWritePath?: string;
+}
+
+const {
+	id,
+	eyebrow = "Directories",
+	title,
+	description,
+	badge = "",
+	cards = [],
+	emptyTitle = "这里还没有目录卡片",
+	emptyDescription = "先在对应模块目录下新建一个一级文件夹，再往里面放 Markdown 文件。",
+	emptyWritePath = "",
+} = Astro.props;
+---
+
+<section class="module-content-shell module-directory-shell" id={id}>
+	<div class="module-content-head">
+		<div>
+			<p class="module-stream-label">{eyebrow}</p>
+			<h2 class="module-content-title">{title}</h2>
+			<p class="module-content-description">{description}</p>
+		</div>
+		{badge && <span class="module-panel-badge">{badge}</span>}
+	</div>
+
+	{
+		cards.length > 0 ? (
+			<div class="module-directory-grid">
+				{cards.map((card) => (
+					<article
+						class:list={[
+							"module-directory-card",
+							`module-directory-card--${card.size}`,
+							{ "module-directory-card--clickable": !!card.href },
+						]}
+						style={`--directory-accent: ${card.accent};`}
+						data-card-link={card.href || undefined}
+						data-card-module={card.module}
+						data-card-directory={card.directoryName}
+						role={card.href ? "link" : undefined}
+						tabindex={card.href ? 0 : undefined}
+						aria-label={
+							card.href ? `筛选 ${card.title} 文章` : undefined
+						}
+					>
+						<div class="module-directory-card__top">
+							<span class="module-directory-card__eyebrow">
+								{card.eyebrow}
+							</span>
+							<div class="module-directory-card__icon">
+								<Icon name={card.icon} class="text-[1.25rem]" />
+							</div>
+						</div>
+						<h3>{card.title}</h3>
+						<p>{card.description}</p>
+						<div class="module-directory-card__meta">
+							<div class="module-directory-card__meta-item">
+								<span>写作目录</span>
+								<code>{card.writePath}</code>
+							</div>
+							<div class="module-directory-card__meta-item">
+								<span>当前文章</span>
+								<code>{card.postCount} 篇</code>
+							</div>
+						</div>
+						<div class="module-directory-card__preview">
+							<span class="module-directory-card__preview-label">
+								最近文章
+							</span>
+							{card.previewPosts.length > 0 ? (
+								<ul>
+									{card.previewPosts.map((post) => (
+										<li>
+											<a href={post.url}>
+												{post.data.title}
+											</a>
+										</li>
+									))}
+								</ul>
+							) : (
+								<p class="module-directory-card__empty">
+									这个目录还没有文章。去{" "}
+									<code>{card.writePath}</code> 新建 `.md`
+									文件后，卡片会自动更新。
+								</p>
+							)}
+						</div>
+					</article>
+				))}
+			</div>
+		) : (
+			<div class="module-directory-empty">
+				<div class="module-directory-empty__icon">
+					<Icon
+						name="mdi:folder-plus-outline"
+						class="text-[1.5rem]"
+					/>
+				</div>
+				<div class="module-directory-empty__copy">
+					<h3>{emptyTitle}</h3>
+					<p>{emptyDescription}</p>
+					{emptyWritePath && <code>{emptyWritePath}</code>}
+				</div>
+			</div>
+		)
+	}
+</section>
+
+<script>
+	const deckWindow = window as Window & {
+		__mizukiModuleDirectoryDeckBound?: boolean;
+	};
+	if (
+		typeof deckWindow !== "undefined" &&
+		!deckWindow.__mizukiModuleDirectoryDeckBound
+	) {
+		deckWindow.__mizukiModuleDirectoryDeckBound = true;
+
+		const syncActiveCards = (moduleKey: string, directory: string) => {
+			document
+				.querySelectorAll("[data-card-module][data-card-directory]")
+				.forEach((element) => {
+					if (!(element instanceof HTMLElement)) {
+						return;
+					}
+
+					const isActive =
+						element.dataset.cardModule === moduleKey &&
+						directory !== "all" &&
+						element.dataset.cardDirectory === directory;
+					element.toggleAttribute("data-active", isActive);
+				});
+		};
+
+		const navigateCard = (card: HTMLElement | null) => {
+			const moduleKey = card?.dataset?.cardModule;
+			const directory = card?.dataset?.cardDirectory;
+			if (moduleKey && directory) {
+				syncActiveCards(moduleKey, directory);
+				window.dispatchEvent(
+					new CustomEvent("moduleDirectory:filterchange", {
+						detail: {
+							module: moduleKey,
+							directory,
+						},
+					}),
+				);
+			}
+
+			const href = card?.dataset?.cardLink;
+			if (!href) {
+				return;
+			}
+			const targetId = href.replace(/^#/, "");
+			const target = document.getElementById(targetId);
+			if (target) {
+				target.scrollIntoView({
+					behavior: "smooth",
+					block: "start",
+				});
+			}
+			window.history.replaceState(null, "", `#${targetId}`);
+		};
+
+		window.addEventListener(
+			"moduleDirectory:filterchange",
+			(event: any) => {
+				const moduleKey = event.detail?.module;
+				const directory = event.detail?.directory;
+				if (!moduleKey) {
+					return;
+				}
+				syncActiveCards(moduleKey, directory || "all");
+			},
+		);
+
+		document.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) {
+				return;
+			}
+
+			const nestedLink = target.closest("a[href]");
+			if (
+				nestedLink &&
+				!(
+					nestedLink instanceof HTMLElement &&
+					nestedLink.dataset.cardLink
+				)
+			) {
+				return;
+			}
+
+			const card = target.closest("[data-card-link]");
+			if (!(card instanceof HTMLElement)) {
+				return;
+			}
+
+			navigateCard(card);
+		});
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key !== "Enter" && event.key !== " ") {
+				return;
+			}
+
+			const target = event.target;
+			if (
+				!(target instanceof HTMLElement) ||
+				!target.matches("[data-card-link]")
+			) {
+				return;
+			}
+
+			event.preventDefault();
+			navigateCard(target);
+		});
+	}
+</script>
+
+<style>
+	.module-directory-grid {
+		display: grid;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.module-directory-card {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		grid-column: span 4;
+		min-height: 21rem;
+		padding: 1.3rem;
+		border-radius: 1.7rem;
+		border: 1px solid rgb(var(--directory-accent) / 0.14);
+		background:
+			linear-gradient(180deg, rgba(9, 12, 19, 0.3), rgba(5, 8, 14, 0.12)),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--directory-accent) / 0.2),
+				transparent 13rem
+			);
+		box-shadow:
+			0 28px 76px rgba(0, 0, 0, 0.22),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		backdrop-filter: blur(38px) saturate(1.16);
+		-webkit-backdrop-filter: blur(38px) saturate(1.16);
+		overflow: hidden;
+		transition:
+			transform 260ms ease,
+			border-color 260ms ease,
+			box-shadow 260ms ease;
+	}
+
+	.module-directory-card:hover {
+		transform: translateY(-5px) scale(1.012);
+		border-color: rgb(var(--directory-accent) / 0.24);
+		box-shadow:
+			0 34px 90px rgba(0, 0, 0, 0.28),
+			0 0 18px rgb(var(--directory-accent) / 0.16),
+			0 0 42px rgb(var(--directory-accent) / 0.12);
+	}
+
+	.module-directory-card--clickable {
+		cursor: pointer;
+	}
+
+	.module-directory-card[data-active] {
+		transform: translateY(-4px) scale(1.01);
+		border-color: rgb(var(--directory-accent) / 0.3);
+		box-shadow:
+			0 34px 90px rgba(0, 0, 0, 0.28),
+			0 0 20px rgb(var(--directory-accent) / 0.18),
+			0 0 52px rgb(var(--directory-accent) / 0.16);
+	}
+
+	.module-directory-card.is-map-targeted {
+		animation: directoryCardPulse 900ms ease;
+	}
+
+	@keyframes directoryCardPulse {
+		0% {
+			transform: translateY(-4px) scale(1.01);
+			box-shadow:
+				0 34px 90px rgba(0, 0, 0, 0.28),
+				0 0 20px rgb(var(--directory-accent) / 0.18),
+				0 0 52px rgb(var(--directory-accent) / 0.16);
+		}
+		40% {
+			transform: translateY(-6px) scale(1.024);
+			box-shadow:
+				0 40px 96px rgba(0, 0, 0, 0.32),
+				0 0 28px rgb(var(--directory-accent) / 0.22),
+				0 0 68px rgb(var(--directory-accent) / 0.2);
+		}
+		100% {
+			transform: translateY(0) scale(1);
+		}
+	}
+
+	.module-directory-card--wide {
+		grid-column: span 6;
+		min-height: 22rem;
+	}
+
+	.module-directory-card--medium {
+		grid-column: span 3;
+		min-height: 20rem;
+	}
+
+	.module-directory-card__top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.module-directory-card__eyebrow {
+		font-size: 0.76rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(232, 238, 248, 0.5);
+	}
+
+	.module-directory-card__icon,
+	.module-directory-empty__icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.9rem;
+		height: 2.9rem;
+		border-radius: 999px;
+		background: rgb(var(--directory-accent, 118 156 255) / 0.14);
+		color: rgb(var(--directory-accent, 118 156 255) / 1);
+		box-shadow:
+			0 0 0 1px rgb(var(--directory-accent, 118 156 255) / 0.14),
+			0 0 24px rgb(var(--directory-accent, 118 156 255) / 0.14);
+	}
+
+	.module-directory-card h3 {
+		margin-top: auto;
+		padding-top: 2rem;
+		font-size: clamp(1.65rem, 2.7vw, 2.35rem);
+		line-height: 0.98;
+		font-weight: 690;
+		letter-spacing: -0.05em;
+		color: rgba(248, 250, 255, 0.94);
+	}
+
+	.module-directory-card p {
+		margin-top: 0.82rem;
+		color: rgba(223, 231, 244, 0.66);
+		line-height: 1.76;
+	}
+
+	.module-directory-card__meta {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.65rem;
+		margin-top: 1rem;
+	}
+
+	.module-directory-card__meta-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.42rem;
+		padding: 0.8rem 0.9rem;
+		border-radius: 1rem;
+		background: rgba(255, 255, 255, 0.06);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+	}
+
+	.module-directory-card__meta-item span,
+	.module-directory-card__preview-label {
+		font-size: 0.72rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: rgba(232, 238, 248, 0.44);
+	}
+
+	.module-directory-card__meta-item code,
+	.module-directory-card__empty code,
+	.module-directory-empty code {
+		font-size: 0.78rem;
+		line-height: 1.6;
+		word-break: break-all;
+		color: rgba(232, 238, 248, 0.86);
+	}
+
+	.module-directory-card__preview {
+		margin-top: auto;
+		padding-top: 1rem;
+		border-top: 1px solid rgba(255, 255, 255, 0.08);
+	}
+
+	.module-directory-card__preview ul {
+		display: flex;
+		flex-direction: column;
+		gap: 0.7rem;
+		margin-top: 0.9rem;
+	}
+
+	.module-directory-card__preview a {
+		color: rgba(248, 250, 255, 0.86);
+		text-decoration: none;
+		transition:
+			color 200ms ease,
+			transform 200ms ease;
+	}
+
+	.module-directory-card__preview a:hover {
+		color: rgb(var(--directory-accent) / 0.98);
+		transform: translateX(2px);
+	}
+
+	.module-directory-card__empty {
+		margin-top: 0.9rem;
+	}
+
+	.module-directory-empty {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: 1rem;
+		align-items: flex-start;
+		padding: 1.15rem 1.2rem;
+		border-radius: 1.4rem;
+		border: 1px dashed rgba(255, 255, 255, 0.16);
+		background: rgba(255, 255, 255, 0.04);
+	}
+
+	.module-directory-empty__copy h3 {
+		font-size: 1.12rem;
+		font-weight: 640;
+		color: rgba(248, 250, 255, 0.92);
+	}
+
+	.module-directory-empty__copy p {
+		margin-top: 0.55rem;
+		line-height: 1.72;
+		color: rgba(223, 231, 244, 0.66);
+	}
+
+	.module-directory-empty__copy code {
+		display: inline-block;
+		margin-top: 0.9rem;
+	}
+
+	:root:not(.dark) .module-directory-card {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.5),
+				rgba(247, 250, 255, 0.24)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--directory-accent) / 0.08),
+				transparent 13rem
+			);
+		box-shadow:
+			0 22px 56px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+	}
+
+	:root:not(.dark) .module-directory-card h3 {
+		color: rgba(15, 23, 42, 0.92);
+	}
+
+	:root:not(.dark) .module-directory-card p,
+	:root:not(.dark) .module-directory-empty__copy p,
+	:root:not(.dark) .module-directory-card__eyebrow,
+	:root:not(.dark) .module-directory-card__meta-item span,
+	:root:not(.dark) .module-directory-card__preview-label {
+		color: rgba(15, 23, 42, 0.58);
+	}
+
+	:root:not(.dark) .module-directory-card__preview a {
+		color: rgba(15, 23, 42, 0.84);
+	}
+
+	:root:not(.dark) .module-directory-card__meta-item {
+		background: rgba(255, 255, 255, 0.52);
+		border-color: rgba(15, 23, 42, 0.06);
+	}
+
+	:root:not(.dark) .module-directory-card__meta-item code,
+	:root:not(.dark) .module-directory-card__empty code,
+	:root:not(.dark) .module-directory-empty code {
+		color: rgba(15, 23, 42, 0.82);
+	}
+
+	:root:not(.dark) .module-directory-empty {
+		border-color: rgba(118, 156, 255, 0.18);
+		background: rgba(255, 255, 255, 0.48);
+	}
+
+	:root:not(.dark) .module-directory-empty__copy h3 {
+		color: rgba(15, 23, 42, 0.9);
+	}
+
+	@media (max-width: 1080px) {
+		.module-directory-card--default,
+		.module-directory-card--wide,
+		.module-directory-card--medium {
+			grid-column: span 6;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.module-directory-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.module-directory-card--default,
+		.module-directory-card--wide,
+		.module-directory-card--medium {
+			grid-column: span 1;
+		}
+
+		.module-directory-empty {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

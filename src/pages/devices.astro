@@ -75,16 +75,18 @@ const viewDetailsText = i18n(I18nKey.devicesViewDetails);
 			</div>
 
 			<!-- 隐藏数据用于客户端渲染 -->
-			<script
-				id="devices-data"
-				type="application/json"
-				set:html={JSON.stringify(devices)}
-			/>
-			<script
-				id="i18n-data"
-				type="application/json"
-				set:html={JSON.stringify({ viewDetails: viewDetailsText })}
-			/>
+				<script
+					is:inline
+					id="devices-data"
+					type="application/json"
+					set:html={JSON.stringify(devices)}
+				/>
+				<script
+					is:inline
+					id="i18n-data"
+					type="application/json"
+					set:html={JSON.stringify({ viewDetails: viewDetailsText })}
+				/>
 		</div>
 	</div>
 </MainGridLayout>

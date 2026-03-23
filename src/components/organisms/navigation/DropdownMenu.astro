@@ -63,6 +63,7 @@ const hasChildren = children.length > 0
 								href={
 									child.external ? child.url : url(child.url)
 								}
+								data-no-swup={!child.external ? true : undefined}
 								target={child.external ? "_blank" : null}
 								rel={
 									child.external
@@ -96,6 +97,7 @@ const hasChildren = children.length > 0
 			<a
 				aria-label={link.name}
 				href={link.external ? link.url : url(link.url)}
+				data-no-swup={!link.external ? true : undefined}
 				target={link.external ? "_blank" : null}
 				rel={link.external ? "noopener noreferrer" : null}
 				class="btn-plain scale-animation rounded-lg h-11 font-bold w-11 lg:w-auto lg:px-5 active:scale-95 flex items-center justify-center lg:justify-start whitespace-nowrap"

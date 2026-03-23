@@ -24,10 +24,12 @@ import { rehypeMermaid } from "./src/plugins/rehype-mermaid.mjs";
 import { rehypeWrapTable } from "./src/plugins/rehype-wrap-table.mjs";
 import { parseDirectiveNode } from "./src/plugins/remark-directive-rehype.js";
 import { remarkMermaid } from "./src/plugins/remark-mermaid.js";
+import { remarkNormalizeSmartQuotes } from "./src/plugins/remark-normalize-smart-quotes.mjs";
 import { remarkContent } from "./src/plugins/remark-content.mjs";
 import { rehypeImageWidth } from "./src/plugins/rehype-image-width.mjs";
 import rehypeExternalLinks from "rehype-external-links";
 import { remarkFixGithubAdmonitions } from "./src/plugins/remark-fix-github-admonitions.js";
+import { remarkPythonPlayground } from "./src/plugins/remark-python-playground.mjs";
 
 // https://astro.build/config
 export default defineConfig({
@@ -124,6 +126,8 @@ export default defineConfig({
 		remarkPlugins: [
 			remarkMath,
 			remarkContent,
+			remarkNormalizeSmartQuotes,
+			remarkPythonPlayground,
 			remarkFixGithubAdmonitions,
 			remarkDirective,
 			remarkSectionize,

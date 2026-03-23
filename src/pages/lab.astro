@@ -1,0 +1,524 @@
+---
+import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
+import { Icon } from "astro-icon/components";
+
+import { labShelf, labShowcases } from "../data/module-blueprint";
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import {
+	getModuleDirectoryCards,
+	getModulePostsList,
+	getModuleWriteRoot,
+} from "../utils/module-content-utils";
+
+const labPosts = await getModulePostsList("lab");
+const labCards = await getModuleDirectoryCards("lab", labPosts);
+
+const heroSummary = [
+	{ label: "展示方式", value: "App Store Flow" },
+	{ label: "目录卡片", value: `${labCards.length}` },
+	{ label: "橱窗模块", value: `${labShowcases.length}` },
+	{ label: "已发布文章", value: `${labPosts.length}` },
+];
+---
+
+<MainGridLayout
+	immersiveLayout={true}
+	title="Lab"
+	description="项目橱窗、互动 demo 与实验笔记"
+>
+	<script>
+		import("../scripts/right-sidebar-layout.js");
+	</script>
+
+	<div class="module-page" style="--module-accent: 140 126 255;">
+		<section class="module-hero module-hero-split">
+			<div class="module-copy">
+				<p class="module-eyebrow">Lab</p>
+				<h1 class="module-title">像展示商品一样展示你的玩具和实验</h1>
+				<p class="module-description">
+					项目不需要再缩在冷冰冰的列表里。这里更像 iPad App Store
+					的橱窗区，允许每个原型都拥有自己的光效、预览和姿态。
+				</p>
+				<div class="module-copy-grid">
+					{
+						heroSummary.map((item) => (
+							<article class="module-copy-item">
+								<span class="module-copy-label">
+									{item.label}
+								</span>
+								<strong class="module-copy-value">
+									{item.value}
+								</strong>
+							</article>
+						))
+					}
+				</div>
+			</div>
+
+			<div class="module-stage lab-stage">
+				<div class="module-stage-top">
+					<div class="module-dots" aria-hidden="true">
+						<span></span>
+						<span></span>
+						<span></span>
+					</div>
+					<span class="module-badge">Showcase Shelf</span>
+				</div>
+				<div class="lab-stage-panels" aria-hidden="true">
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<p class="module-stage-caption">
+					互动性强的卡片可以直接在这里试用，静态项目则保持更强的视觉海报感。这样实验室本身就会有浏览欲。
+				</p>
+				<div class="lab-stage-metrics">
+					<div>
+						<span>Write Root</span>
+						<strong>{getModuleWriteRoot("lab")}</strong>
+					</div>
+					<div>
+						<span>Auto Cards</span>
+						<strong>Directory Driven</strong>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<ModuleDirectoryDeck
+			eyebrow="Directory Deck"
+			title="Lab 写作目录"
+			description="在 src/content/posts/lab/ 下面新建一级目录，就会自动出现一张新的 Lab 卡片。目录里的 Markdown 会成为该卡片的最近文章。"
+			badge={`${labCards.length} Directories`}
+			cards={labCards}
+			emptyTitle="Lab 还没有实验目录"
+			emptyDescription="先在 Lab 根目录下新建一级文件夹，再把实验笔记或项目文章放进去。"
+			emptyWritePath={getModuleWriteRoot("lab")}
+		/>
+
+		<section class="lab-showcase-grid" id="lab-showcase">
+			{
+				labShowcases.map((item) => (
+					<article
+						class={`lab-card lab-card--${item.aspect}`}
+						style={`--lab-accent: ${item.accent};`}
+					>
+						<div class="lab-card-top">
+							<span class="lab-card-kicker">{item.kicker}</span>
+							<span class="module-panel-badge">
+								{item.status}
+							</span>
+						</div>
+						<div class="lab-card-preview">
+							{item.iframeSrc ? (
+								<iframe
+									src={item.iframeSrc}
+									title={item.title}
+									loading="lazy"
+									referrerpolicy="no-referrer"
+								/>
+							) : (
+								<div class="lab-preview-art" aria-hidden="true">
+									<div class="lab-preview-ring" />
+									<div class="lab-preview-ring" />
+									<div class="lab-preview-ring" />
+								</div>
+							)}
+						</div>
+						<div class="lab-card-copy">
+							<div class="lab-card-title-row">
+								<h2>{item.title}</h2>
+								<div class="module-panel-icon">
+									<Icon
+										name={item.icon}
+										class="text-[1.3rem]"
+									/>
+								</div>
+							</div>
+							<p>{item.description}</p>
+							<a href={item.actionHref} class="module-panel-link">
+								{item.actionLabel}
+							</a>
+						</div>
+					</article>
+				))
+			}
+		</section>
+
+		<section class="module-content-shell" id="lab-shelf">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">Shelf</p>
+					<h2 class="module-content-title">轻量实验架</h2>
+					<p class="module-content-description">
+						不是所有项目都需要独占大卡片。更轻的实验、工作流与草图，适合整齐地排成一排，像一个正在扩张的工具架。
+					</p>
+				</div>
+				<span class="module-panel-badge">{labShelf.length} Cards</span>
+			</div>
+			<div class="module-panel-grid">
+				{
+					labShelf.map((item) => (
+						<article class="module-panel">
+							<div class="module-panel-top">
+								<span class="module-panel-label">
+									Shelf Card
+								</span>
+								<div class="module-panel-icon">
+									<Icon
+										name="mdi:shape-outline"
+										class="text-[1.25rem]"
+									/>
+								</div>
+							</div>
+							<h3 class="module-panel-title">{item.title}</h3>
+							<p class="module-panel-copy">{item.description}</p>
+							<div class="module-panel-meta">{item.meta}</div>
+						</article>
+					))
+				}
+			</div>
+		</section>
+
+		<section class="module-stream" id="lab-roadmap">
+			<div class="module-content-head !mb-0 !pb-0 !border-b-0">
+				<div>
+					<p class="module-stream-label">Roadmap</p>
+					<h2 class="module-content-title">之后继续往里接什么</h2>
+				</div>
+			</div>
+			<div class="module-stream-items">
+				<article class="module-stream-item">
+					<div class="module-stream-time">Step 01</div>
+					<div class="module-stream-content">
+						<h3>把 GitHub API 和项目状态接进来</h3>
+						<p>
+							这样每张卡片就能展示最近更新时间、star、repo
+							链接和真实仓库状态。
+						</p>
+					</div>
+				</article>
+				<article class="module-stream-item">
+					<div class="module-stream-time">Step 02</div>
+					<div class="module-stream-content">
+						<h3>把可运行的 Python 代码块接成 Demo 卡</h3>
+						<p>
+							到时候文章里的交互代码和 Lab
+							的展示卡会形成联动，而不是两套分裂的体验。
+						</p>
+					</div>
+				</article>
+			</div>
+		</section>
+	</div>
+</MainGridLayout>
+
+<style>
+	.lab-stage {
+		display: grid;
+		grid-template-rows: auto auto 1fr auto;
+		gap: 1rem;
+	}
+
+	.lab-stage-panels {
+		display: grid;
+		grid-template-columns: 1.2fr 0.8fr 0.55fr;
+		gap: 0.7rem;
+		min-height: 11rem;
+	}
+
+	.lab-stage-panels span {
+		border-radius: 1.35rem;
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.08),
+				rgba(255, 255, 255, 0.03)
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(140, 126, 255, 0.22),
+				transparent 12rem
+			);
+		border: 1px solid rgba(140, 126, 255, 0.14);
+	}
+
+	.lab-stage-panels span:nth-child(2) {
+		transform: translateY(0.9rem);
+	}
+
+	.lab-stage-panels span:nth-child(3) {
+		transform: translateY(1.8rem);
+	}
+
+	.lab-stage-metrics {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.75rem;
+	}
+
+	.lab-stage-metrics div {
+		display: flex;
+		flex-direction: column;
+		padding: 0.95rem 1rem;
+		border-radius: 1.15rem;
+		border: 1px solid rgba(140, 126, 255, 0.14);
+		background: linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.06),
+			rgba(255, 255, 255, 0.02)
+		);
+	}
+
+	.lab-stage-metrics span {
+		font-size: 0.72rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(223, 231, 244, 0.44);
+	}
+
+	.lab-stage-metrics strong {
+		margin-top: 0.55rem;
+		font-size: 1rem;
+		color: rgba(248, 250, 255, 0.9);
+	}
+
+	.lab-showcase-grid {
+		display: grid;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.lab-card {
+		display: flex;
+		flex-direction: column;
+		padding: 1.3rem;
+		border-radius: 1.8rem;
+		border: 1px solid rgb(var(--lab-accent) / 0.14);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(9, 12, 19, 0.36),
+				rgba(5, 8, 14, 0.14)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--lab-accent) / 0.2),
+				transparent 14rem
+			);
+		box-shadow:
+			0 28px 80px rgba(0, 0, 0, 0.24),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		backdrop-filter: blur(40px) saturate(1.16);
+		-webkit-backdrop-filter: blur(40px) saturate(1.16);
+		overflow: hidden;
+		transition:
+			transform 260ms ease,
+			border-color 260ms ease,
+			box-shadow 260ms ease;
+	}
+
+	.lab-card:hover {
+		transform: translateY(-5px) scale(1.01);
+		border-color: rgb(var(--lab-accent) / 0.22);
+		box-shadow:
+			0 34px 90px rgba(0, 0, 0, 0.28),
+			0 0 18px rgb(var(--lab-accent) / 0.16),
+			0 0 42px rgb(var(--lab-accent) / 0.14);
+	}
+
+	.lab-card--hero {
+		grid-column: span 7;
+		min-height: 31rem;
+	}
+
+	.lab-card--wide {
+		grid-column: span 5;
+		min-height: 15rem;
+	}
+
+	.lab-card--tall {
+		grid-column: span 5;
+		min-height: 15rem;
+	}
+
+	.lab-card--compact {
+		grid-column: span 7;
+		min-height: 15rem;
+	}
+
+	.lab-card-top,
+	.lab-card-title-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.lab-card-kicker {
+		font-size: 0.76rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(232, 238, 248, 0.5);
+	}
+
+	.lab-card-preview {
+		position: relative;
+		margin-top: 1rem;
+		border-radius: 1.45rem;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		background: rgba(255, 255, 255, 0.04);
+		overflow: hidden;
+	}
+
+	.lab-card--hero .lab-card-preview {
+		aspect-ratio: 16 / 10;
+	}
+
+	.lab-card--wide .lab-card-preview,
+	.lab-card--tall .lab-card-preview,
+	.lab-card--compact .lab-card-preview {
+		aspect-ratio: 16 / 8;
+	}
+
+	.lab-card-preview iframe {
+		display: block;
+		width: 100%;
+		height: 100%;
+		border: 0;
+		background: #02050c;
+	}
+
+	.lab-preview-art {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		min-height: 12rem;
+		background:
+			radial-gradient(
+				circle at 28% 24%,
+				rgba(130, 160, 255, 0.4),
+				transparent 22%
+			),
+			radial-gradient(
+				circle at 76% 36%,
+				rgba(176, 126, 255, 0.28),
+				transparent 28%
+			),
+			linear-gradient(180deg, rgba(5, 8, 14, 0.94), rgba(9, 12, 19, 0.88));
+	}
+
+	.lab-preview-ring {
+		position: absolute;
+		inset: 50% auto auto 50%;
+		border-radius: 999px;
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		transform: translate(-50%, -50%);
+	}
+
+	.lab-preview-ring:nth-child(1) {
+		width: 4rem;
+		height: 4rem;
+		background: radial-gradient(
+			circle,
+			rgba(255, 255, 255, 0.12),
+			transparent 70%
+		);
+	}
+
+	.lab-preview-ring:nth-child(2) {
+		width: 10rem;
+		height: 10rem;
+	}
+
+	.lab-preview-ring:nth-child(3) {
+		width: 16rem;
+		height: 16rem;
+		opacity: 0.54;
+	}
+
+	.lab-card-copy {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+	}
+
+	.lab-card h2 {
+		font-size: clamp(1.6rem, 2.7vw, 2.35rem);
+		line-height: 1.02;
+		font-weight: 680;
+		letter-spacing: -0.045em;
+		color: rgba(248, 250, 255, 0.94);
+	}
+
+	.lab-card p {
+		margin-top: 0.85rem;
+		color: rgba(223, 231, 244, 0.66);
+		line-height: 1.78;
+	}
+
+	.lab-card .module-panel-link {
+		margin-top: auto;
+		padding-top: 1.2rem;
+	}
+
+	@media (max-width: 1080px) {
+		.lab-card--hero,
+		.lab-card--wide,
+		.lab-card--tall,
+		.lab-card--compact {
+			grid-column: span 6;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.lab-stage-metrics,
+		.lab-showcase-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.lab-card--hero,
+		.lab-card--wide,
+		.lab-card--tall,
+		.lab-card--compact {
+			grid-column: span 1;
+		}
+	}
+
+	:global(:root:not(.dark)) .lab-stage-panels span,
+	:global(:root:not(.dark)) .lab-stage-metrics div,
+	:global(:root:not(.dark)) .lab-card {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.48),
+				rgba(247, 250, 255, 0.22)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--lab-accent) / 0.08),
+				transparent 12rem
+			);
+		box-shadow:
+			0 22px 56px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+	}
+
+	:global(:root:not(.dark)) .lab-stage-metrics span,
+	:global(:root:not(.dark)) .lab-card-kicker {
+		color: rgba(15, 23, 42, 0.44);
+	}
+
+	:global(:root:not(.dark)) .lab-stage-metrics strong,
+	:global(:root:not(.dark)) .lab-card h2 {
+		color: rgba(15, 23, 42, 0.9);
+	}
+
+	:global(:root:not(.dark)) .lab-card p {
+		color: rgba(15, 23, 42, 0.62);
+	}
+
+	:global(:root:not(.dark)) .lab-card-preview {
+		background: rgba(255, 255, 255, 0.42);
+	}
+</style>

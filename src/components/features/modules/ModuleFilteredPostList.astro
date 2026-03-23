@@ -1,0 +1,483 @@
+---
+import type { CollectionEntry } from "astro:content";
+
+import PostCard from "@components/features/posts/PostCard.astro";
+
+import type { ModuleDirectoryCard } from "../../../utils/module-content-utils";
+import { getModuleDirectoryNameFromId } from "../../../utils/module-content-utils";
+import type { ModuleKey } from "../../../data/module-blueprint";
+
+interface Props {
+	id?: string;
+	moduleKey: ModuleKey;
+	eyebrow?: string;
+	title: string;
+	description: string;
+	badge?: string;
+	allLabel?: string;
+	cards: ModuleDirectoryCard[];
+	entries: CollectionEntry<"posts">[];
+}
+
+const {
+	id,
+	moduleKey,
+	eyebrow = "Filtered Stream",
+	title,
+	description,
+	badge = "",
+	allLabel = "全部",
+	cards = [],
+	entries = [],
+} = Astro.props;
+
+const filterableEntries = entries.map((entry) => ({
+	entry,
+	directoryName: getModuleDirectoryNameFromId(entry.id, moduleKey),
+}));
+---
+
+<section
+	class="module-content-shell module-filter-shell"
+	id={id}
+	data-module-filter-root
+	data-module-key={moduleKey}
+>
+	<div class="module-content-head">
+		<div>
+			<p class="module-stream-label">{eyebrow}</p>
+			<h2 class="module-content-title">{title}</h2>
+			<p class="module-content-description">{description}</p>
+		</div>
+		{badge && <span class="module-panel-badge">{badge}</span>}
+	</div>
+
+	<div
+		class="module-filter-toolbar"
+		role="tablist"
+		aria-label={`${title} 筛选`}
+	>
+		<button
+			type="button"
+			class="module-filter-pill is-active"
+			data-filter-button
+			data-filter-value="all"
+			role="tab"
+			aria-selected="true"
+		>
+			<span>{allLabel}</span>
+			<strong>{entries.length}</strong>
+		</button>
+		{
+			cards.map((card) => (
+				<button
+					type="button"
+					class="module-filter-pill"
+					data-filter-button
+					data-filter-value={card.directoryName}
+					role="tab"
+					aria-selected="false"
+					style={`--filter-accent: ${card.accent};`}
+				>
+					<span>{card.title}</span>
+					<strong>{card.postCount}</strong>
+				</button>
+			))
+		}
+	</div>
+
+	<div class="module-filter-summary">
+		<p class="module-filter-summary__copy">
+			当前筛选:
+			<strong data-filter-current-label>{allLabel}</strong>
+		</p>
+		<p class="module-filter-summary__count">
+			<span data-filter-current-count>{entries.length}</span>
+			篇文章
+		</p>
+	</div>
+
+	<div class="module-filter-list" data-filter-list>
+		{
+			filterableEntries.map(({ entry, directoryName }, index) => (
+				<div
+					data-filter-item
+					data-directory-name={directoryName}
+					style={`--i: ${index}; --interval: 50ms;`}
+				>
+					<PostCard entry={entry} class:list="onload-animation" />
+				</div>
+			))
+		}
+	</div>
+
+	<div class="module-filter-empty" data-filter-empty hidden>
+		<h3>这个主题下还没有文章</h3>
+		<p>先在对应目录里写 Markdown，保存后这里就会自动出现。</p>
+	</div>
+</section>
+
+<script>
+	const filterWindow = window as Window & {
+		__mizukiModuleFilterBound?: boolean;
+		_moduleFilterSwupListenerAttached?: boolean;
+		swup?: any;
+	};
+
+	function getFriendlyLabel(root: ParentNode | null, filterValue: string) {
+		if (!root) {
+			return "全部";
+		}
+
+		if (!filterValue || filterValue === "all") {
+			return (
+				root.querySelector('[data-filter-value="all"] span')
+					?.textContent || "全部"
+			);
+		}
+
+		return (
+			root.querySelector(`[data-filter-value="${filterValue}"] span`)
+				?.textContent || filterValue
+		);
+	}
+
+	function applyFilter(root: HTMLElement | null, filterValue: string) {
+		if (!(root instanceof HTMLElement)) {
+			return;
+		}
+
+		const normalizedFilter = filterValue || "all";
+		const items = Array.from(root.querySelectorAll("[data-filter-item]"));
+		let visibleCount = 0;
+
+		items.forEach((item) => {
+			if (!(item instanceof HTMLElement)) {
+				return;
+			}
+
+			const matches =
+				normalizedFilter === "all" ||
+				item.dataset.directoryName === normalizedFilter;
+			item.hidden = !matches;
+			item.classList.toggle("is-filter-hidden", !matches);
+			if (matches) {
+				visibleCount += 1;
+			}
+		});
+
+		root.querySelectorAll("[data-filter-button]").forEach((button) => {
+			if (!(button instanceof HTMLButtonElement)) {
+				return;
+			}
+
+			const isActive = button.dataset.filterValue === normalizedFilter;
+			button.classList.toggle("is-active", isActive);
+			button.setAttribute("aria-selected", isActive ? "true" : "false");
+		});
+
+		const currentLabel = root.querySelector("[data-filter-current-label]");
+		if (currentLabel) {
+			currentLabel.textContent = getFriendlyLabel(root, normalizedFilter);
+		}
+
+		const currentCount = root.querySelector("[data-filter-current-count]");
+		if (currentCount) {
+			currentCount.textContent = String(visibleCount);
+		}
+
+		const empty = root.querySelector("[data-filter-empty]");
+		if (empty instanceof HTMLElement) {
+			empty.hidden = visibleCount > 0;
+		}
+
+		root.dataset.activeFilter = normalizedFilter;
+	}
+
+	function initModuleFilterRoot(root: Element) {
+		if (
+			!(root instanceof HTMLElement) ||
+			root.dataset.filterReady === "true"
+		) {
+			return;
+		}
+
+		root.dataset.filterReady = "true";
+		applyFilter(root, root.dataset.activeFilter || "all");
+
+		root.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) {
+				return;
+			}
+
+			const button = target.closest("[data-filter-button]");
+			if (!(button instanceof HTMLButtonElement)) {
+				return;
+			}
+
+			const filterValue = button.dataset.filterValue || "all";
+			const moduleKey = root.dataset.moduleKey || "";
+
+			filterWindow.dispatchEvent(
+				new CustomEvent("moduleDirectory:filterchange", {
+					detail: {
+						module: moduleKey,
+						directory: filterValue,
+					},
+				}),
+			);
+		});
+	}
+
+	function initModuleFilterRoots() {
+		document
+			.querySelectorAll("[data-module-filter-root]")
+			.forEach((root) => initModuleFilterRoot(root));
+	}
+
+	if (!filterWindow.__mizukiModuleFilterBound) {
+		filterWindow.__mizukiModuleFilterBound = true;
+
+		filterWindow.addEventListener(
+			"moduleDirectory:filterchange",
+			(event: any) => {
+				const detail = event.detail || {};
+				const moduleKey = detail.module;
+				const directory = detail.directory || "all";
+
+				document
+					.querySelectorAll("[data-module-filter-root]")
+					.forEach((root) => {
+						if (
+							root instanceof HTMLElement &&
+							root.dataset.moduleKey === moduleKey
+						) {
+							applyFilter(root, directory);
+						}
+					});
+			},
+		);
+	}
+
+	document.addEventListener("DOMContentLoaded", initModuleFilterRoots);
+	if (document.readyState !== "loading") {
+		initModuleFilterRoots();
+	}
+
+	function setupSwupListeners() {
+		if (filterWindow._moduleFilterSwupListenerAttached) {
+			return;
+		}
+
+		function trySetupSwup() {
+			if (typeof filterWindow !== "undefined" && filterWindow.swup) {
+				filterWindow.swup.hooks.on(
+					"content:replace",
+					initModuleFilterRoots,
+				);
+				filterWindow._moduleFilterSwupListenerAttached = true;
+				return true;
+			}
+			return false;
+		}
+
+		if (!trySetupSwup()) {
+			let retryCount = 0;
+			const retryInterval = setInterval(() => {
+				if (trySetupSwup() || ++retryCount >= 10) {
+					clearInterval(retryInterval);
+				}
+			}, 100);
+		}
+	}
+
+	setTimeout(setupSwupListeners, 200);
+</script>
+
+<style>
+	.module-filter-shell {
+		scroll-margin-top: 7rem;
+	}
+
+	.module-filter-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.85rem;
+		margin-bottom: 1rem;
+	}
+
+	.module-filter-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.82rem 1rem;
+		border-radius: 999px;
+		border: 1px solid rgb(var(--module-accent, 104 140 255) / 0.14);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.09),
+				rgba(255, 255, 255, 0.03)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(
+					var(--filter-accent, var(--module-accent, 104 140 255)) /
+						0.12
+				),
+				transparent 9rem
+			);
+		color: rgba(232, 238, 248, 0.78);
+		backdrop-filter: blur(24px) saturate(1.1);
+		-webkit-backdrop-filter: blur(24px) saturate(1.1);
+		transition:
+			transform 220ms ease,
+			border-color 220ms ease,
+			box-shadow 220ms ease,
+			color 220ms ease;
+	}
+
+	.module-filter-pill:hover,
+	.module-filter-pill:focus-visible,
+	.module-filter-pill.is-active {
+		transform: translateY(-2px) scale(1.01);
+		border-color: rgb(
+			var(--filter-accent, var(--module-accent, 104 140 255)) / 0.28
+		);
+		color: rgba(248, 250, 255, 0.96);
+		box-shadow:
+			0 0 22px
+				rgb(
+					var(--filter-accent, var(--module-accent, 104 140 255)) /
+						0.14
+				),
+			0 14px 32px rgba(0, 0, 0, 0.16);
+	}
+
+	.module-filter-pill strong {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.7rem;
+		height: 1.7rem;
+		padding: 0 0.48rem;
+		border-radius: 999px;
+		background: rgb(
+			var(--filter-accent, var(--module-accent, 104 140 255)) / 0.16
+		);
+		color: rgb(
+			var(--filter-accent, var(--module-accent, 104 140 255)) / 0.98
+		);
+		font-size: 0.76rem;
+		font-weight: 650;
+	}
+
+	.module-filter-summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 1.25rem;
+		padding: 0.9rem 1rem;
+		border-radius: 1.15rem;
+		border: 1px solid rgb(var(--module-accent, 104 140 255) / 0.12);
+		background: rgba(255, 255, 255, 0.04);
+	}
+
+	.module-filter-summary__copy,
+	.module-filter-summary__count {
+		color: rgba(223, 231, 244, 0.72);
+	}
+
+	.module-filter-summary__copy strong,
+	.module-filter-summary__count span {
+		margin-left: 0.38rem;
+		color: rgba(248, 250, 255, 0.94);
+	}
+
+	.module-filter-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.module-filter-list > div {
+		transition:
+			opacity 180ms ease,
+			transform 180ms ease;
+	}
+
+	.module-filter-list > div.is-filter-hidden {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+
+	.module-filter-empty {
+		margin-top: 1rem;
+		padding: 1.3rem 1.4rem;
+		border-radius: 1.25rem;
+		border: 1px dashed rgb(var(--module-accent, 104 140 255) / 0.18);
+		background: rgba(255, 255, 255, 0.04);
+	}
+
+	.module-filter-empty h3 {
+		font-size: 1.06rem;
+		font-weight: 640;
+		color: rgba(248, 250, 255, 0.92);
+	}
+
+	.module-filter-empty p {
+		margin-top: 0.45rem;
+		line-height: 1.72;
+		color: rgba(223, 231, 244, 0.62);
+	}
+
+	:root:not(.dark) .module-filter-pill {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.58),
+				rgba(246, 250, 255, 0.22)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(
+					var(--filter-accent, var(--module-accent, 104 140 255)) /
+						0.1
+				),
+				transparent 9rem
+			);
+		color: rgba(15, 23, 42, 0.72);
+		box-shadow:
+			0 16px 32px rgba(15, 23, 42, 0.06),
+			inset 0 1px 0 rgba(255, 255, 255, 0.68);
+	}
+
+	:root:not(.dark) .module-filter-summary,
+	:root:not(.dark) .module-filter-empty {
+		background: rgba(255, 255, 255, 0.46);
+		box-shadow:
+			0 20px 40px rgba(15, 23, 42, 0.06),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+	}
+
+	:root:not(.dark) .module-filter-summary__copy,
+	:root:not(.dark) .module-filter-summary__count,
+	:root:not(.dark) .module-filter-empty p {
+		color: rgba(15, 23, 42, 0.62);
+	}
+
+	:root:not(.dark) .module-filter-summary__copy strong,
+	:root:not(.dark) .module-filter-summary__count span,
+	:root:not(.dark) .module-filter-empty h3 {
+		color: rgba(15, 23, 42, 0.92);
+	}
+
+	@media (max-width: 720px) {
+		.module-filter-summary {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+</style>

@@ -3,6 +3,7 @@ import BackToTop from "@components/control/BackToTop.astro";
 import { FloatingTOC, SidebarTOC } from "@components/features/toc";
 import Banner from "@components/layout/Banner.astro";
 import RightSideBar from "@components/layout/RightSideBar.astro";
+import SplashSelector from "@components/features/home/SplashSelector.astro";
 import FullscreenWallpaper from "@components/misc/FullscreenWallpaper.astro";
 import IconifyLoader from "@components/misc/IconifyLoader.astro";
 import Footer from "@components/organisms/footer/Footer.astro";
@@ -42,6 +43,9 @@ interface Props {
 	setOGTypeArticle?: boolean;
 	postSlug?: string;
 	headings?: MarkdownHeading[];
+	showSplash?: boolean;
+	splashOnly?: boolean;
+	immersiveLayout?: boolean;
 }
 
 // 获取 banner 图片
@@ -55,7 +59,11 @@ const {
 	setOGTypeArticle,
 	postSlug,
 	headings = [],
+	showSplash = false,
+	splashOnly = false,
+	immersiveLayout = false,
 } = Astro.props;
+const hasHeadings = headings.length > 0;
 const hasBannerCredit = siteConfig.banner.credit.enable;
 const hasBannerLink = !!siteConfig.banner.credit.url;
 
@@ -90,6 +98,22 @@ const {
 	hasMobileDrawerComponents,
 } = sidebarPresence;
 
+const effectiveGridCols = immersiveLayout
+	? "grid-cols-1 md:grid-cols-1 lg:grid-cols-1"
+	: gridCols;
+const effectiveMainContentClass = immersiveLayout
+	? "transition-swup-fade overflow-visible w-full col-span-1 row-start-1 row-end-2 md:col-start-1 md:col-end-2 lg:col-start-1 lg:col-end-2"
+	: mainContentClass;
+const shouldRenderSidebars = !immersiveLayout;
+const shouldRenderFloatTOC =
+	siteConfig.toc.enable && isFloatTOC && !immersiveLayout && hasHeadings;
+const shouldRenderSidebarTOC =
+	siteConfig.toc.enable && isSidebarTOC && !immersiveLayout && hasHeadings;
+const shouldRenderImmersiveFloatTOC =
+	siteConfig.toc.enable && immersiveLayout && hasHeadings;
+const shouldRenderImmersiveSidebarTOC =
+	siteConfig.toc.enable && isSidebarTOC && immersiveLayout && hasHeadings;
+
 // 半透明效果
 const shouldEnable = shouldEnableTransparency(siteConfig.wallpaperMode.defaultMode);
 const transparentClass = getTransparencyClass(shouldEnable);
@@ -98,7 +122,7 @@ const transparentClass = getTransparencyClass(shouldEnable);
 const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 ---
 
-<Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle} postSlug={postSlug}>
+<Layout title={title} banner={banner} description={description} lang={lang} setOGTypeArticle={setOGTypeArticle} postSlug={postSlug} bodyClass={immersiveLayout ? "immersive-page" : undefined}>
 
 <GridScripts
 	navbarTransparentMode={siteConfig.banner?.navbar?.transparentMode || "semi"}
@@ -116,93 +140,228 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 
 <!-- Navbar -->
 <slot slot="head" name="head"></slot>
-<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto" class:list={[""]}>
-    <div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">
-        <Navbar></Navbar>
-    </div>
-</div>
+{!splashOnly ? (
+	immersiveLayout ? (
+		<>
+			<script is:inline>
+				(() => {
+					const applyImmersiveShell = () => {
+						document.body.classList.add("immersive-page");
+					};
 
-<!-- Banner 组件 -->
-<Banner
-	bannerImages={bannerImages}
-	mobileNonHomeBannerClass={mobileNonHomeBannerClass}
-/>
+					if (document.readyState === "loading") {
+						document.addEventListener("DOMContentLoaded", applyImmersiveShell, { once: true });
+					} else {
+						applyImmersiveShell();
+					}
 
-<!-- Main content -->
-<div class={`absolute w-full z-30 pointer-events-none ${mobileNonHomeBannerClass ? 'mobile-main-no-banner' : ''} ${siteConfig.wallpaperMode.defaultMode === 'none' ? 'no-banner-layout' : ''} ${transparentClass}`} style={`top: ${finalMainPanelTop}`}>
-    <!-- The pointer-events-none here prevent blocking the click event of the TOC -->
-    <div class="relative max-w-[var(--page-width)] mx-auto pointer-events-auto">
-        <div id="main-grid" class={`transition duration-700 w-full left-0 right-0 grid ${gridCols} grid-rows-none md:grid-rows-[auto] mx-auto gap-4 px-2 md:px-4 ${!mobileShowSidebar || !hasMobileDrawerComponents ? 'mobile-no-sidebar' : ''} ${hasRightSidebarComponents ? 'mobile-both-sidebar' : ''}`}
-             data-layout-mode={defaultPostListLayout}
-        >
-            <!-- Banner image credit -->
-            {hasBannerCredit && <a href={siteConfig.banner.credit.url} id="banner-credit" target="_blank" rel="noopener" aria-label="Visit image source"
-                                   class:list={["group onload-animation transition-all absolute flex justify-center items-center rounded-full " +
-                                   "px-3 right-4 -top-[3.25rem] bg-black/60 hover:bg-black/70 h-9", {"hover:pr-9 active:bg-black/80": hasBannerLink}]}
-            >
-                <Icon class="text-white/75 text-[1.25rem] mr-1" name="material-symbols:copyright-outline-rounded" ></Icon>
-                <div class="text-white/75 text-xs">{siteConfig.banner.credit.text}</div>
-                <Icon class:list={["transition absolute text-[oklch(0.75_0.14_var(--hue))] right-4 text-[0.75rem] opacity-0",
-                    {"group-hover:opacity-100": hasBannerLink}]}
-                      name="fa7-solid:arrow-up-right-from-square">
-                </Icon>
-            </a>}
+					window.addEventListener(
+						"pagehide",
+						() => {
+							document.body.classList.remove("immersive-page");
+						},
+						{ once: true },
+					);
+				})();
+			</script>
 
+			<div class="immersive-video-shell" data-immersive-video-shell aria-hidden="true">
+				<video
+					class="immersive-video"
+					data-immersive-video
+					autoplay
+					muted
+					loop
+					playsinline
+					preload="auto"
+					disableRemotePlayback
+				>
+					<source src="/assets/opening/qidian-splash.mp4" type="video/mp4" />
+				</video>
+				<div class="immersive-video-overlay"></div>
+			</div>
 
-            {/* 侧边栏和主内容区域容器 */}
-            <div class="contents">
-                {(mobileShowSidebar || tabletShowSidebar || desktopShowSidebar) && (
-                    <SideBar class={`${sidebarClass} ${transparentClass}`} headings={headings}></SideBar>
-                )}
-                
-                {hasRightSidebarComponents && (
-                    <div class={`right-sidebar-container ${rightSidebarClass} ${transparentClass}`}>
-                        <RightSideBar headings={headings}></RightSideBar>
-                    </div>
-                )}
-            </div>
+			<script is:inline>
+				(() => {
+					if (typeof window === "undefined") return;
 
-            <main id="swup-container" class={`${mainContentClass} transition-main`}>
-                <div id="content-wrapper" class="onload-animation transition-leaving">
-                    <!-- the overflow-hidden here prevent long text break the layout-->
-                    <!-- make id different from windows.swup global property -->
-                    <slot></slot>
-                    <div class="footer col-span-full onload-animation hidden lg:block">
-                        <Footer></Footer>
-                    </div>
-                </div>
-            </main>
+					const shell = document.querySelector("[data-immersive-video-shell]");
+					const video = shell?.querySelector("[data-immersive-video]");
+					if (!shell || !(video instanceof HTMLVideoElement)) return;
 
-            <div class="footer col-span-full onload-animation block lg:hidden">
-                <Footer></Footer>
-            </div>
-        </div>
+					const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-        <BackToTop></BackToTop>
-        {siteConfig.toc.enable && isFloatTOC && <FloatingTOC />}
-    </div>
-</div>
+					const syncMotionPreference = () => {
+						if (mediaQuery.matches) {
+							shell.setAttribute("hidden", "");
+							video.pause();
+							return;
+						}
 
-<!-- 侧边栏TOC模式 -->
-{siteConfig.toc.enable && isSidebarTOC && (
-    <div class="absolute w-full z-0 hidden 2xl:block">
-        <div class="relative max-w-[var(--page-width)] mx-auto">
-            <div id="toc-wrapper" class:list={["hidden lg:block transition absolute top-0 w-[var(--toc-width)] items-center",
-                "-right-[var(--toc-width)]",
-                {"toc-hide": siteConfig.wallpaperMode.defaultMode === "banner"}]}
-            >
-                <div id="toc-inner-wrapper" class="fixed top-14 w-[var(--toc-width)] max-h-[calc(100vh_-_10rem)] overflow-hidden">
-                    <div id="toc-container" class="w-full transition-swup-fade">
-                        <SidebarTOC headings={headings}></SidebarTOC>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+						shell.removeAttribute("hidden");
+						video.muted = true;
+						video.defaultMuted = true;
+						video.playsInline = true;
+						video.setAttribute("muted", "");
+						video.setAttribute("playsinline", "");
+
+						const tryPlay = () => {
+							video.play().catch(() => {});
+						};
+
+						if (video.readyState >= 2) {
+							tryPlay();
+						} else {
+							video.addEventListener("canplay", tryPlay, { once: true });
+						}
+					};
+
+					syncMotionPreference();
+					mediaQuery.addEventListener?.("change", syncMotionPreference);
+
+					document.addEventListener("visibilitychange", () => {
+						if (document.hidden) {
+							video.pause();
+						} else {
+							syncMotionPreference();
+						}
+					});
+				})();
+			</script>
+
+			<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto">
+				<div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">
+					<Navbar class="immersive-navbar-shell"></Navbar>
+				</div>
+			</div>
+
+			<div class="relative z-30 w-full pointer-events-none">
+				<div class="mx-auto max-w-[var(--page-width)] px-2 md:px-4 pointer-events-auto">
+					<main id="swup-container" class="transition-main w-full">
+						<div id="content-wrapper" class="transition-leaving immersive-content-shell">
+							<slot></slot>
+							<div class="footer onload-animation pt-6">
+								<Footer></Footer>
+							</div>
+						</div>
+					</main>
+				</div>
+			</div>
+
+			<BackToTop></BackToTop>
+			{shouldRenderImmersiveFloatTOC && <FloatingTOC />}
+			{shouldRenderImmersiveSidebarTOC && (
+				<div class="absolute inset-x-0 top-0 z-20 hidden 2xl:block pointer-events-none">
+					<div class="relative max-w-[var(--page-width)] mx-auto px-2 md:px-4">
+						<div
+							id="toc-wrapper"
+							class="hidden lg:block absolute top-0 w-[var(--toc-width)] -right-[var(--toc-width)] pointer-events-auto"
+						>
+							<div
+								id="toc-inner-wrapper"
+								class="fixed top-24 w-[var(--toc-width)] max-h-[calc(100vh_-_12rem)] overflow-hidden"
+							>
+								<div id="toc-container" class="w-full transition-swup-fade">
+									<SidebarTOC headings={headings}></SidebarTOC>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+			{(!siteConfig.toc.enable || !hasHeadings || shouldRenderImmersiveFloatTOC) && (
+				<div id="toc-container" class="hidden"></div>
+			)}
+		</>
+	) : (
+		<>
+			<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto" class:list={[""]}>
+				<div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">
+					<Navbar></Navbar>
+				</div>
+			</div>
+
+			<Banner
+				bannerImages={bannerImages}
+				mobileNonHomeBannerClass={mobileNonHomeBannerClass}
+			/>
+
+			<div class={`absolute w-full z-30 pointer-events-none ${mobileNonHomeBannerClass ? 'mobile-main-no-banner' : ''} ${siteConfig.wallpaperMode.defaultMode === 'none' ? 'no-banner-layout' : ''} ${transparentClass}`} style={`top: ${finalMainPanelTop}`}>
+				<div class="relative max-w-[var(--page-width)] mx-auto pointer-events-auto">
+					<div id="main-grid" class={`transition duration-700 w-full left-0 right-0 grid ${effectiveGridCols} grid-rows-none md:grid-rows-[auto] mx-auto gap-4 px-2 md:px-4 ${!mobileShowSidebar || !hasMobileDrawerComponents ? 'mobile-no-sidebar' : ''} ${hasRightSidebarComponents ? 'mobile-both-sidebar' : ''}`}
+						 data-layout-mode={defaultPostListLayout}
+					>
+						{hasBannerCredit && <a href={siteConfig.banner.credit.url} id="banner-credit" target="_blank" rel="noopener" aria-label="Visit image source"
+										   class:list={["group onload-animation transition-all absolute flex justify-center items-center rounded-full " +
+										   "px-3 right-4 -top-[3.25rem] bg-black/60 hover:bg-black/70 h-9", {"hover:pr-9 active:bg-black/80": hasBannerLink}]}
+						>
+							<Icon class="text-white/75 text-[1.25rem] mr-1" name="material-symbols:copyright-outline-rounded" ></Icon>
+							<div class="text-white/75 text-xs">{siteConfig.banner.credit.text}</div>
+							<Icon class:list={["transition absolute text-[oklch(0.75_0.14_var(--hue))] right-4 text-[0.75rem] opacity-0",
+								{"group-hover:opacity-100": hasBannerLink}]}
+								  name="fa7-solid:arrow-up-right-from-square">
+							</Icon>
+						</a>}
+
+						<div class="contents">
+							{shouldRenderSidebars && (mobileShowSidebar || tabletShowSidebar || desktopShowSidebar) && (
+								<SideBar class={`${sidebarClass} ${transparentClass}`} headings={headings}></SideBar>
+							)}
+
+							{shouldRenderSidebars && hasRightSidebarComponents && (
+								<div class={`right-sidebar-container ${rightSidebarClass} ${transparentClass}`}>
+									<RightSideBar headings={headings}></RightSideBar>
+								</div>
+							)}
+						</div>
+
+						<main id="swup-container" class={`${effectiveMainContentClass} transition-main`}>
+							<div id="content-wrapper" class="onload-animation transition-leaving">
+								<slot></slot>
+								<div class="footer col-span-full onload-animation hidden lg:block">
+									<Footer></Footer>
+								</div>
+							</div>
+						</main>
+
+						<div class="footer col-span-full onload-animation block lg:hidden">
+							<Footer></Footer>
+						</div>
+					</div>
+
+					<BackToTop></BackToTop>
+					{shouldRenderFloatTOC && <FloatingTOC />}
+				</div>
+			</div>
+
+			{shouldRenderSidebarTOC && (
+				<div class="absolute w-full z-0 hidden 2xl:block">
+					<div class="relative max-w-[var(--page-width)] mx-auto">
+						<div id="toc-wrapper" class:list={["hidden lg:block transition absolute top-0 w-[var(--toc-width)] items-center",
+							"-right-[var(--toc-width)]",
+							{"toc-hide": siteConfig.wallpaperMode.defaultMode === "banner"}]}
+						>
+							<div id="toc-inner-wrapper" class="fixed top-14 w-[var(--toc-width)] max-h-[calc(100vh_-_10rem)] overflow-hidden">
+								<div id="toc-container" class="w-full transition-swup-fade">
+									<SidebarTOC headings={headings}></SidebarTOC>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{(!siteConfig.toc.enable || isFloatTOC || immersiveLayout || !hasHeadings) && <div id="toc-container" class="hidden"></div>}
+		</>
+	)
+) : (
+	<main id="swup-container" class="transition-main min-h-screen">
+		<div id="content-wrapper" class="min-h-screen">
+			{showSplash && <SplashSelector />}
+		</div>
+	</main>
 )}
-
-<!-- 保留此元素以确保Swup正常工作 -->
-{(!siteConfig.toc.enable || isFloatTOC) && <div id="toc-container" class="hidden"></div>}
+{showSplash && !splashOnly && <SplashSelector />}
 </Layout>
 
 <!--

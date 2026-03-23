@@ -1,0 +1,9 @@
+{
+  "title": "Hot 100",
+  "eyebrow": "Algorithm",
+  "description": "放 LeetCode Hot 100、题解、思路拆解和刷题复盘。",
+  "size": "medium",
+  "accent": "132 126 255",
+  "icon": "mdi:lightning-bolt-outline",
+  "order": 30
+}

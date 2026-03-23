@@ -95,8 +95,7 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { Content, headings } = await render(entry);
-const { remarkPluginFrontmatter } = await render(entry);
+const { Content, headings, remarkPluginFrontmatter } = await render(entry);
 
 // Process cover image for SharePoster
 let posterCoverUrl = entry.data.image;
@@ -185,6 +184,7 @@ const jsonLd = {
 ---
 
 <MainGridLayout
+    immersiveLayout={true}
     banner={entry.data.image}
     title={entry.data.title}
     description={entry.data.description}
@@ -199,18 +199,18 @@ const jsonLd = {
     import('../../scripts/right-sidebar-layout.js');
   </script>
     <div
-        class="flex w-full rounded-[var(--radius-large)] overflow-hidden relative mb-4"
+        class="post-shell flex w-full rounded-[var(--radius-large)] overflow-hidden relative mb-4"
     >
         <div
             id="post-container"
             class:list={[
-                "card-base z-10 px-6 md:px-9 pt-6 pb-4 relative w-full ",
+                "post-article-card card-base z-10 px-6 md:px-9 pt-6 pb-4 relative w-full ",
                 {},
             ]}
         >
             <!-- word count and reading time -->
             <div
-                class="flex flex-row text-black/30 dark:text-white/30 gap-5 mb-3 transition onload-animation"
+                class="post-reading-strip flex flex-row text-black/30 dark:text-white/30 gap-5 mb-3 transition onload-animation"
             >
                 <div class="flex flex-row items-center">
                     <div
@@ -251,7 +251,7 @@ const jsonLd = {
                     data-pagefind-body
                     data-pagefind-weight="10"
                     data-pagefind-meta="title"
-                    class="transition w-full block font-bold mb-3
+                    class="post-article-title transition w-full block font-bold mb-3
                     text-3xl md:text-[2.25rem]/[2.75rem]
                     text-black/90 dark:text-white/90
                     md:before:w-1 before:h-5 before:rounded-md before:bg-[var(--primary)]
@@ -288,7 +288,7 @@ const jsonLd = {
                             id="post-cover"
                             src={entry.data.image}
                             basePath={getFileDirFromPath(entry.filePath || '')}
-                            class="mb-8 rounded-xl banner-container onload-animation"
+                            class="post-cover-frame mb-8 rounded-xl banner-container onload-animation"
                         />
                     </>
                 )
@@ -297,19 +297,19 @@ const jsonLd = {
             {
                 isEncrypted ? (
                     <Encryptor password={entry.data.password}>
-                         <Markdown class="mb-6 markdown-content onload-animation">
+                         <Markdown class="post-markdown-flow mb-6 markdown-content onload-animation">
                             <Content />
                         </Markdown>
                     </Encryptor>
                 ) : (
-                    <Markdown class="mb-6 markdown-content onload-animation">
+                    <Markdown class="post-markdown-flow mb-6 markdown-content onload-animation">
                         <Content />
                     </Markdown>
                 )
             }
 
             {shareConfig.enable && (
-                <div id="share-component" class:list={["p-6 bg-[var(--license-block-bg)] rounded-xl mb-6 onload-animation", { "encrypted-hidden": isEncrypted }]}>
+                <div id="share-component" class:list={["post-support-card p-6 bg-[var(--license-block-bg)] rounded-xl mb-6 onload-animation", { "encrypted-hidden": isEncrypted }]}>
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div class="flex items-center gap-3 flex-1">
                             <div class="flex items-center justify-center h-12 w-12 rounded-lg bg-[var(--enter-btn-bg)]">
@@ -379,7 +379,7 @@ const jsonLd = {
                 style="display: none;"
             ></div>
 
-            <div class="card-base p-6 mb-4">
+            <div class="post-support-card card-base p-6 mb-4">
                 <script is:inline>
                     function runtime() {
                         const lastModifiedElement = document.getElementById('last-modified');
@@ -450,9 +450,7 @@ const jsonLd = {
         </>
     )}
 
-    <div
-        class="flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-hidden w-full"
-    >
+    <div class="post-neighbor-nav flex flex-col md:flex-row justify-between mb-4 gap-4 overflow-hidden w-full">
         <a
             href={entry.data.nextSlug
                 ? getPostUrlBySlug(entry.data.nextSlug)
@@ -464,7 +462,7 @@ const jsonLd = {
         >
             {
                 entry.data.nextSlug && (
-                    <div class="btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-start gap-4">
+                    <div class="post-neighbor-card btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-start gap-4">
                         <Icon
                             name="material-symbols:chevron-left-rounded"
                             class="text-[2rem] text-[var(--primary)]"
@@ -488,7 +486,7 @@ const jsonLd = {
         >
             {
                 entry.data.prevSlug && (
-                    <div class="btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-end gap-4">
+                    <div class="post-neighbor-card btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-end gap-4">
                         <div class="overflow-hidden transition overflow-ellipsis whitespace-nowrap max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
                             {entry.data.prevTitle}
                         </div>

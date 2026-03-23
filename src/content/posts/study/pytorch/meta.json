@@ -1,0 +1,9 @@
+{
+  "title": "Pytorch",
+  "eyebrow": "Framework",
+  "description": "放 PyTorch 张量、训练循环、实验记录和工程化笔记。",
+  "size": "medium",
+  "accent": "94 154 255",
+  "icon": "mdi:fire-circle",
+  "order": 60
+}

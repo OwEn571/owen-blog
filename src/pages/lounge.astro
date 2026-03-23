@@ -1,0 +1,445 @@
+---
+import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
+import { Icon } from "astro-icon/components";
+
+import { loungeStatus, loungeStories } from "../data/module-blueprint";
+import MainGridLayout from "../layouts/MainGridLayout.astro";
+import {
+	getModuleDirectoryCards,
+	getModulePostsList,
+	getModuleWriteRoot,
+} from "../utils/module-content-utils";
+
+const loungePosts = await getModulePostsList("lounge");
+const loungeCards = await getModuleDirectoryCards("lounge", loungePosts);
+
+const heroSummary = [
+	{ label: "展示方式", value: "Status + Masonry" },
+	{ label: "目录卡片", value: `${loungeCards.length}` },
+	{ label: "已发布文章", value: `${loungePosts.length}` },
+	{ label: "气氛", value: "Polaroid / Lounge" },
+];
+---
+
+<MainGridLayout
+	immersiveLayout={true}
+	title="Lounge"
+	description="状态卡、随笔、漫评与生活碎片"
+>
+	<script>
+		import("../scripts/right-sidebar-layout.js");
+	</script>
+
+	<div class="module-page" style="--module-accent: 118 196 255;">
+		<section class="module-hero module-hero-split">
+			<div class="module-copy">
+				<p class="module-eyebrow">Lounge</p>
+				<h1 class="module-title">
+					把状态、随笔和生活碎片做成一面有呼吸感的墙
+				</h1>
+				<p class="module-description">
+					这里不是传统时间轴，而是一种更松弛的生活界面。顶上挂状态，下面是像宝丽来和
+					Pinterest 一样铺开的碎片。
+				</p>
+				<div class="module-copy-grid">
+					{
+						heroSummary.map((item) => (
+							<article class="module-copy-item">
+								<span class="module-copy-label">
+									{item.label}
+								</span>
+								<strong class="module-copy-value">
+									{item.value}
+								</strong>
+							</article>
+						))
+					}
+				</div>
+			</div>
+
+			<div class="module-stage lounge-stage" id="lounge-status">
+				<div class="module-stage-top">
+					<div class="module-dots" aria-hidden="true">
+						<span></span>
+						<span></span>
+						<span></span>
+					</div>
+					<span class="module-badge">Status Widget</span>
+				</div>
+				<div class="lounge-status-card">
+					<div class="lounge-status-poster" aria-hidden="true">
+						<div class="lounge-status-orb"></div>
+					</div>
+					<div class="lounge-status-copy">
+						<p class="module-stage-label">{loungeStatus.label}</p>
+						<h2>{loungeStatus.title}</h2>
+						<p>{loungeStatus.description}</p>
+						<div class="lounge-status-meta">
+							<span class="module-panel-badge"
+								>{loungeStatus.meta}</span
+							>
+							<span class="module-panel-badge">Discord-style</span
+							>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<ModuleDirectoryDeck
+			eyebrow="Directory Deck"
+			title="Lounge 写作目录"
+			description="Lounge 也会自动扫描 src/content/posts/lounge/ 下的一级目录。你只要为游戏、影评、照片或日常新建目录，页面就会长出对应卡片。"
+			badge={`${loungeCards.length} Directories`}
+			cards={loungeCards}
+			emptyTitle="Lounge 还没有生活型目录"
+			emptyDescription="先在 Lounge 根目录下新建一级文件夹，再把随笔、短评或生活记录放进去。"
+			emptyWritePath={getModuleWriteRoot("lounge")}
+		/>
+
+		<section class="lounge-masonry" id="lounge-wall">
+			{
+				loungeStories.map((story) => (
+					<article
+						class={`lounge-card lounge-card--${story.height}`}
+						style={`--lounge-accent: ${story.accent};`}
+					>
+						<div class="lounge-card-photo" aria-hidden="true" />
+						<div class="lounge-card-top">
+							<span class="lounge-card-type">{story.type}</span>
+							<span class="lounge-card-meta">{story.meta}</span>
+						</div>
+						<h2>{story.title}</h2>
+						<p>{story.description}</p>
+					</article>
+				))
+			}
+		</section>
+
+		<section class="module-content-shell" id="lounge-notes">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">Notes</p>
+					<h2 class="module-content-title">休息室可以承接什么内容</h2>
+					<p class="module-content-description">
+						以后这里可以并入真实的日记、影评、游戏评测和相册。现在先把状态卡和瀑布流的语气定下来，后面加内容会很自然。
+					</p>
+				</div>
+				<span class="module-panel-badge">Masonry</span>
+			</div>
+			<div class="module-panel-grid">
+				<article class="module-panel">
+					<div class="module-panel-top">
+						<span class="module-panel-label">Widget</span>
+						<div class="module-panel-icon">
+							<Icon
+								name="mdi:music-circle-outline"
+								class="text-[1.25rem]"
+							/>
+						</div>
+					</div>
+					<h3 class="module-panel-title">Currently Playing</h3>
+					<p class="module-panel-copy">
+						把 COS
+						封面图、游戏标题和短状态接进来之后，这里会变成你的实时生活状态面板。
+					</p>
+				</article>
+				<article class="module-panel">
+					<div class="module-panel-top">
+						<span class="module-panel-label">Review</span>
+						<div class="module-panel-icon">
+							<Icon
+								name="mdi:movie-open-outline"
+								class="text-[1.25rem]"
+							/>
+						</div>
+					</div>
+					<h3 class="module-panel-title">漫评 / 游戏评测</h3>
+					<p class="module-panel-copy">
+						短内容不一定要被压成列表项。用高低错落的卡片更适合装下气味和情绪。
+					</p>
+				</article>
+				<article class="module-panel">
+					<div class="module-panel-top">
+						<span class="module-panel-label">Memory</span>
+						<div class="module-panel-icon">
+							<Icon
+								name="mdi:camera-outline"
+								class="text-[1.25rem]"
+							/>
+						</div>
+					</div>
+					<h3 class="module-panel-title">照片与相册</h3>
+					<p class="module-panel-copy">
+						如果你后面想接图片、桌面截图和生活记录，这里会比普通日记页更有表达空间。
+					</p>
+				</article>
+			</div>
+		</section>
+	</div>
+</MainGridLayout>
+
+<style>
+	.lounge-stage {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.lounge-status-card {
+		display: grid;
+		grid-template-columns: minmax(10rem, 0.78fr) minmax(0, 1fr);
+		gap: 1rem;
+		align-items: stretch;
+	}
+
+	.lounge-status-poster {
+		position: relative;
+		min-height: 15rem;
+		border-radius: 1.45rem;
+		border: 1px solid rgba(118, 196, 255, 0.14);
+		background:
+			radial-gradient(
+				circle at 22% 24%,
+				rgba(132, 200, 255, 0.4),
+				transparent 26%
+			),
+			radial-gradient(
+				circle at 70% 34%,
+				rgba(146, 132, 255, 0.22),
+				transparent 28%
+			),
+			linear-gradient(
+				180deg,
+				rgba(6, 10, 16, 0.96),
+				rgba(8, 12, 20, 0.88)
+			);
+		overflow: hidden;
+	}
+
+	.lounge-status-orb {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: 6rem;
+		height: 6rem;
+		border-radius: 999px;
+		background: radial-gradient(
+			circle,
+			rgba(255, 255, 255, 0.3),
+			rgba(132, 200, 255, 0.08) 58%,
+			transparent 72%
+		);
+		transform: translate(-50%, -50%);
+		box-shadow:
+			0 0 48px rgba(132, 200, 255, 0.28),
+			0 0 120px rgba(132, 200, 255, 0.16);
+	}
+
+	.lounge-status-copy {
+		display: flex;
+		flex-direction: column;
+		padding: 0.3rem 0 0.1rem;
+	}
+
+	.lounge-status-copy h2 {
+		margin-top: 0.55rem;
+		font-size: clamp(1.65rem, 3vw, 2.3rem);
+		line-height: 1.03;
+		font-weight: 680;
+		letter-spacing: -0.05em;
+		color: rgba(248, 250, 255, 0.94);
+	}
+
+	.lounge-status-copy p {
+		margin-top: 0.85rem;
+		line-height: 1.8;
+		color: rgba(223, 231, 244, 0.66);
+	}
+
+	.lounge-status-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-top: auto;
+		padding-top: 1rem;
+	}
+
+	.lounge-masonry {
+		column-count: 3;
+		column-gap: 1rem;
+	}
+
+	.lounge-card {
+		break-inside: avoid;
+		display: flex;
+		flex-direction: column;
+		margin-bottom: 1rem;
+		padding: 1rem;
+		border-radius: 1.55rem;
+		border: 1px solid rgb(var(--lounge-accent) / 0.14);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(9, 12, 19, 0.34),
+				rgba(5, 8, 14, 0.14)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--lounge-accent) / 0.18),
+				transparent 12rem
+			);
+		box-shadow:
+			0 26px 72px rgba(0, 0, 0, 0.22),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		backdrop-filter: blur(38px) saturate(1.16);
+		-webkit-backdrop-filter: blur(38px) saturate(1.16);
+		transition:
+			transform 260ms ease,
+			border-color 260ms ease,
+			box-shadow 260ms ease;
+	}
+
+	.lounge-card:hover {
+		transform: translateY(-5px) scale(1.012);
+		border-color: rgb(var(--lounge-accent) / 0.22);
+		box-shadow:
+			0 34px 90px rgba(0, 0, 0, 0.28),
+			0 0 18px rgb(var(--lounge-accent) / 0.14),
+			0 0 42px rgb(var(--lounge-accent) / 0.12);
+	}
+
+	.lounge-card-photo {
+		min-height: 10rem;
+		border-radius: 1.2rem;
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.12),
+				rgba(255, 255, 255, 0.02)
+			),
+			radial-gradient(
+				circle at 24% 24%,
+				rgb(var(--lounge-accent) / 0.32),
+				transparent 22%
+			),
+			radial-gradient(
+				circle at 78% 34%,
+				rgba(255, 255, 255, 0.18),
+				transparent 20%
+			);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+
+	.lounge-card--short .lounge-card-photo {
+		min-height: 7rem;
+	}
+
+	.lounge-card--tall .lounge-card-photo {
+		min-height: 14rem;
+	}
+
+	.lounge-card-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+		margin-top: 1rem;
+	}
+
+	.lounge-card-type,
+	.lounge-card-meta {
+		font-size: 0.76rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+	}
+
+	.lounge-card-type {
+		color: rgba(232, 238, 248, 0.5);
+	}
+
+	.lounge-card-meta {
+		color: rgb(var(--lounge-accent) / 0.95);
+	}
+
+	.lounge-card h2 {
+		margin-top: 1rem;
+		font-size: clamp(1.45rem, 2.5vw, 2rem);
+		line-height: 1.06;
+		font-weight: 680;
+		letter-spacing: -0.04em;
+		color: rgba(248, 250, 255, 0.94);
+	}
+
+	.lounge-card p {
+		margin-top: 0.82rem;
+		color: rgba(223, 231, 244, 0.66);
+		line-height: 1.78;
+	}
+
+	@media (max-width: 980px) {
+		.lounge-masonry {
+			column-count: 2;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.lounge-status-card,
+		.lounge-masonry {
+			display: grid;
+			grid-template-columns: 1fr;
+		}
+
+		.lounge-masonry {
+			column-count: 1;
+		}
+	}
+
+	:global(:root:not(.dark)) .lounge-status-copy h2,
+	:global(:root:not(.dark)) .lounge-card h2 {
+		color: rgba(15, 23, 42, 0.9);
+	}
+
+	:global(:root:not(.dark)) .lounge-status-copy p,
+	:global(:root:not(.dark)) .lounge-card p,
+	:global(:root:not(.dark)) .lounge-card-type {
+		color: rgba(15, 23, 42, 0.62);
+	}
+
+	:global(:root:not(.dark)) .lounge-card {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.48),
+				rgba(247, 250, 255, 0.22)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--lounge-accent) / 0.08),
+				transparent 12rem
+			);
+		box-shadow:
+			0 22px 56px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+	}
+
+	:global(:root:not(.dark)) .lounge-card-photo {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.74),
+				rgba(247, 250, 255, 0.42)
+			),
+			radial-gradient(
+				circle at 24% 24%,
+				rgb(var(--lounge-accent) / 0.16),
+				transparent 22%
+			),
+			radial-gradient(
+				circle at 78% 34%,
+				rgba(255, 255, 255, 0.58),
+				transparent 20%
+			);
+	}
+</style>

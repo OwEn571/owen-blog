@@ -1,0 +1,579 @@
+---
+import type { ModuleDirectoryCard } from "../../../utils/module-content-utils";
+import type { ModuleKey } from "../../../data/module-blueprint";
+
+interface Props {
+	cards: ModuleDirectoryCard[];
+	moduleKey?: ModuleKey;
+}
+
+const { cards = [], moduleKey = "study" } = Astro.props;
+---
+
+<div
+	class="study-knowledge-map-shell"
+	data-study-map
+	data-module-key={moduleKey}
+>
+	<div class="study-knowledge-map__grid" aria-hidden="true"></div>
+	<svg
+		class="study-knowledge-map__lines"
+		viewBox="0 0 100 100"
+		preserveAspectRatio="none"
+		aria-hidden="true"
+	>
+		<g data-study-map-line-layer></g>
+	</svg>
+
+	{
+		cards.map((card) => (
+			<button
+				type="button"
+				class="study-knowledge-node"
+				data-node-id={card.directoryName}
+				data-node-title={card.title}
+				style={`--node-accent: ${card.accent};`}
+				aria-label={`前往 ${card.title} 卡片`}
+			>
+				<span class="study-knowledge-node__halo" />
+				<span class="study-knowledge-node__core" />
+				<span class="study-knowledge-node__label">{card.title}</span>
+			</button>
+		))
+	}
+</div>
+
+<script>
+	const mapWindow = window as Window & {
+		__mizukiStudyKnowledgeMapBound?: boolean;
+		__mizukiStudyKnowledgeMapSwupBound?: boolean;
+		swup?: Swup;
+	};
+
+	function getNodeElements(root: HTMLElement) {
+		return Array.from(root.querySelectorAll("[data-node-id]")).filter(
+			(node): node is HTMLButtonElement =>
+				node instanceof HTMLButtonElement,
+		);
+	}
+
+	function getNodeBounds(root: HTMLElement, node: HTMLButtonElement) {
+		const width = Math.max(root.clientWidth, 1);
+		const height = Math.max(root.clientHeight, 1);
+		const paddingX = (((node.offsetWidth || 96) / 2 + 14) / width) * 100;
+		const paddingY = (((node.offsetHeight || 44) / 2 + 14) / height) * 100;
+
+		return {
+			minX: paddingX,
+			maxX: 100 - paddingX,
+			minY: paddingY,
+			maxY: 100 - paddingY,
+		};
+	}
+
+	function setNodePosition(
+		root: HTMLElement,
+		node: HTMLButtonElement,
+		xPercent: number,
+		yPercent: number,
+	) {
+		const bounds = getNodeBounds(root, node);
+		const nextX = Math.min(bounds.maxX, Math.max(bounds.minX, xPercent));
+		const nextY = Math.min(bounds.maxY, Math.max(bounds.minY, yPercent));
+
+		node.dataset.x = nextX.toFixed(3);
+		node.dataset.y = nextY.toFixed(3);
+		node.style.left = `${nextX}%`;
+		node.style.top = `${nextY}%`;
+	}
+
+	function drawLines(root: HTMLElement) {
+		const lineLayer = root.querySelector("[data-study-map-line-layer]");
+		if (!(lineLayer instanceof SVGGElement)) {
+			return;
+		}
+
+		const nodes = getNodeElements(root)
+			.map((node) => ({
+				id: node.dataset.nodeId || "",
+				x: Number(node.dataset.x || 0),
+				y: Number(node.dataset.y || 0),
+			}))
+			.filter((node) => node.id);
+
+		lineLayer.innerHTML = "";
+
+		const edges = new Set<string>();
+		nodes.forEach((node, index) => {
+			const nearest = nodes
+				.filter((other) => other.id !== node.id)
+				.map((other) => ({
+					other,
+					distance: Math.hypot(node.x - other.x, node.y - other.y),
+				}))
+				.sort((left, right) => left.distance - right.distance)
+				.slice(0, index === 0 ? 2 : 1);
+
+			nearest.forEach(({ other }) => {
+				const key = [node.id, other.id].sort().join("--");
+				if (edges.has(key)) {
+					return;
+				}
+				edges.add(key);
+
+				const line = document.createElementNS(
+					"http://www.w3.org/2000/svg",
+					"line",
+				);
+				line.setAttribute("x1", node.x.toFixed(2));
+				line.setAttribute("y1", node.y.toFixed(2));
+				line.setAttribute("x2", other.x.toFixed(2));
+				line.setAttribute("y2", other.y.toFixed(2));
+				lineLayer.appendChild(line);
+			});
+		});
+	}
+
+	function randomizeLayout(root: HTMLElement, preserveExisting = false) {
+		const nodes = getNodeElements(root);
+		const placedNodes: Array<{ x: number; y: number }> = [];
+
+		nodes.forEach((node) => {
+			if (preserveExisting && node.dataset.x && node.dataset.y) {
+				const x = Number(node.dataset.x);
+				const y = Number(node.dataset.y);
+				setNodePosition(root, node, x, y);
+				placedNodes.push({ x, y });
+				return;
+			}
+
+			const bounds = getNodeBounds(root, node);
+			let bestX = (bounds.minX + bounds.maxX) / 2;
+			let bestY = (bounds.minY + bounds.maxY) / 2;
+			let bestScore = -Infinity;
+
+			for (let attempt = 0; attempt < 120; attempt += 1) {
+				const x =
+					bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
+				const y =
+					bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
+				const closestDistance = placedNodes.reduce((minimum, point) => {
+					const distance = Math.hypot(
+						((point.x - x) * root.clientWidth) / 100,
+						((point.y - y) * root.clientHeight) / 100,
+					);
+					return Math.min(minimum, distance);
+				}, Number.POSITIVE_INFINITY);
+				const centerPenalty = Math.hypot(x - 50, y - 50) * 0.38;
+				const score =
+					(closestDistance === Number.POSITIVE_INFINITY
+						? 120
+						: closestDistance) -
+					centerPenalty +
+					Math.random() * 8;
+
+				if (score > bestScore) {
+					bestScore = score;
+					bestX = x;
+					bestY = y;
+				}
+			}
+
+			setNodePosition(root, node, bestX, bestY);
+			placedNodes.push({ x: bestX, y: bestY });
+		});
+
+		drawLines(root);
+	}
+
+	function focusCard(root: HTMLElement, directoryName: string) {
+		const moduleKey = root.dataset.moduleKey || "study";
+		mapWindow.dispatchEvent(
+			new CustomEvent("moduleDirectory:filterchange", {
+				detail: {
+					module: moduleKey,
+					directory: directoryName,
+				},
+			}),
+		);
+
+		const target = document.querySelector(
+			`[data-card-module="${moduleKey}"][data-card-directory="${directoryName}"]`,
+		);
+		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+
+		target.scrollIntoView({
+			behavior: "smooth",
+			block: "center",
+		});
+		target.classList.add("is-map-targeted");
+		window.setTimeout(() => {
+			target.classList.remove("is-map-targeted");
+		}, 1200);
+	}
+
+	function initStudyMap(root: Element) {
+		if (
+			!(root instanceof HTMLElement) ||
+			root.dataset.mapReady === "true"
+		) {
+			return;
+		}
+
+		root.dataset.mapReady = "true";
+
+		requestAnimationFrame(() => {
+			randomizeLayout(root);
+		});
+
+		getNodeElements(root).forEach((node) => {
+			let activePointerId = -1;
+			let isDragging = false;
+			let startClientX = 0;
+			let startClientY = 0;
+			let startNodeX = 50;
+			let startNodeY = 50;
+
+			node.addEventListener("pointerdown", (event) => {
+				activePointerId = event.pointerId;
+				isDragging = false;
+				startClientX = event.clientX;
+				startClientY = event.clientY;
+				startNodeX = Number(node.dataset.x || 50);
+				startNodeY = Number(node.dataset.y || 50);
+				node.classList.add("is-dragging");
+				node.setPointerCapture(activePointerId);
+			});
+
+			node.addEventListener("pointermove", (event) => {
+				if (event.pointerId !== activePointerId) {
+					return;
+				}
+
+				const deltaX = event.clientX - startClientX;
+				const deltaY = event.clientY - startClientY;
+				if (Math.hypot(deltaX, deltaY) > 4) {
+					isDragging = true;
+				}
+
+				if (!isDragging) {
+					return;
+				}
+
+				setNodePosition(
+					root,
+					node,
+					startNodeX + (deltaX / root.clientWidth) * 100,
+					startNodeY + (deltaY / root.clientHeight) * 100,
+				);
+				drawLines(root);
+			});
+
+			const finalizePointer = (shouldFocus: boolean) => {
+				if (
+					activePointerId !== -1 &&
+					node.hasPointerCapture(activePointerId)
+				) {
+					node.releasePointerCapture(activePointerId);
+				}
+				node.classList.remove("is-dragging");
+
+				if (shouldFocus && !isDragging) {
+					focusCard(root, node.dataset.nodeId || "");
+				}
+				activePointerId = -1;
+				isDragging = false;
+			};
+
+			node.addEventListener("pointerup", (event) => {
+				if (event.pointerId !== activePointerId) {
+					return;
+				}
+				finalizePointer(true);
+			});
+
+			node.addEventListener("pointercancel", () => {
+				finalizePointer(false);
+			});
+
+			node.addEventListener("keydown", (event) => {
+				if (event.key !== "Enter" && event.key !== " ") {
+					return;
+				}
+				event.preventDefault();
+				focusCard(root, node.dataset.nodeId || "");
+			});
+		});
+	}
+
+	function initStudyMaps() {
+		document.querySelectorAll("[data-study-map]").forEach((root) => {
+			initStudyMap(root);
+		});
+	}
+
+	if (!mapWindow.__mizukiStudyKnowledgeMapBound) {
+		mapWindow.__mizukiStudyKnowledgeMapBound = true;
+
+		let resizeTimer: number | undefined;
+		mapWindow.addEventListener("resize", () => {
+			window.clearTimeout(resizeTimer);
+			resizeTimer = window.setTimeout(() => {
+				document
+					.querySelectorAll("[data-study-map]")
+					.forEach((root) => {
+						if (root instanceof HTMLElement) {
+							randomizeLayout(root, true);
+						}
+					});
+			}, 140);
+		});
+	}
+
+	document.addEventListener("DOMContentLoaded", initStudyMaps);
+	if (document.readyState !== "loading") {
+		initStudyMaps();
+	}
+
+	function setupSwupListeners() {
+		if (
+			mapWindow.__mizukiStudyKnowledgeMapSwupBound ||
+			typeof mapWindow === "undefined"
+		) {
+			return;
+		}
+
+		function trySetupSwup() {
+			if (mapWindow.swup) {
+				mapWindow.swup.hooks.on("content:replace", initStudyMaps);
+				mapWindow.__mizukiStudyKnowledgeMapSwupBound = true;
+				return true;
+			}
+			return false;
+		}
+
+		if (!trySetupSwup()) {
+			let retryCount = 0;
+			const retryInterval = window.setInterval(() => {
+				if (trySetupSwup() || ++retryCount >= 10) {
+					window.clearInterval(retryInterval);
+				}
+			}, 100);
+		}
+	}
+
+	window.setTimeout(setupSwupListeners, 200);
+</script>
+
+<style>
+	.study-knowledge-map-shell {
+		position: relative;
+		min-height: 18rem;
+		border-radius: 1.5rem;
+		border: 1px solid rgba(108, 166, 255, 0.14);
+		background:
+			linear-gradient(180deg, rgba(7, 11, 19, 0.6), rgba(6, 10, 17, 0.2)),
+			radial-gradient(
+				circle at center,
+				rgba(124, 176, 255, 0.08),
+				transparent 58%
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(132, 126, 255, 0.18),
+				transparent 48%
+			);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.05),
+			0 22px 48px rgba(0, 0, 0, 0.18);
+		overflow: hidden;
+	}
+
+	.study-knowledge-map__grid,
+	.study-knowledge-map__lines {
+		position: absolute;
+		inset: 0;
+	}
+
+	.study-knowledge-map__grid {
+		background-image:
+			linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+			linear-gradient(
+				90deg,
+				rgba(255, 255, 255, 0.04) 1px,
+				transparent 1px
+			);
+		background-size: 18% 18%;
+		mask-image: radial-gradient(
+			circle at center,
+			black 52%,
+			transparent 100%
+		);
+	}
+
+	.study-knowledge-map__lines {
+		width: 100%;
+		height: 100%;
+	}
+
+	.study-knowledge-map__lines line {
+		stroke: rgba(132, 180, 255, 0.28);
+		stroke-width: 0.5;
+		stroke-linecap: round;
+		filter: drop-shadow(0 0 10px rgba(108, 166, 255, 0.3));
+	}
+
+	.study-knowledge-node {
+		position: absolute;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.78rem;
+		padding: 0.7rem 0.92rem 0.7rem 0.82rem;
+		border-radius: 999px;
+		border: 1px solid rgb(var(--node-accent) / 0.18);
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.08),
+				rgba(255, 255, 255, 0.03)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--node-accent) / 0.16),
+				transparent 8rem
+			);
+		backdrop-filter: blur(18px);
+		-webkit-backdrop-filter: blur(18px);
+		box-shadow:
+			0 16px 32px rgba(0, 0, 0, 0.14),
+			0 0 24px rgb(var(--node-accent) / 0.08);
+		color: rgba(248, 250, 255, 0.94);
+		transform: translate(-50%, -50%);
+		cursor: grab;
+		user-select: none;
+		transition:
+			transform 220ms ease,
+			box-shadow 220ms ease,
+			border-color 220ms ease;
+	}
+
+	.study-knowledge-node:hover,
+	.study-knowledge-node:focus-visible {
+		transform: translate(-50%, -50%) scale(1.03);
+		border-color: rgb(var(--node-accent) / 0.34);
+		box-shadow:
+			0 0 24px rgb(var(--node-accent) / 0.16),
+			0 20px 40px rgba(0, 0, 0, 0.18);
+	}
+
+	.study-knowledge-node.is-dragging {
+		cursor: grabbing;
+		transform: translate(-50%, -50%) scale(1.04);
+	}
+
+	.study-knowledge-node__core,
+	.study-knowledge-node__halo {
+		position: absolute;
+		left: 0.86rem;
+		top: 50%;
+		border-radius: 999px;
+		transform: translateY(-50%);
+		pointer-events: none;
+	}
+
+	.study-knowledge-node__core {
+		width: 0.74rem;
+		height: 0.74rem;
+		background: rgb(var(--node-accent) / 0.98);
+		box-shadow:
+			0 0 0 4px rgb(var(--node-accent) / 0.1),
+			0 0 18px rgb(var(--node-accent) / 0.42);
+	}
+
+	.study-knowledge-node__halo {
+		width: 3.2rem;
+		height: 3.2rem;
+		margin-left: -1.2rem;
+		background: radial-gradient(
+			circle,
+			rgb(var(--node-accent) / 0.22),
+			transparent 70%
+		);
+	}
+
+	.study-knowledge-node__label {
+		position: relative;
+		margin-left: 1.08rem;
+		font-size: 0.84rem;
+		font-weight: 620;
+		letter-spacing: 0.01em;
+		white-space: nowrap;
+	}
+
+	:root:not(.dark) .study-knowledge-map-shell {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.58),
+				rgba(244, 248, 255, 0.24)
+			),
+			radial-gradient(
+				circle at center,
+				rgba(124, 176, 255, 0.1),
+				transparent 58%
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(132, 126, 255, 0.12),
+				transparent 48%
+			);
+		box-shadow:
+			0 24px 54px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.74);
+	}
+
+	:root:not(.dark) .study-knowledge-map__lines line {
+		stroke: rgba(88, 132, 255, 0.26);
+	}
+
+	:root:not(.dark) .study-knowledge-node {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.72),
+				rgba(247, 250, 255, 0.42)
+			),
+			radial-gradient(
+				circle at top right,
+				rgb(var(--node-accent) / 0.12),
+				transparent 8rem
+			);
+		box-shadow:
+			0 18px 40px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.76);
+		color: rgba(15, 23, 42, 0.88);
+	}
+
+	@media (max-width: 900px) {
+		.study-knowledge-map-shell {
+			min-height: 17rem;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.study-knowledge-map-shell {
+			min-height: 19rem;
+		}
+
+		.study-knowledge-node {
+			padding: 0.62rem 0.82rem 0.62rem 0.76rem;
+		}
+
+		.study-knowledge-node__label {
+			max-width: 5.8rem;
+			white-space: normal;
+		}
+	}
+</style>

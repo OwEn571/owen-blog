@@ -1,0 +1,9 @@
+{
+  "title": "Fine Tuning",
+  "eyebrow": "Training",
+  "description": "放 LoRA、SFT、指令微调、数据集与训练流程总结。",
+  "size": "medium",
+  "accent": "154 173 255",
+  "icon": "mdi:tune-variant",
+  "order": 40
+}

@@ -1,0 +1,582 @@
+---
+import { Icon } from "astro-icon/components";
+
+import { profileConfig, siteConfig } from "@/config";
+
+import { homeSections } from "./entry-data";
+
+const splashTitle = profileConfig.name || siteConfig.title;
+---
+
+<div id="splash-selector" class="splash-shell" data-state="opening" role="dialog" aria-modal="true" aria-label="开屏入口选择">
+	<div class="splash-backdrop">
+		<video
+			class="splash-video"
+			autoplay
+			muted
+			loop
+			playsinline
+			preload="metadata"
+			disableRemotePlayback
+			aria-hidden="true"
+		>
+			<source src="/assets/opening/qidian-splash.mp4" type="video/mp4" />
+		</video>
+		<div class="splash-backdrop-overlay"></div>
+	</div>
+	<div class="splash-panel">
+		<div class="splash-topbar">
+			<div class="splash-dots" aria-hidden="true">
+				<span></span>
+				<span></span>
+				<span></span>
+			</div>
+			<span class="splash-status">Select Module</span>
+		</div>
+
+		<div class="splash-copy">
+			<p class="splash-kicker">Opening Screen</p>
+			<h1 class="splash-title">{splashTitle} 的内容入口</h1>
+			<p class="splash-description">
+				先从这里选择你想进入的界面。四个分区保持同一套引擎，但拥有不同的内容节奏和观看方式。
+			</p>
+		</div>
+
+		<div class="splash-grid">
+			{
+				homeSections.map((section, index) => (
+					<a
+						href={section.href}
+						class="splash-choice"
+						style={`--splash-accent: ${section.accent}; --splash-delay: ${index * 90}ms;`}
+						data-splash-target
+					>
+						<div class="splash-choice-top">
+							<span class="splash-choice-eyebrow">{section.eyebrow}</span>
+							<div class="splash-choice-icon">
+								<Icon name={section.icon} class="text-[1.55rem]" />
+							</div>
+						</div>
+						<h2 class="splash-choice-title">{section.title}</h2>
+						<p class="splash-choice-description">{section.description}</p>
+						<div class="splash-choice-footer">
+							<span>{section.note}</span>
+							<span class="splash-choice-enter">
+								进入
+								<Icon name="material-symbols:arrow-forward-rounded" class="text-base" />
+							</span>
+						</div>
+					</a>
+				))
+			}
+		</div>
+	</div>
+</div>
+
+<script is:inline>
+	(() => {
+		const root = document.getElementById("splash-selector");
+		if (!root) return;
+
+		const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		const optionLinks = root.querySelectorAll("[data-splash-target]");
+		const video = root.querySelector(".splash-video");
+		let isNavigating = false;
+
+		const lockPage = () => {
+			document.documentElement.classList.add("splash-active");
+			document.body.classList.add("splash-active");
+		};
+
+		const unlockPage = () => {
+			document.documentElement.classList.remove("splash-active");
+			document.body.classList.remove("splash-active");
+		};
+
+		const restoreSplash = () => {
+			isNavigating = false;
+			root.dataset.state = "ready";
+			lockPage();
+			if (!prefersReducedMotion) {
+				video?.play?.().catch(() => {});
+			}
+		};
+
+		const preloadRoute = (href) => {
+			if (!href) return;
+			try {
+				if (window.swup?.preload) {
+					window.swup.preload(href);
+					return;
+				}
+			} catch (error) {
+				console.warn("Splash preload failed:", error);
+			}
+
+			if (!document.head.querySelector(`link[rel="prefetch"][href="${href}"]`)) {
+				const link = document.createElement("link");
+				link.rel = "prefetch";
+				link.as = "document";
+				link.href = href;
+				document.head.appendChild(link);
+			}
+		};
+
+		const navigateTo = (href) => {
+			if (!href || isNavigating) return;
+			isNavigating = true;
+			root.dataset.state = "navigating";
+
+			window.setTimeout(() => {
+				window.location.assign(href);
+			}, prefersReducedMotion ? 0 : 70);
+		};
+
+		lockPage();
+		if (prefersReducedMotion) {
+			if (video) {
+				video.pause();
+				video.removeAttribute("autoplay");
+			}
+			root.dataset.state = "ready";
+		} else {
+			requestAnimationFrame(() => {
+				root.dataset.state = "ready";
+			});
+			video?.play?.().catch(() => {});
+		}
+
+		optionLinks.forEach((link) => {
+			const href = link.getAttribute("href");
+			if (href) {
+				link.addEventListener("pointerenter", () => preloadRoute(href), {
+					passive: true,
+				});
+				link.addEventListener("focus", () => preloadRoute(href));
+			}
+
+			link.addEventListener("click", (event) => {
+				event.preventDefault();
+				navigateTo(href);
+			});
+		});
+
+		const warmRoutes = () => {
+			optionLinks.forEach((link) => preloadRoute(link.getAttribute("href")));
+		};
+
+		if ("requestIdleCallback" in window) {
+			window.requestIdleCallback(warmRoutes, { timeout: 1200 });
+		} else {
+			window.setTimeout(warmRoutes, 220);
+		}
+
+		window.addEventListener("pagehide", () => {
+			unlockPage();
+		});
+
+		window.addEventListener("pageshow", () => {
+			restoreSplash();
+		});
+	})();
+</script>
+
+<style>
+	.splash-shell {
+		position: fixed;
+		inset: 0;
+		z-index: 180;
+		display: block;
+		color-scheme: dark;
+	}
+
+	.splash-backdrop {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		background: #02050c;
+	}
+
+	.splash-video {
+		position: absolute;
+		inset: -2%;
+		width: 104%;
+		height: 104%;
+		object-fit: cover;
+		opacity: 0.94;
+		filter: brightness(0.88) saturate(1.36) contrast(1.14);
+		transform: scale(1.02);
+		transform-origin: center;
+		pointer-events: none;
+	}
+
+	.splash-backdrop-overlay {
+		position: absolute;
+		inset: 0;
+		background:
+			radial-gradient(circle at 16% 20%, rgba(90, 128, 255, 0.2), transparent 24rem),
+			radial-gradient(circle at 78% 26%, rgba(183, 123, 255, 0.14), transparent 22rem),
+			radial-gradient(circle at 68% 78%, rgba(136, 170, 255, 0.12), transparent 20rem),
+			linear-gradient(180deg, rgba(2, 4, 10, 0.18), rgba(2, 4, 10, 0.62)),
+			radial-gradient(circle at center, transparent 48%, rgba(2, 4, 10, 0.34) 100%);
+	}
+
+	.splash-panel {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		grid-template-rows: auto auto 1fr;
+		width: 100%;
+		min-height: 100dvh;
+		margin: 0;
+		padding:
+			max(1rem, env(safe-area-inset-top))
+			clamp(1rem, 2vw, 2.2rem)
+			max(1rem, env(safe-area-inset-bottom));
+		border-radius: 0;
+		background:
+			linear-gradient(180deg, rgba(2, 4, 10, 0.16), rgba(2, 4, 10, 0.46)),
+			radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 20rem);
+		border: none;
+		box-shadow: none;
+		overflow: hidden;
+		isolation: isolate;
+	}
+
+	.splash-topbar,
+	.splash-choice-top,
+	.splash-choice-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.9rem;
+	}
+
+	.splash-dots {
+		display: inline-flex;
+		gap: 0.45rem;
+	}
+
+	.splash-status {
+		display: inline-flex;
+		align-items: center;
+		min-height: 2.4rem;
+		padding: 0 0.95rem;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.08);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: rgba(255, 255, 255, 0.7);
+		font-size: 0.82rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		backdrop-filter: blur(18px);
+		-webkit-backdrop-filter: blur(18px);
+	}
+
+	.splash-dots span {
+		width: 0.72rem;
+		height: 0.72rem;
+		border-radius: 999px;
+		background: rgba(15, 23, 42, 0.18);
+	}
+
+	.splash-dots span:nth-child(1) {
+		background: rgba(255, 95, 86, 0.92);
+	}
+
+	.splash-dots span:nth-child(2) {
+		background: rgba(255, 189, 46, 0.92);
+	}
+
+	.splash-dots span:nth-child(3) {
+		background: rgba(39, 201, 63, 0.92);
+	}
+
+	.splash-copy {
+		max-width: 56rem;
+		margin-top: clamp(2.5rem, 9vh, 7rem);
+	}
+
+	.splash-kicker,
+	.splash-choice-eyebrow {
+		font-size: 0.76rem;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: rgba(255, 255, 255, 0.5);
+	}
+
+	.splash-title {
+		margin-top: 0.65rem;
+		font-family:
+			"SF Pro Display",
+			"SF Pro Text",
+			"PingFang SC",
+			"Hiragino Sans GB",
+			"Microsoft YaHei",
+			system-ui,
+			sans-serif;
+		font-size: clamp(2.8rem, 5vw, 5.3rem);
+		line-height: 0.95;
+		font-weight: 700;
+		letter-spacing: -0.055em;
+		color: rgba(247, 250, 255, 0.96);
+		text-shadow: 0 10px 30px rgba(2, 4, 10, 0.35);
+	}
+
+	.splash-description {
+		margin-top: 1rem;
+		max-width: 42rem;
+		font-size: 1rem;
+		line-height: 1.8;
+		color: rgba(232, 238, 248, 0.72);
+	}
+
+	.splash-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1rem;
+		align-self: end;
+		margin-top: auto;
+		padding-top: clamp(2rem, 5vh, 4rem);
+	}
+
+	.splash-choice {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		min-height: 16rem;
+		padding: 1.35rem;
+		border-radius: 1.9rem;
+		border: 1px solid rgb(var(--splash-accent) / 0.1);
+		background:
+			linear-gradient(180deg, rgba(8, 12, 20, 0.46), rgba(5, 8, 14, 0.28)),
+			radial-gradient(circle at top right, rgb(var(--splash-accent) / 0.24), transparent 12rem);
+		box-shadow:
+			0 24px 72px rgba(0, 0, 0, 0.24),
+			0 0 18px rgb(var(--splash-accent) / 0.06);
+		backdrop-filter: blur(34px) saturate(1.12);
+		-webkit-backdrop-filter: blur(34px) saturate(1.12);
+		transition:
+			transform 320ms ease,
+			box-shadow 320ms ease,
+			border-color 320ms ease,
+			background-color 320ms ease;
+		overflow: hidden;
+		will-change: transform, box-shadow;
+	}
+
+	.splash-choice::before {
+		content: "";
+		position: absolute;
+		inset: auto -15% -40% auto;
+		width: 9rem;
+		height: 9rem;
+		border-radius: 999px;
+		background: radial-gradient(circle, rgb(var(--splash-accent) / 0.38), transparent 72%);
+		opacity: 0;
+		transform: scale(0.8);
+		transition:
+			opacity 320ms ease,
+			transform 420ms ease;
+		pointer-events: none;
+	}
+
+	.splash-choice::after {
+		content: "";
+		position: absolute;
+		inset: -0.2rem;
+		border-radius: inherit;
+		opacity: 0;
+		pointer-events: none;
+		box-shadow:
+			0 0 0 1px rgb(var(--splash-accent) / 0.12),
+			0 0 20px rgb(var(--splash-accent) / 0.18),
+			0 0 44px rgb(var(--splash-accent) / 0.14),
+			0 0 88px rgb(var(--splash-accent) / 0.08);
+		transition: opacity 300ms ease;
+	}
+
+	.splash-choice:hover {
+		transform: translateY(-4px) scale(1.014);
+		border-color: rgb(var(--splash-accent) / 0.24);
+		box-shadow:
+			0 28px 84px rgba(0, 0, 0, 0.24),
+			0 0 18px rgb(var(--splash-accent) / 0.22),
+			0 0 36px rgb(var(--splash-accent) / 0.18),
+			0 0 88px rgb(var(--splash-accent) / 0.12),
+			0 0 128px rgb(var(--splash-accent) / 0.06);
+	}
+
+	.splash-choice:focus-visible {
+		transform: translateY(-4px) scale(1.014);
+		border-color: rgb(var(--splash-accent) / 0.28);
+		box-shadow:
+			0 28px 84px rgba(0, 0, 0, 0.26),
+			0 0 20px rgb(var(--splash-accent) / 0.24),
+			0 0 42px rgb(var(--splash-accent) / 0.2),
+			0 0 96px rgb(var(--splash-accent) / 0.14),
+			0 0 136px rgb(var(--splash-accent) / 0.08);
+	}
+
+	.splash-choice:hover::before {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.splash-choice:hover::after,
+	.splash-choice:focus-visible::after {
+		opacity: 1;
+	}
+
+	.splash-choice-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 999px;
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+		color: rgba(248, 250, 255, 0.98);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		box-shadow: none;
+		transition:
+			transform 260ms ease,
+			box-shadow 260ms ease,
+			background-color 260ms ease;
+	}
+
+	.splash-choice-icon :global(svg) {
+		filter: none;
+	}
+
+	.splash-choice:hover .splash-choice-icon {
+		transform: scale(1.08);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+		box-shadow: none;
+	}
+
+	.splash-choice-title {
+		margin-top: auto;
+		padding-top: 1.8rem;
+		font-family:
+			"SF Pro Display",
+			"SF Pro Text",
+			"PingFang SC",
+			"Hiragino Sans GB",
+			"Microsoft YaHei",
+			system-ui,
+			sans-serif;
+		font-size: clamp(1.7rem, 3vw, 2.2rem);
+		line-height: 1.02;
+		font-weight: 700;
+		letter-spacing: -0.045em;
+		color: rgba(247, 250, 255, 0.94);
+	}
+
+	.splash-choice-description {
+		margin-top: 0.85rem;
+		font-size: 0.96rem;
+		line-height: 1.72;
+		color: rgba(223, 231, 244, 0.66);
+	}
+
+	.splash-choice:hover .splash-choice-title {
+		color: rgba(255, 255, 255, 0.99);
+		text-shadow: 0 0 22px rgb(var(--splash-accent) / 0.16);
+	}
+
+	.splash-choice-footer {
+		margin-top: 1.2rem;
+		font-size: 0.92rem;
+		color: rgba(223, 231, 244, 0.46);
+	}
+
+	.splash-choice-enter {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		font-weight: 600;
+		color: rgb(var(--splash-accent) / 0.96);
+	}
+
+	.splash-shell[data-state="opening"] .splash-panel,
+	.splash-shell[data-state="opening"] .splash-choice {
+		opacity: 0;
+		transform: translateY(20px) scale(0.985);
+	}
+
+	.splash-shell[data-state="ready"] .splash-panel,
+	.splash-shell[data-state="ready"] .splash-choice {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+		transition:
+			opacity 420ms ease,
+			transform 620ms cubic-bezier(0.22, 1, 0.36, 1),
+			box-shadow 320ms ease;
+	}
+
+	.splash-shell[data-state="ready"] .splash-choice {
+		transition-delay: var(--splash-delay);
+	}
+
+	.splash-shell[data-state="ready"] .splash-choice:hover,
+	.splash-shell[data-state="ready"] .splash-choice:focus-visible {
+		transform: translateY(-4px) scale(1.014);
+	}
+
+	.splash-shell[data-state="closing"],
+	.splash-shell[data-state="navigating"] {
+		pointer-events: none;
+	}
+
+	.splash-shell[data-state="navigating"] .splash-choice {
+		opacity: 0.78;
+		transform: translateY(0) scale(0.995);
+	}
+
+	.splash-shell[data-state="closing"] .splash-panel,
+	.splash-shell[data-state="closing"] .splash-backdrop {
+		opacity: 0;
+		transform: scale(1.015);
+		transition:
+			opacity 300ms ease,
+			transform 360ms ease;
+	}
+
+	@media (max-width: 860px) {
+		.splash-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.splash-title {
+			font-size: 2.8rem;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.splash-panel {
+			min-height: 100dvh;
+			padding:
+				max(0.9rem, env(safe-area-inset-top))
+				1rem
+				max(0.9rem, env(safe-area-inset-bottom));
+		}
+
+		.splash-topbar {
+			flex-direction: row;
+			align-items: center;
+		}
+
+		.splash-choice {
+			min-height: 13rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.splash-video {
+			display: none;
+		}
+	}
+</style>

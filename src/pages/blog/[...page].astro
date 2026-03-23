@@ -1,0 +1,19 @@
+---
+import type { GetStaticPaths } from "astro";
+
+import { PAGE_SIZE } from "../../constants/constants";
+import { getSortedPosts } from "../../utils/content-utils";
+import { initPostIdMap } from "../../utils/permalink-utils";
+
+export const getStaticPaths = (async ({ paginate }) => {
+	const allBlogPosts = await getSortedPosts();
+	initPostIdMap(allBlogPosts);
+	return paginate(allBlogPosts, { pageSize: PAGE_SIZE });
+}) satisfies GetStaticPaths;
+
+return Astro.redirect(
+	Astro.props.page.currentPage > 1
+		? `/study/${Astro.props.page.currentPage}/`
+		: "/study/",
+);
+---
