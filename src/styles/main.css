@@ -142,6 +142,91 @@ body.immersive-page .immersive-content-shell::before {
   opacity: 0.44;
 }
 
+body.immersive-page .immersive-ready-root {
+  transition: opacity 260ms ease;
+}
+
+body.immersive-page .immersive-ready-root[data-ready-state="loading"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+body.immersive-page .immersive-ready-root[data-ready-state="ready"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+body.immersive-page .immersive-preload-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background:
+    linear-gradient(180deg, rgba(5, 8, 16, 0.52), rgba(5, 8, 16, 0.82)),
+    radial-gradient(circle at top, rgba(104, 140, 255, 0.16), transparent 20rem);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: opacity 280ms ease, visibility 280ms ease;
+}
+
+body.immersive-page .immersive-preload-overlay[data-state="done"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+body.immersive-page .immersive-preload-panel {
+  display: flex;
+  min-width: min(22rem, calc(100vw - 3rem));
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1.5rem 1.7rem;
+  border-radius: 1.4rem;
+  border: 1px solid rgba(118, 156, 255, 0.18);
+  background:
+    linear-gradient(180deg, rgba(13, 18, 28, 0.88), rgba(10, 14, 22, 0.76)),
+    radial-gradient(circle at top right, rgba(118, 156, 255, 0.18), transparent 10rem);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.28),
+    0 0 36px rgba(118, 156, 255, 0.12);
+  text-align: center;
+}
+
+body.immersive-page .immersive-preload-spinner {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(118, 156, 255, 0.92);
+  animation: immersive-preload-spin 0.9s linear infinite;
+}
+
+body.immersive-page .immersive-preload-title {
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(216, 228, 248, 0.58);
+}
+
+body.immersive-page .immersive-preload-copy {
+  color: rgba(244, 247, 255, 0.82);
+}
+
+html.immersive-preloading,
+body.immersive-preloading {
+  overflow: hidden;
+}
+
+@keyframes immersive-preload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 820px), (pointer: coarse) {
   body.immersive-page .immersive-video {
     inset: -2%;

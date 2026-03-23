@@ -265,49 +265,194 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					})();
 				</script>
 
-			<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto">
-				<div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">
-					<Navbar class="immersive-navbar-shell"></Navbar>
+			<script is:inline>
+				(() => {
+					if (typeof window === "undefined") return;
+					const gateWindow = window;
+
+					const bindImmersiveReadyGate = () => {
+						const root = document.querySelector("[data-immersive-ready-root]");
+						const overlay = document.querySelector("[data-immersive-preload]");
+						if (!(root instanceof HTMLElement) || !(overlay instanceof HTMLElement)) {
+							return;
+						}
+
+						const status = overlay.querySelector("[data-immersive-preload-status]");
+						let runId = 0;
+						let timeoutId = 0;
+
+						const lock = () => {
+							document.documentElement.classList.add("immersive-preloading");
+							document.body.classList.add("immersive-preloading");
+						};
+
+						const unlock = () => {
+							document.documentElement.classList.remove("immersive-preloading");
+							document.body.classList.remove("immersive-preloading");
+						};
+
+						const armGate = () => {
+							runId += 1;
+							const currentRun = runId;
+							window.clearTimeout(timeoutId);
+							root.dataset.readyState = "loading";
+							overlay.dataset.state = "loading";
+							lock();
+
+							const images = Array.from(root.querySelectorAll("img")).filter(
+								(node) => node instanceof HTMLImageElement,
+							);
+							const total = images.length;
+							let settled = 0;
+
+							const updateStatus = () => {
+								if (!(status instanceof HTMLElement)) {
+									return;
+								}
+								status.textContent =
+									total > 0
+										? `正在准备页面内容 ${Math.min(settled, total)}/${total}`
+										: "正在准备页面内容";
+							};
+
+							const finalize = () => {
+								if (currentRun !== runId) {
+									return;
+								}
+								root.dataset.readyState = "ready";
+								overlay.dataset.state = "done";
+								unlock();
+							};
+
+							const waitForImage = (image, index) =>
+								new Promise((resolve) => {
+									if (!(image instanceof HTMLImageElement)) {
+										resolve();
+										return;
+									}
+
+									image.loading = "eager";
+									image.decoding = "async";
+									if (index < 8) {
+										image.fetchPriority = "high";
+									}
+
+									const done = () => {
+										settled += 1;
+										updateStatus();
+										resolve();
+									};
+
+									if (image.complete) {
+										done();
+										return;
+									}
+
+									image.addEventListener("load", done, { once: true });
+									image.addEventListener("error", done, { once: true });
+								});
+
+							updateStatus();
+
+							const fontReady =
+								document.fonts && "ready" in document.fonts
+									? document.fonts.ready.catch(() => {})
+									: Promise.resolve();
+
+							Promise.all([
+								fontReady,
+								...images.map((image, index) => waitForImage(image, index)),
+							]).then(() => {
+								requestAnimationFrame(() => {
+									requestAnimationFrame(finalize);
+								});
+							});
+
+							timeoutId = window.setTimeout(finalize, 9000);
+						};
+
+						if (!gateWindow.__mizukiImmersiveReadyGateBound) {
+							gateWindow.__mizukiImmersiveReadyGateBound = true;
+							document.addEventListener("swup:contentReplaced", armGate);
+							window.addEventListener("pageshow", armGate);
+							window.addEventListener(
+								"pagehide",
+								() => {
+									window.clearTimeout(timeoutId);
+									unlock();
+								},
+								{ once: true },
+							);
+						}
+
+						armGate();
+					};
+
+					if (document.readyState === "loading") {
+						document.addEventListener("DOMContentLoaded", bindImmersiveReadyGate, {
+							once: true,
+						});
+					} else {
+						bindImmersiveReadyGate();
+					}
+				})();
+			</script>
+
+			<div class="immersive-preload-overlay" data-immersive-preload data-state="loading" aria-live="polite" aria-busy="true">
+				<div class="immersive-preload-panel">
+					<div class="immersive-preload-spinner" aria-hidden="true"></div>
+					<p class="immersive-preload-title">Preparing Experience</p>
+					<p class="immersive-preload-copy" data-immersive-preload-status>
+						正在准备页面内容
+					</p>
 				</div>
 			</div>
 
-			<div class="relative z-30 w-full pointer-events-none">
-				<div class="mx-auto max-w-[var(--page-width)] px-2 md:px-4 pointer-events-auto">
-					<main id="swup-container" class="transition-main w-full">
-						<div id="content-wrapper" class="transition-leaving immersive-content-shell">
-							<slot></slot>
-							<div class="footer onload-animation pt-6">
-								<Footer></Footer>
+			<div data-immersive-ready-root class="immersive-ready-root" data-ready-state="loading">
+				<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto">
+					<div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">
+						<Navbar class="immersive-navbar-shell"></Navbar>
+					</div>
+				</div>
+
+				<div class="relative z-30 w-full pointer-events-none">
+					<div class="mx-auto max-w-[var(--page-width)] px-2 md:px-4 pointer-events-auto">
+						<main id="swup-container" class="transition-main w-full">
+							<div id="content-wrapper" class="transition-leaving immersive-content-shell">
+								<slot></slot>
+								<div class="footer onload-animation pt-6">
+									<Footer></Footer>
+								</div>
 							</div>
-						</div>
-					</main>
+						</main>
+					</div>
 				</div>
-			</div>
 
-			<BackToTop></BackToTop>
-			{shouldRenderImmersiveFloatTOC && <FloatingTOC />}
-			{shouldRenderImmersiveSidebarTOC && (
-				<div class="absolute inset-x-0 top-0 z-20 hidden 2xl:block pointer-events-none">
-					<div class="relative max-w-[var(--page-width)] mx-auto px-2 md:px-4">
-						<div
-							id="toc-wrapper"
-							class="hidden lg:block absolute top-0 w-[var(--toc-width)] -right-[var(--toc-width)] pointer-events-auto"
-						>
+				<BackToTop></BackToTop>
+				{shouldRenderImmersiveFloatTOC && <FloatingTOC />}
+				{shouldRenderImmersiveSidebarTOC && (
+					<div class="absolute inset-x-0 top-0 z-20 hidden 2xl:block pointer-events-none">
+						<div class="relative max-w-[var(--page-width)] mx-auto px-2 md:px-4">
 							<div
-								id="toc-inner-wrapper"
-								class="fixed top-24 w-[var(--toc-width)] max-h-[calc(100vh_-_12rem)] overflow-hidden"
+								id="toc-wrapper"
+								class="hidden lg:block absolute top-0 w-[var(--toc-width)] -right-[var(--toc-width)] pointer-events-auto"
 							>
-								<div id="toc-container" class="w-full transition-swup-fade">
-									<SidebarTOC headings={headings}></SidebarTOC>
+								<div
+									id="toc-inner-wrapper"
+									class="fixed top-24 w-[var(--toc-width)] max-h-[calc(100vh_-_12rem)] overflow-hidden"
+								>
+									<div id="toc-container" class="w-full transition-swup-fade">
+										<SidebarTOC headings={headings}></SidebarTOC>
+									</div>
 								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-			)}
-			{(!siteConfig.toc.enable || !hasHeadings || shouldRenderImmersiveFloatTOC) && (
-				<div id="toc-container" class="hidden"></div>
-			)}
+				)}
+				{(!siteConfig.toc.enable || !hasHeadings || shouldRenderImmersiveFloatTOC) && (
+					<div id="toc-container" class="hidden"></div>
+				)}
+			</div>
 		</>
 	) : (
 		<>

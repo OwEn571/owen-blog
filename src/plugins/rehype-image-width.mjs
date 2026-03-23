@@ -8,13 +8,13 @@ export function rehypeImageWidth() {
 			if (node.tagName === "img" && node.properties) {
 				const src = typeof node.properties.src === "string" ? node.properties.src : "";
 				const isRemote = src.startsWith("http://") || src.startsWith("https://");
+				node.properties.loading ??= "eager";
+				node.properties.decoding ??= "async";
 
 				if (isRemote) {
 					// A number of legacy OSS / CDN images reject hotlink-style requests.
 					// Dropping the referrer makes remote markdown images noticeably more reliable.
 					node.properties.referrerpolicy = "no-referrer";
-					node.properties.loading ??= "lazy";
-					node.properties.decoding ??= "async";
 				}
 			}
 
