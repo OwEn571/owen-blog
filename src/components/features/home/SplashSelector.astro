@@ -161,16 +161,6 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			});
 		});
 
-		const warmRoutes = () => {
-			optionLinks.forEach((link) => preloadRoute(link.getAttribute("href")));
-		};
-
-		if ("requestIdleCallback" in window) {
-			window.requestIdleCallback(warmRoutes, { timeout: 1200 });
-		} else {
-			window.setTimeout(warmRoutes, 220);
-		}
-
 		window.addEventListener("pagehide", () => {
 			unlockPage();
 		});

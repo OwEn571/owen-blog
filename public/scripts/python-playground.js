@@ -1241,6 +1241,27 @@ except SyntaxError as exc:
 		editorState.monacoEditor.layout();
 	}
 
+	function requestMonacoUpgrade(root, { idle = false } = {}) {
+		if (!(root instanceof HTMLElement) || root.dataset.monacoUpgradeRequested === "true") {
+			return;
+		}
+
+		const startUpgrade = () => {
+			if (root.dataset.monacoUpgradeRequested === "true") {
+				return;
+			}
+			root.dataset.monacoUpgradeRequested = "true";
+			void maybeEnableMonaco(root);
+		};
+
+		if (idle && "requestIdleCallback" in window) {
+			window.requestIdleCallback(startUpgrade, { timeout: 1200 });
+			return;
+		}
+
+		window.setTimeout(startUpgrade, idle ? 180 : 0);
+	}
+
 	async function maybeEnableMonaco(root) {
 		const editorState = getEditorState(root);
 		if (!editorState || editorState.monacoEditor) {
@@ -1327,8 +1348,10 @@ except SyntaxError as exc:
 			});
 
 			layoutMonacoEditor(root);
-			scheduleMonacoValidation(root);
 		} catch (error) {
+			if (root instanceof HTMLElement) {
+				delete root.dataset.monacoUpgradeRequested;
+			}
 			console.warn("Monaco editor unavailable, falling back to lightweight editor.", error);
 		}
 	}
@@ -1867,9 +1890,15 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			syncSourceFromEditor(root);
 			updateAutocomplete(root);
 		});
-		editor.addEventListener("click", () => updateAutocomplete(root));
+		editor.addEventListener("click", () => {
+			updateAutocomplete(root);
+			requestMonacoUpgrade(root);
+		});
 		editor.addEventListener("keyup", () => updateAutocomplete(root));
-		editor.addEventListener("focus", () => updateAutocomplete(root));
+		editor.addEventListener("focus", () => {
+			updateAutocomplete(root);
+			requestMonacoUpgrade(root);
+		});
 		editor.addEventListener("paste", (event) => {
 			event.preventDefault();
 			const text = event.clipboardData?.getData("text/plain") || "";
@@ -1895,6 +1924,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 					refreshEditor(root);
 					layoutMonacoEditor(root);
 					updateAutocomplete(root);
+					requestMonacoUpgrade(root, { idle: true });
 				} else {
 					hideAutocomplete(root);
 				}
@@ -1909,8 +1939,6 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 				resetPlayground(root);
 			});
 		}
-
-		void maybeEnableMonaco(root);
 	}
 
 	function initPythonPlaygrounds() {
