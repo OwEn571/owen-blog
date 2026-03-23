@@ -7,6 +7,7 @@
 	const MONACO_LOADER_ID = "mizuki-monaco-loader";
 	const INDENT = "    ";
 	const editorStateMap = new WeakMap();
+	const pythonLabStateMap = new WeakMap();
 
 	const PYTHON_KEYWORDS = new Set([
 		"and",
@@ -914,6 +915,20 @@ except SyntaxError as exc:
 		output.dataset.state = state;
 	}
 
+	function renderCodeCardMarkup(source) {
+		return renderHighlightedPython(source)
+			.split("\n")
+			.map(
+				(line, index) => `
+					<span class="python-code-card__line">
+						<span class="python-code-card__line-no">${index + 1}</span>
+						<span class="python-code-card__line-content">${line || " "}</span>
+					</span>
+				`,
+			)
+			.join("");
+	}
+
 	function createElement(tagName, className, textContent) {
 		const element = document.createElement(tagName);
 		if (className) {
@@ -923,6 +938,347 @@ except SyntaxError as exc:
 			element.textContent = textContent;
 		}
 		return element;
+	}
+
+	function syncCodeCardToggle(root) {
+		const details = root.querySelector(".python-code-card__details");
+		const label = root.querySelector(".python-code-card__summary-toggle");
+		if (!(details instanceof HTMLDetailsElement) || !(label instanceof HTMLElement)) {
+			return;
+		}
+
+		label.textContent = details.open ? "折叠代码" : "展开代码";
+	}
+
+	function bindPythonCodeCard(root) {
+		if (!(root instanceof HTMLElement) || root.dataset.pythonCodeCardBound === "true") {
+			return;
+		}
+
+		const source = root.querySelector(".python-code-card__source");
+		const display = root.querySelector("[data-python-code-display]");
+		const details = root.querySelector(".python-code-card__details");
+		const copyButton = root.querySelector(".python-code-card__copy");
+
+		if (
+			!(source instanceof HTMLTextAreaElement) ||
+			!(display instanceof HTMLElement) ||
+			!(details instanceof HTMLDetailsElement) ||
+			!(copyButton instanceof HTMLButtonElement)
+		) {
+			return;
+		}
+
+		root.dataset.pythonCodeCardBound = "true";
+		display.innerHTML = renderCodeCardMarkup(source.value);
+		syncCodeCardToggle(root);
+
+		details.addEventListener("toggle", () => {
+			syncCodeCardToggle(root);
+		});
+
+		copyButton.addEventListener("click", async () => {
+			try {
+				await navigator.clipboard.writeText(source.value);
+				copyButton.textContent = "已复制";
+				window.setTimeout(() => {
+					copyButton.textContent = "复制代码";
+				}, 1400);
+			} catch (error) {
+				copyButton.textContent = "复制失败";
+				window.setTimeout(() => {
+					copyButton.textContent = "复制代码";
+				}, 1400);
+			}
+		});
+	}
+
+	function getPythonLabState(root) {
+		return pythonLabStateMap.get(root) || null;
+	}
+
+	function schedulePythonLabValidation(root) {
+		const labState = getPythonLabState(root);
+		if (!labState?.editor) {
+			return;
+		}
+
+		const state = getState();
+		if (!state.pyodidePromise || labState.editor.getValue().length > 20000) {
+			return;
+		}
+
+		window.clearTimeout(labState.validationTimer);
+		labState.validationTimer = window.setTimeout(async () => {
+			const monaco = window.monaco;
+			const model = labState.editor.getModel();
+			if (!monaco || !model) {
+				return;
+			}
+
+			try {
+				const source = labState.editor.getValue();
+				const result = await queueExecution(async () => {
+					const pyodide = await ensurePyodide();
+					await pyodide.runPythonAsync(`
+import json
+
+__mizuki_compile_error = ""
+try:
+    compile(${JSON.stringify(source)}, "<mizuki-python-lab>", "exec")
+except SyntaxError as exc:
+    __mizuki_compile_error = json.dumps({
+        "message": exc.msg,
+        "line": exc.lineno or 1,
+        "column": exc.offset or 1,
+        "endLine": getattr(exc, "end_lineno", None) or exc.lineno or 1,
+        "endColumn": getattr(exc, "end_offset", None) or (exc.offset or 1) + 1,
+    })
+`);
+					return readGlobal(pyodide, "__mizuki_compile_error");
+				});
+
+				if (!result) {
+					setMonacoMarkers(monaco, model, []);
+					return;
+				}
+
+				const error = JSON.parse(result);
+				setMonacoMarkers(monaco, model, [
+					{
+						startLineNumber: error.line || 1,
+						startColumn: Math.max(error.column || 1, 1),
+						endLineNumber: error.endLine || error.line || 1,
+						endColumn: Math.max(error.endColumn || (error.column || 1) + 1, 1),
+						message: error.message || "Python 语法错误",
+						severity: monaco.MarkerSeverity.Error,
+					},
+				]);
+			} catch (error) {
+				setMonacoMarkers(monaco, model, []);
+			}
+		}, 1100);
+	}
+
+	async function ensurePythonLabEditor(root) {
+		const labState = getPythonLabState(root);
+		if (!labState || labState.editor) {
+			return labState?.editor || null;
+		}
+
+		const monaco = await ensureMonaco();
+		ensureMonacoTheme(monaco);
+		ensureMonacoCompletion(monaco);
+		ensureMonacoHover(monaco);
+		ensureMonacoSignatureHelp(monaco);
+
+		labState.host.hidden = false;
+		labState.editor = monaco.editor.create(labState.host, {
+			value: labState.source.value,
+			language: "python",
+			theme: getMonacoThemeName(),
+			automaticLayout: true,
+			minimap: { enabled: false },
+			scrollBeyondLastLine: false,
+			fontFamily:
+				'"SF Mono", "JetBrains Mono Variable", "JetBrains Mono", Menlo, Monaco, ui-monospace, Consolas, "Liberation Mono", "Courier New", monospace',
+			fontSize: 14,
+			lineHeight: 24,
+			padding: { top: 14, bottom: 14 },
+			tabSize: 4,
+			insertSpaces: true,
+			quickSuggestions: { other: true, comments: false, strings: false },
+			quickSuggestionsDelay: 150,
+			wordBasedSuggestions: "currentDocument",
+			suggestOnTriggerCharacters: true,
+			acceptSuggestionOnEnter: "on",
+			snippetSuggestions: "inline",
+			glyphMargin: false,
+			folding: false,
+			mouseWheelZoom: false,
+			stickyScroll: { enabled: false },
+			scrollbar: {
+				vertical: "auto",
+				horizontal: "auto",
+				useShadows: false,
+				alwaysConsumeMouseWheel: false,
+			},
+		});
+
+		labState.editor.onDidChangeModelContent(() => {
+			labState.source.value = labState.editor.getValue();
+			schedulePythonLabValidation(root);
+		});
+
+		return labState.editor;
+	}
+
+	function togglePythonLab(root, shouldOpen) {
+		const state = getPythonLabState(root);
+		if (!state) {
+			return;
+		}
+
+		const nextOpen = typeof shouldOpen === "boolean" ? shouldOpen : state.panel.hidden;
+		state.panel.hidden = !nextOpen;
+		state.toggle.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+		root.dataset.state = nextOpen ? "open" : "closed";
+
+		if (!nextOpen) {
+			return;
+		}
+
+		state.status.textContent = "正在准备编辑器…";
+		void ensurePythonLabEditor(root).then((editor) => {
+			if (!editor) {
+				state.status.textContent = "编辑器加载失败，请刷新后重试。";
+				return;
+			}
+			state.status.textContent = "Monaco 编辑器已就绪，运行时会在首次执行时加载。";
+			editor.layout();
+			editor.focus();
+		});
+	}
+
+	async function runPythonLab(root) {
+		const state = getPythonLabState(root);
+		if (!state) {
+			return;
+		}
+
+		const editor = await ensurePythonLabEditor(root);
+		if (!editor) {
+			return;
+		}
+
+		const code = editor.getValue();
+		state.runButton.disabled = true;
+		state.status.textContent = "正在准备浏览器内 Python 运行时…";
+		setOutput(state.output, "正在执行代码…", "loading");
+
+		try {
+			await queueExecution(async () => {
+				const pyodide = await ensurePyodide();
+				await pyodide.loadPackagesFromImports(code);
+				await pyodide.runPythonAsync(`
+import io
+import sys
+import traceback
+
+__mizuki_stdout = io.StringIO()
+__mizuki_stderr = io.StringIO()
+__mizuki_traceback = ""
+__mizuki_prev_stdout, __mizuki_prev_stderr = sys.stdout, sys.stderr
+
+try:
+    sys.stdout = __mizuki_stdout
+    sys.stderr = __mizuki_stderr
+    exec(${JSON.stringify(code)}, globals())
+except Exception:
+    __mizuki_traceback = traceback.format_exc()
+finally:
+    sys.stdout = __mizuki_prev_stdout
+    sys.stderr = __mizuki_prev_stderr
+
+__mizuki_output = __mizuki_stdout.getvalue()
+__mizuki_error_output = __mizuki_stderr.getvalue()
+`);
+
+				const stdout = readGlobal(pyodide, "__mizuki_output");
+				const stderr = readGlobal(pyodide, "__mizuki_error_output");
+				const tracebackText = readGlobal(pyodide, "__mizuki_traceback");
+				const finalOutput = [stdout, stderr, tracebackText]
+					.filter(Boolean)
+					.join("")
+					.trimEnd();
+
+				if (tracebackText) {
+					setOutput(state.output, finalOutput || tracebackText, "error");
+					state.status.textContent = "运行完成，但出现了 Python 错误。";
+					return;
+				}
+
+				setOutput(state.output, finalOutput || "运行完成，没有标准输出。", "success");
+				state.status.textContent = "运行完成。";
+				schedulePythonLabValidation(root);
+			});
+		} catch (error) {
+			setOutput(
+				state.output,
+				error instanceof Error ? error.message : "Python 运行失败",
+				"error",
+			);
+			state.status.textContent = "运行失败。";
+		} finally {
+			state.runButton.disabled = false;
+		}
+	}
+
+	function bindPythonLab(root) {
+		if (!(root instanceof HTMLElement) || root.dataset.pythonLabBound === "true") {
+			return;
+		}
+
+		const toggle = root.querySelector("[data-python-lab-toggle]");
+		const panel = root.querySelector("[data-python-lab-panel]");
+		const close = root.querySelector("[data-python-lab-close]");
+		const runButton = root.querySelector("[data-python-lab-run]");
+		const clearButton = root.querySelector("[data-python-lab-clear]");
+		const output = root.querySelector("[data-python-lab-output]");
+		const host = root.querySelector("[data-python-lab-editor]");
+		const status = root.querySelector("[data-python-lab-status]");
+		const source = root.querySelector("[data-python-lab-source]");
+
+		if (
+			!(toggle instanceof HTMLButtonElement) ||
+			!(panel instanceof HTMLElement) ||
+			!(close instanceof HTMLButtonElement) ||
+			!(runButton instanceof HTMLButtonElement) ||
+			!(clearButton instanceof HTMLButtonElement) ||
+			!(output instanceof HTMLElement) ||
+			!(host instanceof HTMLElement) ||
+			!(status instanceof HTMLElement) ||
+			!(source instanceof HTMLTextAreaElement)
+		) {
+			return;
+		}
+
+		root.dataset.pythonLabBound = "true";
+		pythonLabStateMap.set(root, {
+			toggle,
+			panel,
+			runButton,
+			clearButton,
+			output,
+			host,
+			status,
+			source,
+			editor: null,
+			validationTimer: 0,
+		});
+
+		toggle.addEventListener("click", () => {
+			togglePythonLab(root);
+		});
+
+		close.addEventListener("click", () => {
+			togglePythonLab(root, false);
+		});
+
+		runButton.addEventListener("click", () => {
+			void runPythonLab(root);
+		});
+
+		clearButton.addEventListener("click", () => {
+			setOutput(output, "等待运行…", "idle");
+			status.textContent = "输出已清空。";
+		});
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key === "Escape") {
+				togglePythonLab(root, false);
+			}
+		});
 	}
 
 	function upgradeLegacyPlayground(root) {
@@ -2001,6 +2357,24 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			.forEach((element) => bindPlayground(element));
 	}
 
-	document.addEventListener("DOMContentLoaded", initPythonPlaygrounds);
-	initPythonPlaygrounds();
+	function initPythonCodeCards() {
+		document
+			.querySelectorAll("[data-python-code-card]")
+			.forEach((element) => bindPythonCodeCard(element));
+	}
+
+	function initPythonLabs() {
+		document
+			.querySelectorAll("[data-python-lab]")
+			.forEach((element) => bindPythonLab(element));
+	}
+
+	function initPythonEnhancements() {
+		initPythonPlaygrounds();
+		initPythonCodeCards();
+		initPythonLabs();
+	}
+
+	document.addEventListener("DOMContentLoaded", initPythonEnhancements);
+	initPythonEnhancements();
 })();

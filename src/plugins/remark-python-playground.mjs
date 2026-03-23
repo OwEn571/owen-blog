@@ -19,97 +19,76 @@ export function remarkPythonPlayground() {
 			node.data = {
 				hName: "div",
 				hProperties: {
-					className: ["python-playground"],
-					"data-python-playground": "true",
+					className: ["python-code-card"],
+					"data-python-code-card": "true",
 					"data-python-title": options.title,
 					"data-python-packages": options.packages.join(","),
-					"data-python-placeholder": options.placeholder,
 				},
 				hChildren: [
-					h("div.python-playground__toolbar", [
-						h("div.python-playground__toolbar-meta", [
+					h("div.python-code-card__toolbar", [
+						h("div.python-code-card__toolbar-meta", [
 							h(
-								"span.python-playground__badge",
-								"Runnable Python",
+								"span.python-code-card__badge",
+								"Python Example",
 							),
-							h("strong.python-playground__title", options.title),
+							h("strong.python-code-card__title", options.title),
 						]),
-						options.packages.length > 0
-							? h(
-									"span.python-playground__packages",
-									`packages: ${options.packages.join(", ")}`,
-								)
-							: h(
-									"span.python-playground__packages",
-									"pure stdlib",
-								),
+						h("div.python-code-card__toolbar-side", [
+							options.packages.length > 0
+								? h(
+										"span.python-code-card__meta",
+										`packages: ${options.packages.join(", ")}`,
+									)
+								: h(
+										"span.python-code-card__meta",
+										"pure stdlib",
+									),
+							h(
+								"span.python-code-card__meta",
+								`${node.value.split("\n").length} lines`,
+							),
+						]),
 					]),
-					h("details.python-playground__details", [
-						h("summary.python-playground__summary", [
-							h("div.python-playground__summary-copy", [
+					h("details.python-code-card__details", { open: true }, [
+						h("summary.python-code-card__summary", [
+							h("div.python-code-card__summary-copy", [
 								h(
-									"span.python-playground__editor-label",
-									"Practice Area",
+									"span.python-code-card__summary-label",
+									"Code Block",
 								),
 								h(
-									"span.python-playground__editor-note",
-									"点击展开后改代码，再运行查看结果",
+									"span.python-code-card__summary-note",
+									"折叠阅读或展开查看完整代码",
 								),
 							]),
 							h(
-								"span.python-playground__summary-toggle",
-								"展开练习区",
+								"span.python-code-card__summary-toggle",
+								"折叠代码",
 							),
 						]),
-						h("div.python-playground__editor-region", [
-							h("div.python-playground__editor-shell", [
+						h("div.python-code-card__body", [
+							h("div.python-code-card__utility", [
 								h(
-									"textarea.python-playground__code",
-									{
-										spellcheck: "false",
-										"aria-label": `${options.title} Python editor`,
-									},
-									node.value,
+									"button.python-code-card__copy",
+									{ type: "button" },
+									"复制代码",
 								),
 							]),
-							h("div.python-playground__actions", [
+							h("div.python-code-card__surface", [
 								h(
-									"span.python-playground__hint",
-									"首次运行会加载浏览器内 Python 运行时",
+									"code.python-code-card__code",
+									{ "data-python-code-display": "true" },
+									"",
 								),
-								h("div.python-playground__action-buttons", [
-									h(
-										"button.python-playground__reset-button",
-										{
-											type: "button",
-										},
-										"恢复答案",
-									),
-									h(
-										"button.python-playground__run-button",
-										{
-											type: "button",
-										},
-										"运行代码",
-									),
-								]),
 							]),
 						]),
 					]),
 					h(
-						"textarea.python-playground__answer",
+						"textarea.python-code-card__source",
 						{
 							hidden: true,
 						},
 						node.value,
-					),
-					h(
-						"pre.python-playground__output",
-						{
-							"data-state": "idle",
-							"aria-live": "polite",
-						},
-						options.placeholder,
 					),
 				],
 			};
@@ -132,6 +111,5 @@ function parseMeta(meta = "") {
 					.map((item) => item.trim())
 					.filter(Boolean)
 			: [],
-		placeholder: "点击“运行代码”查看输出",
 	};
 }

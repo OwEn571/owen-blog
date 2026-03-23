@@ -2011,6 +2011,175 @@ html.splash-active #banner-credit {
       0 0 0 1px rgba(118, 156, 255, 0.12);
   }
 
+  body.immersive-page .post-markdown-flow .python-code-card {
+    margin: 1.8rem 0;
+    padding: 1rem;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(118, 156, 255, 0.14);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(247, 250, 255, 0.5)), radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 16rem);
+    box-shadow:
+      0 24px 64px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  }
+
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card {
+    border-color: rgba(118, 156, 255, 0.16);
+    background: linear-gradient(180deg, rgba(9, 12, 19, 0.42), rgba(5, 8, 14, 0.2)), radial-gradient(circle at top right, rgba(118, 156, 255, 0.14), transparent 16rem);
+    box-shadow:
+      0 28px 76px rgba(0, 0, 0, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__toolbar,
+  body.immersive-page .post-markdown-flow .python-code-card__summary,
+  body.immersive-page .post-markdown-flow .python-code-card__utility {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__toolbar-meta,
+  body.immersive-page .post-markdown-flow .python-code-card__summary-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.24rem;
+    min-width: 0;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__toolbar-side {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.48rem;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__badge,
+  body.immersive-page .post-markdown-flow .python-code-card__meta,
+  body.immersive-page .post-markdown-flow .python-code-card__summary-toggle,
+  body.immersive-page .post-markdown-flow .python-code-card__copy {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.95rem;
+    padding: 0 0.78rem;
+    border-radius: 999px;
+    border: 1px solid rgba(118, 156, 255, 0.12);
+    background: rgba(118, 156, 255, 0.08);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: rgba(69, 97, 186, 0.88);
+  }
+
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__badge,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__meta,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__summary-toggle,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__copy {
+    color: rgba(218, 228, 255, 0.9);
+    border-color: rgba(118, 156, 255, 0.16);
+    background: rgba(118, 156, 255, 0.12);
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__title {
+    font-size: 1rem;
+    font-weight: 630;
+    letter-spacing: -0.02em;
+    color: rgba(15, 23, 42, 0.9);
+  }
+
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__title {
+    color: rgba(248, 250, 255, 0.92);
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__details {
+    margin-top: 0.95rem;
+    border-radius: 1.1rem;
+    border: 1px solid rgba(118, 156, 255, 0.12);
+    background: rgba(15, 23, 42, 0.03);
+    overflow: hidden;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.95rem 1.05rem;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__summary-label {
+    font-size: 0.74rem;
+    font-weight: 620;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(69, 97, 186, 0.82);
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__summary-note {
+    font-size: 0.84rem;
+    color: rgba(15, 23, 42, 0.58);
+  }
+
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__summary-note {
+    color: rgba(232, 238, 248, 0.62);
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__body {
+    padding: 0 1rem 1rem;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__utility {
+    margin-bottom: 0.75rem;
+    justify-content: flex-end;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__copy {
+    cursor: pointer;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__copy:hover {
+    transform: translateY(-1px);
+    border-color: rgba(118, 156, 255, 0.24);
+    box-shadow: 0 0 18px rgba(118, 156, 255, 0.12);
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__surface {
+    padding: 1rem 1.05rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(118, 156, 255, 0.12);
+    background: rgba(15, 23, 42, 0.92);
+    overflow: auto;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__code {
+    display: block;
+    font-family: "SF Mono", "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: rgba(232, 238, 248, 0.92);
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__line {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    min-height: 1.7em;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__line-no {
+    min-width: 2ch;
+    text-align: right;
+    color: rgba(148, 163, 184, 0.52);
+    user-select: none;
+  }
+
+  body.immersive-page .post-markdown-flow .python-code-card__line-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   body.immersive-page .post-markdown-flow .python-playground {
     margin: 1.8rem 0;
     padding: 1rem;
@@ -2346,41 +2515,51 @@ html.splash-active #banner-credit {
     color: rgba(69, 97, 186, 0.62);
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-keyword {
+  body.immersive-page .post-markdown-flow .python-playground__token-keyword,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-keyword {
     color: #3557d7;
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-builtin {
+  body.immersive-page .post-markdown-flow .python-playground__token-builtin,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-builtin {
     color: #0f7a82;
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-string {
+  body.immersive-page .post-markdown-flow .python-playground__token-string,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-string {
     color: #b44f5a;
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-comment {
+  body.immersive-page .post-markdown-flow .python-playground__token-comment,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-comment {
     color: rgba(15, 23, 42, 0.42);
     font-style: italic;
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-number {
+  body.immersive-page .post-markdown-flow .python-playground__token-number,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-number {
     color: #7a41d9;
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-decorator {
+  body.immersive-page .post-markdown-flow .python-playground__token-decorator,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-decorator {
     color: #8f44ad;
   }
 
   body.immersive-page .post-markdown-flow .python-playground__token-function,
-  body.immersive-page .post-markdown-flow .python-playground__token-call {
+  body.immersive-page .post-markdown-flow .python-playground__token-call,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-function,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-call {
     color: #0e7490;
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-class {
+  body.immersive-page .post-markdown-flow .python-playground__token-class,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-class {
     color: #9a3412;
   }
 
-  body.immersive-page .post-markdown-flow .python-playground__token-constant {
+  body.immersive-page .post-markdown-flow .python-playground__token-constant,
+  body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-constant {
     color: #1d4ed8;
   }
 
@@ -2470,40 +2649,50 @@ html.splash-active #banner-credit {
     color: rgba(214, 226, 255, 0.58);
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-keyword {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-keyword,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-keyword {
     color: #8ab4ff;
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-builtin {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-builtin,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-builtin {
     color: #67e8f9;
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-string {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-string,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-string {
     color: #fca5a5;
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-comment {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-comment,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-comment {
     color: rgba(223, 231, 244, 0.42);
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-number {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-number,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-number {
     color: #c4b5fd;
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-decorator {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-decorator,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-decorator {
     color: #e9a8ff;
   }
 
   :root.dark body.immersive-page .post-markdown-flow .python-playground__token-function,
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-call {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-call,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-function,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-call {
     color: #7dd3fc;
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-class {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-class,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-class {
     color: #fdba74;
   }
 
-  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-constant {
+  :root.dark body.immersive-page .post-markdown-flow .python-playground__token-constant,
+  :root.dark body.immersive-page .post-markdown-flow .python-code-card__code .python-playground__token-constant {
     color: #93c5fd;
   }
 

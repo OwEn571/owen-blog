@@ -1,5 +1,6 @@
 ---
 import BackToTop from "@components/control/BackToTop.astro";
+import FloatingPythonLab from "@components/control/FloatingPythonLab.astro";
 import { FloatingTOC, SidebarTOC } from "@components/features/toc";
 import Banner from "@components/layout/Banner.astro";
 import RightSideBar from "@components/layout/RightSideBar.astro";
@@ -498,6 +499,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 				</div>
 
 				<BackToTop></BackToTop>
+				<FloatingPythonLab />
 				{shouldRenderImmersiveFloatTOC && <FloatingTOC fallbackForSidebar={isSidebarTOC} />}
 				{shouldRenderImmersiveSidebarTOC && (
 					<div class="absolute inset-x-0 top-0 z-20 hidden 2xl:block pointer-events-none">
@@ -580,6 +582,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					</div>
 
 					<BackToTop></BackToTop>
+					<FloatingPythonLab />
 					{shouldRenderFloatTOC && <FloatingTOC />}
 				</div>
 			</div>
