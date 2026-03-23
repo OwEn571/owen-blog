@@ -235,10 +235,15 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 			let startClientY = 0;
 			let startNodeX = 50;
 			let startNodeY = 50;
+			let movedDistance = 0;
 
 			node.addEventListener("pointerdown", (event) => {
+				if (event.pointerType !== "mouse") {
+					event.preventDefault();
+				}
 				activePointerId = event.pointerId;
 				isDragging = false;
+				movedDistance = 0;
 				startClientX = event.clientX;
 				startClientY = event.clientY;
 				startNodeX = Number(node.dataset.x || 50);
@@ -254,13 +259,17 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 
 				const deltaX = event.clientX - startClientX;
 				const deltaY = event.clientY - startClientY;
-				if (Math.hypot(deltaX, deltaY) > 4) {
+				movedDistance = Math.hypot(deltaX, deltaY);
+				const dragThreshold = event.pointerType === "mouse" ? 4 : 8;
+				if (movedDistance > dragThreshold) {
 					isDragging = true;
 				}
 
 				if (!isDragging) {
 					return;
 				}
+
+				event.preventDefault();
 
 				setNodePosition(
 					root,
@@ -285,6 +294,7 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 				}
 				activePointerId = -1;
 				isDragging = false;
+				movedDistance = 0;
 			};
 
 			node.addEventListener("pointerup", (event) => {
@@ -304,6 +314,13 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 				}
 				event.preventDefault();
 				focusCard(root, node.dataset.nodeId || "");
+			});
+
+			node.addEventListener("click", (event) => {
+				if (movedDistance > 0) {
+					event.preventDefault();
+					event.stopPropagation();
+				}
 			});
 		});
 	}
@@ -453,6 +470,8 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 		transform: translate(-50%, -50%);
 		cursor: grab;
 		user-select: none;
+		touch-action: none;
+		-webkit-tap-highlight-color: transparent;
 		transition:
 			transform 220ms ease,
 			box-shadow 220ms ease,
