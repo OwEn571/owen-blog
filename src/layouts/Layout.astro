@@ -256,6 +256,34 @@ if (siteConfig.font) {
 				document.addEventListener("swup:pageView", loadPlaygroundScript);
 			})();
 		</script>
+		<script is:inline>
+			(() => {
+				const cleanupImmersiveArtifacts = () => {
+					const hasImmersiveRoot = !!document.querySelector("[data-immersive-ready-root]");
+
+					if (!hasImmersiveRoot) {
+						document.documentElement.classList.remove("immersive-preloading");
+						document.body.classList.remove("immersive-preloading");
+						document.body.classList.remove("immersive-page");
+						document
+							.querySelectorAll("[data-immersive-video-shell], [data-immersive-preload]")
+							.forEach((node) => node.remove());
+					}
+				};
+
+				if (document.readyState === "loading") {
+					document.addEventListener("DOMContentLoaded", cleanupImmersiveArtifacts, {
+						once: true,
+					});
+				} else {
+					cleanupImmersiveArtifacts();
+				}
+
+				window.addEventListener("pageshow", cleanupImmersiveArtifacts);
+				document.addEventListener("swup:contentReplaced", cleanupImmersiveArtifacts);
+				document.addEventListener("swup:pageView", cleanupImmersiveArtifacts);
+			})();
+		</script>
 
 		<!-- Music Player - 仅在启用时加载 -->
 		{musicPlayerConfig.enable && <MusicPlayer client:idle />}

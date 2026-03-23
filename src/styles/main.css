@@ -156,6 +156,24 @@ body.immersive-page .immersive-ready-root[data-ready-state="ready"] {
   visibility: visible;
 }
 
+body.immersive-page .onload-animation,
+body.immersive-page .onload-animation-fade-in {
+  opacity: 1 !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+body.immersive-page #post-list-container > * {
+  opacity: 1 !important;
+  animation: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+body.immersive-page #post-list-container.layout-switching {
+  opacity: 1 !important;
+}
+
 body.immersive-page .immersive-preload-overlay {
   position: fixed;
   inset: 0;
@@ -263,6 +281,12 @@ body.immersive-preloading {
   body.immersive-page .apple-post-card:hover,
   body.immersive-page .surface-card:hover {
     transform: none;
+  }
+}
+
+@media (min-width: 1536px) {
+  body.immersive-page .floating-toc-wrapper[data-sidebar-fallback="true"] {
+    display: none !important;
   }
 }
 

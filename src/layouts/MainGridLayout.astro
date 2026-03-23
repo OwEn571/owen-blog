@@ -192,17 +192,15 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 					const mobileRenderQuery = window.matchMedia("(max-width: 820px), (pointer: coarse)");
 					let resumeTimer = 0;
-					let isFrozen = false;
 
 					const tryPlayVideo = () => {
-						if (isFrozen) return;
 						video.play().catch(() => {});
 					};
 
 					const scheduleResume = (delay = 0) => {
 						window.clearTimeout(resumeTimer);
 						resumeTimer = window.setTimeout(() => {
-							if (document.hidden || mediaQuery.matches || isFrozen) {
+							if (document.hidden || mediaQuery.matches) {
 								return;
 							}
 							tryPlayVideo();
@@ -232,23 +230,9 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						}
 					};
 
-					const freezeVideo = () => {
-						isFrozen = true;
-						window.clearTimeout(resumeTimer);
-						video.pause();
-					};
-
-					const unfreezeVideo = () => {
-						isFrozen = false;
-						syncMotionPreference();
-					};
-
 					syncMotionPreference();
 					mediaQuery.addEventListener?.("change", syncMotionPreference);
 					mobileRenderQuery.addEventListener?.("change", syncMotionPreference);
-
-					document.addEventListener("immersive:loading", unfreezeVideo);
-					document.addEventListener("immersive:ready", freezeVideo);
 
 					document.addEventListener("visibilitychange", () => {
 						if (document.hidden) {
@@ -257,18 +241,6 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 							syncMotionPreference();
 						}
 					});
-
-					window.addEventListener(
-						"scroll",
-						() => {
-							if (mediaQuery.matches || isFrozen) {
-								return;
-							}
-							video.pause();
-							scheduleResume(mobileRenderQuery.matches ? 180 : 90);
-						},
-						{ passive: true },
-					);
 
 					window.addEventListener(
 						"pagehide",
@@ -307,7 +279,81 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 							document.body.classList.remove("immersive-preloading");
 						};
 
-							const armGate = () => {
+						const waitForIdle = () =>
+							new Promise((resolve) => {
+								if ("requestIdleCallback" in window) {
+									window.requestIdleCallback(() => resolve(undefined), {
+										timeout: 1000,
+									});
+									return;
+								}
+
+								window.setTimeout(resolve, 180);
+							});
+
+						const waitForStableLayout = (node) =>
+							new Promise((resolve) => {
+								let stableCount = 0;
+								let lastHeight = -1;
+								let lastWidth = -1;
+								let lastMutation = performance.now();
+								let frameId = 0;
+								let timeoutHandle = 0;
+
+								const observer = new MutationObserver(() => {
+									lastMutation = performance.now();
+									stableCount = 0;
+								});
+
+								const finish = () => {
+									window.cancelAnimationFrame(frameId);
+									window.clearTimeout(timeoutHandle);
+									observer.disconnect();
+									resolve(undefined);
+								};
+
+								const check = () => {
+									const currentHeight = node.scrollHeight;
+									const currentWidth = node.scrollWidth;
+									const pendingImages = Array.from(node.querySelectorAll("img")).some(
+										(image) =>
+											image instanceof HTMLImageElement &&
+											(!image.complete || image.naturalWidth === 0),
+									);
+									const layoutStable =
+										currentHeight === lastHeight &&
+										currentWidth === lastWidth &&
+										!pendingImages &&
+										performance.now() - lastMutation > 220;
+
+									if (layoutStable) {
+										stableCount += 1;
+									} else {
+										stableCount = 0;
+									}
+
+									lastHeight = currentHeight;
+									lastWidth = currentWidth;
+
+									if (stableCount >= 6) {
+										finish();
+										return;
+									}
+
+									frameId = window.requestAnimationFrame(check);
+								};
+
+								observer.observe(node, {
+									childList: true,
+									subtree: true,
+									attributes: true,
+									characterData: true,
+								});
+								timeoutHandle = window.setTimeout(finish, 3200);
+								check();
+							});
+
+						const armGate = () => {
 								runId += 1;
 								const currentRun = runId;
 								window.clearTimeout(timeoutId);
@@ -376,12 +422,20 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 											image.fetchPriority = "high";
 										}
 
-										if (image.complete) {
+										const finishAfterDecode = () => {
+											if (typeof image.decode === "function") {
+												image.decode().catch(() => {}).finally(done);
+												return;
+											}
 											done();
+										};
+
+										if (image.complete && image.naturalWidth > 0) {
+											finishAfterDecode();
 											return;
 										}
 
-										image.addEventListener("load", done, { once: true });
+										image.addEventListener("load", finishAfterDecode, { once: true });
 										image.addEventListener("error", done, { once: true });
 									});
 
@@ -433,13 +487,16 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 									...images.map((image, index) => waitForImage(image, index)),
 									...embeds.map((embed) => waitForEmbed(embed)),
 									backgroundVideoReady,
-								]).then(() => {
-									requestAnimationFrame(() => {
-										requestAnimationFrame(finalize);
-								});
-							});
+								])
+									.then(() => waitForStableLayout(root))
+									.then(() => waitForIdle())
+									.then(() => {
+										requestAnimationFrame(() => {
+											requestAnimationFrame(finalize);
+										});
+									});
 
-							timeoutId = window.setTimeout(finalize, 9000);
+							timeoutId = window.setTimeout(finalize, 16000);
 						};
 
 						if (!gateWindow.__mizukiImmersiveReadyGateBound) {
@@ -500,7 +557,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 				</div>
 
 				<BackToTop></BackToTop>
-				{shouldRenderImmersiveFloatTOC && <FloatingTOC />}
+				{shouldRenderImmersiveFloatTOC && <FloatingTOC fallbackForSidebar={isSidebarTOC} />}
 				{shouldRenderImmersiveSidebarTOC && (
 					<div class="absolute inset-x-0 top-0 z-20 hidden 2xl:block pointer-events-none">
 						<div class="relative max-w-[var(--page-width)] mx-auto px-2 md:px-4">
