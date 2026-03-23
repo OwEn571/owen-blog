@@ -1,16 +1,12 @@
 ---
 import ModuleFilteredPostList from "@components/features/modules/ModuleFilteredPostList.astro";
-import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
 import StudyKnowledgeMap from "@components/features/modules/StudyKnowledgeMap.astro";
 import { initPostIdMap } from "@utils/permalink-utils";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import type { GetStaticPaths } from "astro";
 
 import { studyPageContent } from "../../data/module-blueprint";
-import {
-	getModuleDirectoryCards,
-	getModuleWriteRoot,
-} from "../../utils/module-content-utils";
+import { getModuleDirectoryCards } from "../../utils/module-content-utils";
 import {
 	getStudyPosts,
 	getStudyPostsList,
@@ -29,10 +25,6 @@ const { page } = Astro.props;
 const allPosts = await getStudyPostsList();
 const totalWords = await getStudyTotalWords();
 const tiles = await getModuleDirectoryCards("study", allPosts);
-const focusDeckCards = tiles.map((card) => ({
-	...card,
-	href: "#study-notes",
-}));
 
 const latestPost = allPosts[0];
 
@@ -122,18 +114,6 @@ const heroSummary = [
 				</div>
 			</div>
 		</section>
-
-		<ModuleDirectoryDeck
-			id="study-focus"
-			eyebrow={studyPageContent.deckEyebrow}
-			title={studyPageContent.deckTitle}
-			description={studyPageContent.deckDescription}
-			badge={`${tiles.length} Directories`}
-			cards={focusDeckCards}
-			emptyTitle="Study 还没有任何主题目录"
-			emptyDescription="先在 Study 目录下新建一级文件夹，再把 Markdown 放进去。"
-			emptyWritePath={getModuleWriteRoot("study")}
-		/>
 
 		<ModuleFilteredPostList
 			id="study-notes"

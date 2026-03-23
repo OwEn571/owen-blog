@@ -272,6 +272,10 @@ const filterableEntries = entries.map((entry) => ({
 		scroll-margin-top: 7rem;
 	}
 
+	.module-filter-shell.is-filter-targeted {
+		animation: module-filter-targeted 780ms ease;
+	}
+
 	.module-filter-toolbar {
 		display: flex;
 		flex-wrap: wrap;
@@ -355,6 +359,10 @@ const filterableEntries = entries.map((entry) => ({
 		border-radius: 1.15rem;
 		border: 1px solid rgb(var(--module-accent, 104 140 255) / 0.12);
 		background: rgba(255, 255, 255, 0.04);
+		transition:
+			border-color 220ms ease,
+			box-shadow 220ms ease,
+			background-color 220ms ease;
 	}
 
 	.module-filter-summary__copy,
@@ -444,6 +452,26 @@ const filterableEntries = entries.map((entry) => ({
 	:root:not(.dark) .module-filter-summary__count span,
 	:root:not(.dark) .module-filter-empty h3 {
 		color: rgba(15, 23, 42, 0.92);
+	}
+
+	@keyframes module-filter-targeted {
+		0% {
+			transform: translateY(0);
+			box-shadow: 0 0 0 rgb(var(--module-accent, 104 140 255) / 0);
+		}
+
+		35% {
+			transform: translateY(-2px);
+			box-shadow:
+				0 0 0 1px rgb(var(--module-accent, 104 140 255) / 0.16),
+				0 0 0 12px rgb(var(--module-accent, 104 140 255) / 0.08),
+				0 20px 44px rgb(var(--module-accent, 104 140 255) / 0.12);
+		}
+
+		100% {
+			transform: translateY(0);
+			box-shadow: 0 0 0 rgb(var(--module-accent, 104 140 255) / 0);
+		}
 	}
 
 	@media (max-width: 720px) {

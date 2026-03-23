@@ -156,16 +156,16 @@ export const studyPageContent: StudyPageContent = {
 	heroEyebrow: "Study",
 	heroTitle: "Study 已经收成真正可写内容的学习分区",
 	heroDescription:
-		"现在它只做一件事: 承接你的学习型博客。页面会自动扫描 `study/` 下的一级目录，把每个目录变成一张真正可用的写作卡片。",
+		"现在它只做一件事: 承接你的学习型博客。页面会自动扫描 `study/` 下的一级目录，把每个主题映射到知识星点图与下面的文章筛选区。",
 	stageBadge: "Knowledge Constellation",
-	deckEyebrow: "Focus Deck",
-	deckTitle: "Study 目录卡片",
+	deckEyebrow: "Knowledge Map",
+	deckTitle: "Study 主题星图",
 	deckDescription:
-		"上面的卡片只负责切换主题。点击任意一张，会自动滚动到下面的 Study 全部文章，并筛选出对应目录。",
+		"点击任意节点，会直接滚动到下面的文章列表，并筛选出对应目录。",
 	filterEyebrow: "Reading Index",
 	filterTitle: "Study 全部文章",
 	filterDescription:
-		"这里是 Study 的唯一文章列表。你可以直接点上面的目录卡片，或者在下面切换筛选器，只看某一个主题目录。",
+		"这里是 Study 的唯一文章列表。你可以直接点上面的知识星点，或者在下面切换筛选器，只看某一个主题目录。",
 	metricLabels: {
 		published: "已发布文章",
 		words: "累计字数",

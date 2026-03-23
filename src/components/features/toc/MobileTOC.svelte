@@ -345,22 +345,32 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		padding: 2px 0;
+		padding: 6px;
+		border-radius: 16px;
+		border: 1px solid transparent;
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+	}
+
+	.toc-group.active-branch {
+		border-color: color-mix(in srgb, var(--primary) 12%, transparent);
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--primary) 8%, transparent), transparent),
+			linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
 	}
 
 	.toc-group-header {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: 8px;
 	}
 
 	.toc-children {
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
-		padding-left: 6px;
-		border-left: 1px solid color-mix(in srgb, var(--line-color) 75%, transparent);
-		margin-left: 10px;
+		gap: 4px;
+		padding-left: 10px;
+		border-left: 1px solid color-mix(in srgb, var(--primary) 14%, transparent);
+		margin-left: 12px;
 	}
 
 	.toc-item {
@@ -368,10 +378,14 @@
 		align-items: center;
 		width: 100%;
 		text-align: left;
-		padding: 8px 12px;
-		border-radius: 10px;
-		transition: all 0.2s ease;
-		border: none;
+		padding: 10px 12px;
+		border-radius: 14px;
+		transition:
+			background-color 0.2s ease,
+			border-color 0.2s ease,
+			color 0.2s ease,
+			transform 0.2s ease;
+		border: 1px solid transparent;
 		background: transparent;
 		cursor: pointer;
 		color: rgba(0, 0, 0, 0.75);
@@ -384,15 +398,17 @@
 	}
 
 	.toc-item:hover {
-		background: var(--btn-plain-bg-hover);
+		background: color-mix(in srgb, var(--primary) 8%, transparent);
+		border-color: color-mix(in srgb, var(--primary) 10%, transparent);
 		color: var(--primary);
 	}
 
 	.toc-item.active {
-		background: var(--btn-plain-bg-active);
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--primary) 11%, transparent), color-mix(in srgb, var(--primary) 7%, transparent));
+		border-color: color-mix(in srgb, var(--primary) 16%, transparent);
 		color: var(--primary);
 		font-weight: 600;
-		border-left: 3px solid var(--primary);
 	}
 
 	.toc-parent {
@@ -426,33 +442,22 @@
 	}
 
 	.toc-toggle {
-		width: 1.9rem;
-		height: 1.9rem;
+		width: 1.55rem;
+		height: 1.55rem;
 		flex-shrink: 0;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--line-color));
-		border-radius: 0.78rem;
-		background:
-			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 88%, rgba(255, 255, 255, 0.18)), color-mix(in srgb, var(--card-bg) 74%, transparent)),
-			radial-gradient(circle at top, color-mix(in srgb, var(--primary) 14%, transparent), transparent 72%);
-		color: var(--primary);
-		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.18),
-			0 8px 20px rgba(15, 23, 42, 0.08);
+		border: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--primary) 8%, transparent);
+		color: color-mix(in srgb, var(--primary) 86%, white 14%);
+		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 	}
 
 	.toc-toggle:hover {
-		background:
-			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 92%, rgba(255, 255, 255, 0.2)), color-mix(in srgb, var(--card-bg) 78%, transparent)),
-			radial-gradient(circle at center, color-mix(in srgb, var(--primary) 18%, transparent), transparent 74%);
-		border-color: color-mix(in srgb, var(--primary) 36%, transparent);
-		box-shadow:
-			inset 0 1px 0 rgba(255, 255, 255, 0.22),
-			0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent),
-			0 10px 24px color-mix(in srgb, var(--primary) 12%, transparent);
+		background: color-mix(in srgb, var(--primary) 14%, transparent);
+		border-color: color-mix(in srgb, var(--primary) 18%, transparent);
 	}
 
 	.toc-toggle.expanded {
@@ -460,8 +465,8 @@
 	}
 
 	.active-branch .toc-toggle {
-		border-color: color-mix(in srgb, var(--primary) 36%, transparent);
-		box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 16%, transparent);
+		border-color: color-mix(in srgb, var(--primary) 18%, transparent);
+		background: color-mix(in srgb, var(--primary) 12%, transparent);
 	}
 
 	.badge {

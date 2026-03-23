@@ -33,7 +33,7 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 				data-node-id={card.directoryName}
 				data-node-title={card.title}
 				style={`--node-accent: ${card.accent};`}
-				aria-label={`前往 ${card.title} 卡片`}
+				aria-label={`筛选 ${card.title} 主题`}
 			>
 				<span class="study-knowledge-node__halo" />
 				<span class="study-knowledge-node__core" />
@@ -198,7 +198,7 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 		);
 
 		const target = document.querySelector(
-			`[data-card-module="${moduleKey}"][data-card-directory="${directoryName}"]`,
+			`[data-module-filter-root][data-module-key="${moduleKey}"]`,
 		);
 		if (!(target instanceof HTMLElement)) {
 			return;
@@ -212,9 +212,11 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 			top: Math.max(0, top),
 			behavior: "auto",
 		});
-		target.classList.add("is-map-targeted");
+		target.classList.remove("is-filter-targeted");
+		void target.offsetWidth;
+		target.classList.add("is-filter-targeted");
 		window.setTimeout(() => {
-			target.classList.remove("is-map-targeted");
+			target.classList.remove("is-filter-targeted");
 		}, 1200);
 	}
 
