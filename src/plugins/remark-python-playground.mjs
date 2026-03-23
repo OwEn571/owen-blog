@@ -42,11 +42,11 @@ function renderPythonCodeCard(source, options) {
 	const normalizedTitle = normalizePythonCardTitle(options.title);
 	const hasCustomTitle = Boolean(normalizedTitle);
 	const packagesText =
-		options.packages.length > 0 ? `packages: ${options.packages.join(", ")}` : "";
+		options.packages.length > 0 ? options.packages.join(", ") : "";
 	const summaryNote =
 		options.packages.length > 0
-			? `Python3 · ${options.packages.join(", ")} · ${lines} lines`
-			: `Python3 · ${lines} lines`;
+			? `${options.packages.join(", ")} · ${lines} lines`
+			: `${lines} lines · frozen view`;
 
 	return `<div class="python-code-card" data-python-code-card="true" data-python-title="${escapeAttribute(normalizedTitle)}" data-python-packages="${escapeAttribute(options.packages.join(","))}">
 	<div class="python-code-card__toolbar">
@@ -72,6 +72,13 @@ function renderPythonCodeCard(source, options) {
 				<button class="python-code-card__copy" type="button">复制代码</button>
 			</div>
 			<div class="python-code-card__surface">
+				<div class="python-code-card__surface-bar">
+					<div class="python-code-card__surface-dots" aria-hidden="true">
+						<span></span><span></span><span></span>
+					</div>
+					<span class="python-code-card__surface-name">Python3</span>
+					<span class="python-code-card__surface-state">Readonly</span>
+				</div>
 				<code class="python-code-card__code" data-python-code-display="true"></code>
 			</div>
 		</div>

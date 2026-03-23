@@ -154,6 +154,9 @@ print([sqrt(n) for n in nums])
     width 3.5rem
     height 3.5rem
 
+  .python-lab-fab-shell[data-state="open"]
+    z-index 4
+
   .python-lab-fab,
   .python-lab-panel
     pointer-events auto
@@ -213,8 +216,8 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel
     position absolute
-    right 0
-    bottom calc(100% + 1rem)
+    right calc(100% + 1rem)
+    bottom -.25rem
     width 27rem
     max-width calc(100vw - 1.5rem)
     max-height unquote("min(36rem, calc(100vh - 8rem))")
@@ -228,7 +231,7 @@ print([sqrt(n) for n in nums])
     backdrop-filter blur(22px) saturate(1.06)
     -webkit-backdrop-filter blur(22px) saturate(1.06)
     overflow hidden
-    position relative
+    isolation isolate
     transition transform .24s ease, box-shadow .24s ease, border-color .24s ease
     transform-origin bottom right
 
