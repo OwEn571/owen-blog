@@ -246,16 +246,15 @@ if (siteConfig.font) {
 					loaded = true;
 					const script = document.createElement("script");
 					script.src = PYTHON_PLAYGROUND_URL;
-					script.defer = true;
 					document.body.appendChild(script);
 				};
+
+				loadPlaygroundScript();
 
 				if (document.readyState === "loading") {
 					document.addEventListener("DOMContentLoaded", loadPlaygroundScript, {
 						once: true,
 					});
-				} else {
-					loadPlaygroundScript();
 				}
 
 			})();

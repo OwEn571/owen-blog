@@ -940,6 +940,112 @@ except SyntaxError as exc:
 		return element;
 	}
 
+	function buildPythonCodeCardElement({ title, packages, source }) {
+		const root = createElement("div", "python-code-card");
+		root.dataset.pythonCodeCard = "true";
+		root.dataset.pythonTitle = title;
+		root.dataset.pythonPackages = packages.join(",");
+
+		const toolbar = createElement("div", "python-code-card__toolbar");
+		const toolbarMeta = createElement("div", "python-code-card__toolbar-meta");
+		const badge = createElement("span", "python-code-card__badge", "Python Example");
+		const titleElement = createElement("strong", "python-code-card__title", title);
+		const toolbarSide = createElement("div", "python-code-card__toolbar-side");
+		const packagesElement = createElement(
+			"span",
+			"python-code-card__meta",
+			packages.length > 0 ? `packages: ${packages.join(", ")}` : "pure stdlib",
+		);
+		const linesElement = createElement(
+			"span",
+			"python-code-card__meta",
+			`${source.split("\n").length} lines`,
+		);
+
+		const details = createElement("details", "python-code-card__details");
+		details.open = true;
+
+		const summary = createElement("summary", "python-code-card__summary");
+		const summaryCopy = createElement("div", "python-code-card__summary-copy");
+		const summaryLabel = createElement(
+			"span",
+			"python-code-card__summary-label",
+			"Code Block",
+		);
+		const summaryNote = createElement(
+			"span",
+			"python-code-card__summary-note",
+			"折叠阅读或展开查看完整代码",
+		);
+		const summaryToggle = createElement(
+			"span",
+			"python-code-card__summary-toggle",
+			"折叠代码",
+		);
+
+		const body = createElement("div", "python-code-card__body");
+		const utility = createElement("div", "python-code-card__utility");
+		const copyButton = createElement(
+			"button",
+			"python-code-card__copy",
+			"复制代码",
+		);
+		copyButton.type = "button";
+		const surface = createElement("div", "python-code-card__surface");
+		const code = createElement("code", "python-code-card__code");
+		code.setAttribute("data-python-code-display", "true");
+		const sourceField = document.createElement("textarea");
+		sourceField.className = "python-code-card__source";
+		sourceField.hidden = true;
+		sourceField.value = source;
+
+		toolbarMeta.append(badge, titleElement);
+		toolbarSide.append(packagesElement, linesElement);
+		toolbar.append(toolbarMeta, toolbarSide);
+
+		summaryCopy.append(summaryLabel, summaryNote);
+		summary.append(summaryCopy, summaryToggle);
+		details.append(summary);
+
+		utility.append(copyButton);
+		surface.append(code);
+		body.append(utility, surface);
+		details.append(body);
+
+		root.append(toolbar, details, sourceField);
+		return root;
+	}
+
+	function normalizeLegacyPlayground(root) {
+		if (!(root instanceof HTMLElement)) {
+			return null;
+		}
+
+		const sourceField = root.querySelector(
+			".python-playground__answer, .python-playground__code",
+		);
+		if (!(sourceField instanceof HTMLTextAreaElement)) {
+			return null;
+		}
+
+		const title =
+			root.dataset.pythonTitle ||
+			root.querySelector(".python-playground__title")?.textContent?.trim() ||
+			"Python Playground";
+		const packages = (root.dataset.pythonPackages || "")
+			.split(",")
+			.map((item) => item.trim())
+			.filter(Boolean);
+		const next = buildPythonCodeCardElement({
+			title,
+			packages,
+			source: sourceField.value,
+		});
+
+		root.replaceWith(next);
+		return next;
+	}
+
 	function syncCodeCardToggle(root) {
 		const details = root.querySelector(".python-code-card__details");
 		const label = root.querySelector(".python-code-card__summary-toggle");
@@ -1062,55 +1168,72 @@ except SyntaxError as exc:
 
 	async function ensurePythonLabEditor(root) {
 		const labState = getPythonLabState(root);
-		if (!labState || labState.editor) {
-			return labState?.editor || null;
+		if (!labState) {
+			return null;
 		}
 
-		const monaco = await ensureMonaco();
-		ensureMonacoTheme(monaco);
-		ensureMonacoCompletion(monaco);
-		ensureMonacoHover(monaco);
-		ensureMonacoSignatureHelp(monaco);
+		if (labState.editor) {
+			return labState.editor;
+		}
 
-		labState.host.hidden = false;
-		labState.editor = monaco.editor.create(labState.host, {
-			value: labState.source.value,
-			language: "python",
-			theme: getMonacoThemeName(),
-			automaticLayout: true,
-			minimap: { enabled: false },
-			scrollBeyondLastLine: false,
-			fontFamily:
-				'"SF Mono", "JetBrains Mono Variable", "JetBrains Mono", Menlo, Monaco, ui-monospace, Consolas, "Liberation Mono", "Courier New", monospace',
-			fontSize: 14,
-			lineHeight: 24,
-			padding: { top: 14, bottom: 14 },
-			tabSize: 4,
-			insertSpaces: true,
-			quickSuggestions: { other: true, comments: false, strings: false },
-			quickSuggestionsDelay: 150,
-			wordBasedSuggestions: "currentDocument",
-			suggestOnTriggerCharacters: true,
-			acceptSuggestionOnEnter: "on",
-			snippetSuggestions: "inline",
-			glyphMargin: false,
-			folding: false,
-			mouseWheelZoom: false,
-			stickyScroll: { enabled: false },
-			scrollbar: {
-				vertical: "auto",
-				horizontal: "auto",
-				useShadows: false,
-				alwaysConsumeMouseWheel: false,
-			},
-		});
+		labState.fallback.hidden = false;
+		labState.fallback.value = labState.source.value;
 
-		labState.editor.onDidChangeModelContent(() => {
-			labState.source.value = labState.editor.getValue();
-			schedulePythonLabValidation(root);
-		});
+		try {
+			const monaco = await ensureMonaco();
+			ensureMonacoTheme(monaco);
+			ensureMonacoCompletion(monaco);
+			ensureMonacoHover(monaco);
+			ensureMonacoSignatureHelp(monaco);
 
-		return labState.editor;
+			labState.host.hidden = false;
+			labState.editor = monaco.editor.create(labState.host, {
+				value: labState.source.value,
+				language: "python",
+				theme: getMonacoThemeName(),
+				automaticLayout: true,
+				minimap: { enabled: false },
+				scrollBeyondLastLine: false,
+				fontFamily:
+					'"SF Mono", "JetBrains Mono Variable", "JetBrains Mono", Menlo, Monaco, ui-monospace, Consolas, "Liberation Mono", "Courier New", monospace',
+				fontSize: 14,
+				lineHeight: 24,
+				padding: { top: 14, bottom: 14 },
+				tabSize: 4,
+				insertSpaces: true,
+				quickSuggestions: { other: true, comments: false, strings: false },
+				quickSuggestionsDelay: 150,
+				wordBasedSuggestions: "currentDocument",
+				suggestOnTriggerCharacters: true,
+				acceptSuggestionOnEnter: "on",
+				snippetSuggestions: "inline",
+				glyphMargin: false,
+				folding: false,
+				mouseWheelZoom: false,
+				stickyScroll: { enabled: false },
+				scrollbar: {
+					vertical: "auto",
+					horizontal: "auto",
+					useShadows: false,
+					alwaysConsumeMouseWheel: false,
+				},
+			});
+
+			labState.fallback.hidden = true;
+			labState.editor.onDidChangeModelContent(() => {
+				labState.source.value = labState.editor.getValue();
+				labState.fallback.value = labState.source.value;
+				schedulePythonLabValidation(root);
+			});
+
+			return labState.editor;
+		} catch (error) {
+			labState.host.hidden = true;
+			labState.fallback.hidden = false;
+			labState.status.textContent =
+				"Monaco 加载失败，已切换到轻量编辑器。";
+			return null;
+		}
 	}
 
 	function togglePythonLab(root, shouldOpen) {
@@ -1129,9 +1252,12 @@ except SyntaxError as exc:
 		}
 
 		state.status.textContent = "正在准备编辑器…";
+		state.fallback.hidden = false;
+		state.fallback.focus();
 		void ensurePythonLabEditor(root).then((editor) => {
 			if (!editor) {
-				state.status.textContent = "编辑器加载失败，请刷新后重试。";
+				state.status.textContent =
+					"轻量编辑器已就绪。若 Monaco 稍后可用，会自动切换。";
 				return;
 			}
 			state.status.textContent = "Monaco 编辑器已就绪，运行时会在首次执行时加载。";
@@ -1147,11 +1273,8 @@ except SyntaxError as exc:
 		}
 
 		const editor = await ensurePythonLabEditor(root);
-		if (!editor) {
-			return;
-		}
-
-		const code = editor.getValue();
+		const code = editor ? editor.getValue() : state.fallback.value;
+		state.source.value = code;
 		state.runButton.disabled = true;
 		state.status.textContent = "正在准备浏览器内 Python 运行时…";
 		setOutput(state.output, "正在执行代码…", "loading");
@@ -1226,6 +1349,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		const clearButton = root.querySelector("[data-python-lab-clear]");
 		const output = root.querySelector("[data-python-lab-output]");
 		const host = root.querySelector("[data-python-lab-editor]");
+		const fallback = root.querySelector("[data-python-lab-fallback]");
 		const status = root.querySelector("[data-python-lab-status]");
 		const source = root.querySelector("[data-python-lab-source]");
 
@@ -1237,6 +1361,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			!(clearButton instanceof HTMLButtonElement) ||
 			!(output instanceof HTMLElement) ||
 			!(host instanceof HTMLElement) ||
+			!(fallback instanceof HTMLTextAreaElement) ||
 			!(status instanceof HTMLElement) ||
 			!(source instanceof HTMLTextAreaElement)
 		) {
@@ -1251,6 +1376,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			clearButton,
 			output,
 			host,
+			fallback,
 			status,
 			source,
 			editor: null,
@@ -1272,6 +1398,11 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		clearButton.addEventListener("click", () => {
 			setOutput(output, "等待运行…", "idle");
 			status.textContent = "输出已清空。";
+		});
+
+		fallback.value = source.value;
+		fallback.addEventListener("input", () => {
+			source.value = fallback.value;
 		});
 
 		document.addEventListener("keydown", (event) => {
@@ -2354,7 +2485,12 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 	function initPythonPlaygrounds() {
 		document
 			.querySelectorAll("[data-python-playground]")
-			.forEach((element) => bindPlayground(element));
+			.forEach((element) => {
+				const next = normalizeLegacyPlayground(element);
+				if (next) {
+					bindPythonCodeCard(next);
+				}
+			});
 	}
 
 	function initPythonCodeCards() {

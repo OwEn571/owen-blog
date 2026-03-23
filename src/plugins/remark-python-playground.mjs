@@ -1,4 +1,3 @@
-import { h } from "hastscript";
 import { visit } from "unist-util-visit";
 
 export function remarkPythonPlayground() {
@@ -8,90 +7,15 @@ export function remarkPythonPlayground() {
 			if (normalizedLang !== "python") {
 				return;
 			}
-			node.lang = normalizedLang;
 
+			node.lang = normalizedLang;
 			const options = parseMeta(node.meta);
 			if (!options.runnable) {
 				return;
 			}
 
-			node.type = "python-playground";
-			node.data = {
-				hName: "div",
-				hProperties: {
-					className: ["python-code-card"],
-					"data-python-code-card": "true",
-					"data-python-title": options.title,
-					"data-python-packages": options.packages.join(","),
-				},
-				hChildren: [
-					h("div.python-code-card__toolbar", [
-						h("div.python-code-card__toolbar-meta", [
-							h(
-								"span.python-code-card__badge",
-								"Python Example",
-							),
-							h("strong.python-code-card__title", options.title),
-						]),
-						h("div.python-code-card__toolbar-side", [
-							options.packages.length > 0
-								? h(
-										"span.python-code-card__meta",
-										`packages: ${options.packages.join(", ")}`,
-									)
-								: h(
-										"span.python-code-card__meta",
-										"pure stdlib",
-									),
-							h(
-								"span.python-code-card__meta",
-								`${node.value.split("\n").length} lines`,
-							),
-						]),
-					]),
-					h("details.python-code-card__details", { open: true }, [
-						h("summary.python-code-card__summary", [
-							h("div.python-code-card__summary-copy", [
-								h(
-									"span.python-code-card__summary-label",
-									"Code Block",
-								),
-								h(
-									"span.python-code-card__summary-note",
-									"折叠阅读或展开查看完整代码",
-								),
-							]),
-							h(
-								"span.python-code-card__summary-toggle",
-								"折叠代码",
-							),
-						]),
-						h("div.python-code-card__body", [
-							h("div.python-code-card__utility", [
-								h(
-									"button.python-code-card__copy",
-									{ type: "button" },
-									"复制代码",
-								),
-							]),
-							h("div.python-code-card__surface", [
-								h(
-									"code.python-code-card__code",
-									{ "data-python-code-display": "true" },
-									"",
-								),
-							]),
-						]),
-					]),
-					h(
-						"textarea.python-code-card__source",
-						{
-							hidden: true,
-						},
-						node.value,
-					),
-				],
-			};
+			node.type = "html";
+			node.value = renderPythonCodeCard(node.value, options);
 		});
 	};
 }
@@ -112,4 +36,60 @@ function parseMeta(meta = "") {
 					.filter(Boolean)
 			: [],
 	};
+}
+
+function renderPythonCodeCard(source, options) {
+	const lines = source.split("\n").length;
+	const packagesText =
+		options.packages.length > 0
+			? `packages: ${options.packages.join(", ")}`
+			: "pure stdlib";
+
+	return `<div class="python-code-card" data-python-code-card="true" data-python-title="${escapeAttribute(options.title)}" data-python-packages="${escapeAttribute(options.packages.join(","))}">
+	<div class="python-code-card__toolbar">
+		<div class="python-code-card__toolbar-meta">
+			<span class="python-code-card__badge">Python Example</span>
+			<strong class="python-code-card__title">${escapeHtml(options.title)}</strong>
+		</div>
+		<div class="python-code-card__toolbar-side">
+			<span class="python-code-card__meta">${escapeHtml(packagesText)}</span>
+			<span class="python-code-card__meta">${lines} lines</span>
+		</div>
+	</div>
+	<details class="python-code-card__details" open>
+		<summary class="python-code-card__summary">
+			<div class="python-code-card__summary-copy">
+				<span class="python-code-card__summary-label">Code Block</span>
+				<span class="python-code-card__summary-note">折叠阅读或展开查看完整代码</span>
+			</div>
+			<span class="python-code-card__summary-toggle">折叠代码</span>
+		</summary>
+		<div class="python-code-card__body">
+			<div class="python-code-card__utility">
+				<button class="python-code-card__copy" type="button">复制代码</button>
+			</div>
+			<div class="python-code-card__surface">
+				<code class="python-code-card__code" data-python-code-display="true"></code>
+			</div>
+		</div>
+	</details>
+	<textarea class="python-code-card__source" hidden>${escapeTextarea(source)}</textarea>
+</div>`;
+}
+
+function escapeHtml(value) {
+	return String(value)
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#39;");
+}
+
+function escapeAttribute(value) {
+	return escapeHtml(value).replaceAll("\n", "&#10;");
+}
+
+function escapeTextarea(value) {
+	return String(value).replaceAll("</textarea", "&lt;/textarea");
 }

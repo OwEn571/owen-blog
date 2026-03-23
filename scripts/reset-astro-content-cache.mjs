@@ -5,6 +5,9 @@ const cacheFiles = [
 	".astro/data-store.json",
 	".astro/content-assets.mjs",
 	".astro/content-modules.mjs",
+	"node_modules/.astro/data-store.json",
+	"node_modules/.astro/content-assets.mjs",
+	"node_modules/.astro/content-modules.mjs",
 ];
 
 async function removeIfExists(target) {

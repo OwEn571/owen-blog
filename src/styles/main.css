@@ -2020,6 +2020,10 @@ html.splash-active #banner-credit {
     box-shadow:
       0 24px 64px rgba(15, 23, 42, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.68);
+    transition:
+      transform 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease;
   }
 
   :root.dark body.immersive-page .post-markdown-flow .python-code-card {
@@ -2028,6 +2032,50 @@ html.splash-active #banner-credit {
     box-shadow:
       0 28px 76px rgba(0, 0, 0, 0.24),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  @media (hover: hover) {
+    body.immersive-page .post-markdown-flow .python-code-card:hover,
+    body.immersive-page .module-stage:hover,
+    body.immersive-page .module-stat-card:hover,
+    body.immersive-page .module-panel:hover,
+    body.immersive-page .module-stream:hover,
+    body.immersive-page .module-content-shell:hover,
+    body.immersive-page .module-page .apple-post-card:hover,
+    body.immersive-page .module-page .card-base-daily:hover,
+    body.immersive-page .post-support-card:hover,
+    body.immersive-page .license-container:hover,
+    body.immersive-page .post-comment-card:hover,
+    body.immersive-page .post-neighbor-card:hover,
+    body.immersive-page .floating-toc-panel:hover,
+    body.immersive-page table-of-contents#toc:hover {
+      transform: translateY(-2px) scale(1.006) !important;
+      border-color: rgba(118, 156, 255, 0.22) !important;
+      box-shadow:
+        0 0 26px rgba(118, 156, 255, 0.12),
+        0 24px 64px rgba(15, 23, 42, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    }
+
+    :root.dark body.immersive-page .post-markdown-flow .python-code-card:hover,
+    :root.dark body.immersive-page .module-stage:hover,
+    :root.dark body.immersive-page .module-stat-card:hover,
+    :root.dark body.immersive-page .module-panel:hover,
+    :root.dark body.immersive-page .module-stream:hover,
+    :root.dark body.immersive-page .module-content-shell:hover,
+    :root.dark body.immersive-page .module-page .apple-post-card:hover,
+    :root.dark body.immersive-page .module-page .card-base-daily:hover,
+    :root.dark body.immersive-page .post-support-card:hover,
+    :root.dark body.immersive-page .license-container:hover,
+    :root.dark body.immersive-page .post-comment-card:hover,
+    :root.dark body.immersive-page .post-neighbor-card:hover,
+    :root.dark body.immersive-page .floating-toc-panel:hover,
+    :root.dark body.immersive-page table-of-contents#toc:hover {
+      box-shadow:
+        0 0 32px rgba(118, 156, 255, 0.16),
+        0 28px 78px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    }
   }
 
   body.immersive-page .post-markdown-flow .python-code-card__toolbar,
@@ -2139,10 +2187,11 @@ html.splash-active #banner-credit {
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
   }
 
-  body.immersive-page .post-markdown-flow .python-code-card__copy:hover {
+  body.immersive-page .post-markdown-flow .python-code-card__copy:hover,
+  body.immersive-page .post-markdown-flow .python-code-card__summary:hover .python-code-card__summary-toggle {
     transform: translateY(-1px);
     border-color: rgba(118, 156, 255, 0.24);
-    box-shadow: 0 0 18px rgba(118, 156, 255, 0.12);
+    box-shadow: 0 0 18px rgba(118, 156, 255, 0.12), 0 0 34px rgba(132, 115, 255, 0.08);
   }
 
   body.immersive-page .post-markdown-flow .python-code-card__surface {
