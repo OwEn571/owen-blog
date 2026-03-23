@@ -183,14 +183,10 @@ const initialLayoutClass = defaultLayout === "grid" ? "grid-mode" : "list-mode";
 	}
 
 	#post-list-container > :global(*) {
-		content-visibility: auto;
-		contain-intrinsic-size: 200px;
 		transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 		opacity: 0;
 		animation: fadeInSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-		animation-delay: calc(
-			var(--content-delay) + var(--i) * var(--interval)
-		);
+		animation-delay: calc(var(--content-delay) + var(--i) * 36ms);
 	}
 
 	#post-list-container.grid-mode > :global(*) {
@@ -202,7 +198,7 @@ const initialLayoutClass = defaultLayout === "grid" ? "grid-mode" : "list-mode";
 	}
 
 	#post-list-container.layout-switching > :global(*) {
-		animation-delay: calc(var(--i) * 50ms);
+		animation-delay: calc(var(--i) * 36ms);
 	}
 
 	#post-list-container.layout-switching > :global(*) {

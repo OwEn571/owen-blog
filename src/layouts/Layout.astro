@@ -224,7 +224,38 @@ if (siteConfig.font) {
 
 		<ConfigCarrier />
 		<slot />
-		<script is:inline src="/scripts/python-playground.js" defer></script>
+		<script
+			is:inline
+			define:vars={{ PYTHON_PLAYGROUND_URL: url("/scripts/python-playground.js") }}
+		>
+			(() => {
+				const selector = "[data-python-playground]";
+				let loaded = false;
+
+				const loadPlaygroundScript = () => {
+					if (loaded || !document.querySelector(selector)) {
+						return;
+					}
+
+					loaded = true;
+					const script = document.createElement("script");
+					script.src = PYTHON_PLAYGROUND_URL;
+					script.defer = true;
+					document.body.appendChild(script);
+				};
+
+				if (document.readyState === "loading") {
+					document.addEventListener("DOMContentLoaded", loadPlaygroundScript, {
+						once: true,
+					});
+				} else {
+					loadPlaygroundScript();
+				}
+
+				document.addEventListener("swup:contentReplaced", loadPlaygroundScript);
+				document.addEventListener("swup:pageView", loadPlaygroundScript);
+			})();
+		</script>
 
 		<!-- Music Player - 仅在启用时加载 -->
 		{musicPlayerConfig.enable && <MusicPlayer client:idle />}
@@ -303,5 +334,13 @@ if (siteConfig.font) {
 
 <!-- 主题切换综合性能优化器（包含代码块优化、重型元素优化、性能诊断） -->
 <script>
-	import "../scripts/theme-optimizer.js";
+	const loadThemeOptimizer = () => {
+		void import("../scripts/theme-optimizer.js");
+	};
+
+	if ("requestIdleCallback" in window) {
+		window.requestIdleCallback(loadThemeOptimizer, { timeout: 1800 });
+	} else {
+		setTimeout(loadThemeOptimizer, 1200);
+	}
 </script>
