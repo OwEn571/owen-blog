@@ -186,24 +186,7 @@ const favicons: Favicon[] =
 			// 监听窗口大小变化
 			window.addEventListener('resize', adjustPageScale);
 
-			// Swup 页面切换后也需要检查
-			document.addEventListener('swup:page:view', adjustPageScale);
 			window.addEventListener('orientationchange', adjustPageScale);
 		}
 	})();
-</script>
-
-<!-- Dev mode script - avoid swup replacing head styles -->
-<script is:inline define:vars={{ IS_DEV: import.meta.env.DEV }}>
-	// Dev 模式下，避免 swup 在页面切换时反复替换 head 中的样式标签，导致偶发样式丢失
-	if (IS_DEV) {
-		document.addEventListener("swup:enable", () => {
-			if (window?.swup?.options) {
-				window.swup.options.updateHead = false;
-			}
-		});
-		if (window?.swup?.options) {
-			window.swup.options.updateHead = false;
-		}
-	}
 </script>

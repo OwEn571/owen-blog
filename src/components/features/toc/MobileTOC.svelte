@@ -143,60 +143,20 @@
 		});
 	};
 
-	const setupSwupListeners = () => {
-		if (
-			typeof window !== "undefined" &&
-			(window as unknown as {
-				swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } };
-			}).swup &&
-			!swupListenersRegistered
-		) {
-			const swup = (window as unknown as {
-				swup: { hooks: { on: (event: string, cb: () => void) => void } };
-			}).swup;
-
-			swup.hooks.on("page:view", () => {
-				setTimeout(() => init(), 200);
-			});
-
-			swupListenersRegistered = true;
-		} else if (!swupListenersRegistered) {
-			window.addEventListener("popstate", () => {
-				setTimeout(init, 200);
-			});
-			swupListenersRegistered = true;
+	const setupNavigationListeners = () => {
+		if (typeof window === "undefined" || swupListenersRegistered) {
+			return;
 		}
-	};
 
-	const checkSwupAvailability = () => {
-		if (typeof window !== "undefined") {
-			const w = window as unknown as {
-				swup?: { hooks: { on: (event: string, cb: () => void) => void; off: (event: string) => void } };
-			};
-			if (w.swup) {
-				setupSwupListeners();
-			} else {
-				const checkSwup = () => {
-					if (w.swup) {
-						setupSwupListeners();
-						document.removeEventListener("swup:enable", checkSwup);
-					}
-				};
-
-				document.addEventListener("swup:enable", checkSwup);
-				setTimeout(() => {
-					if (w.swup) {
-						setupSwupListeners();
-						document.removeEventListener("swup:enable", checkSwup);
-					}
-				}, 1000);
-			}
-		}
+		window.addEventListener("popstate", () => {
+			setTimeout(init, 200);
+		});
+		swupListenersRegistered = true;
 	};
 
 	const init = () => {
 						isHomePage = checkIsHomePage();
-		checkSwupAvailability();
+		setupNavigationListeners();
 
 		if (isHomePage) {
 			tocItems = [];

@@ -358,34 +358,6 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 		initStudyMaps();
 	}
 
-	function setupSwupListeners() {
-		if (
-			mapWindow.__mizukiStudyKnowledgeMapSwupBound ||
-			typeof mapWindow === "undefined"
-		) {
-			return;
-		}
-
-		function trySetupSwup() {
-			if (mapWindow.swup) {
-				mapWindow.swup.hooks.on("content:replace", initStudyMaps);
-				mapWindow.__mizukiStudyKnowledgeMapSwupBound = true;
-				return true;
-			}
-			return false;
-		}
-
-		if (!trySetupSwup()) {
-			let retryCount = 0;
-			const retryInterval = window.setInterval(() => {
-				if (trySetupSwup() || ++retryCount >= 10) {
-					window.clearInterval(retryInterval);
-				}
-			}, 100);
-		}
-	}
-
-	window.setTimeout(setupSwupListeners, 200);
 </script>
 
 <style>

@@ -348,27 +348,6 @@ function setupSwupHooks() {
 	return false;
 }
 
-// 尝试立即设置 Swup 钩子
-if (!setupSwupHooks()) {
-	// 如果 Swup 尚未初始化，等待它加载
-	codeBlockCollapser.log("Swup not ready, waiting for initialization");
+setupSwupHooks();
 
-	// 监听 swup:enable 事件
-	document.addEventListener("swup:enable", () => {
-		codeBlockCollapser.log("Swup enabled, setting up hooks");
-		setupSwupHooks();
-	});
-
-	// 额外的延迟重试机制，确保捕获到 Swup
-	const retryInterval = setInterval(() => {
-		if (setupSwupHooks()) {
-			codeBlockCollapser.log("Swup hooks set up successfully via retry");
-			clearInterval(retryInterval);
-		}
-	}, 100);
-
-	// 最多重试 20 次（2 秒）
-	setTimeout(() => {
-		clearInterval(retryInterval);
-	}, 2000);
-}
+export {};

@@ -12,15 +12,16 @@ const splashTitle = profileConfig.name || siteConfig.title;
 	<div class="splash-backdrop">
 		<video
 			class="splash-video"
-			autoplay
 			muted
 			loop
 			playsinline
-			preload="metadata"
+			preload="none"
+			poster="/assets/opening/qidian-splash-poster.jpg"
 			disableRemotePlayback
+			data-splash-video
 			aria-hidden="true"
 		>
-			<source src="/assets/opening/qidian-splash.mp4" type="video/mp4" />
+			<source data-src="/assets/opening/qidian-splash.mp4" type="video/mp4" />
 		</video>
 		<div class="splash-backdrop-overlay"></div>
 	</div>
@@ -81,8 +82,15 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 		const optionLinks = root.querySelectorAll("[data-splash-target]");
-		const video = root.querySelector(".splash-video");
+		const video = root.querySelector("[data-splash-video]");
+		const videoSource = video?.querySelector("source");
+		const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+		const shouldReduceVideo =
+			prefersReducedMotion ||
+			Boolean(connection?.saveData) ||
+			/(?:^|slow-)?2g/i.test(connection?.effectiveType || "");
 		let isNavigating = false;
+		let isVideoActivated = false;
 
 		const lockPage = () => {
 			document.documentElement.classList.add("splash-active");
@@ -98,9 +106,43 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			isNavigating = false;
 			root.dataset.state = "ready";
 			lockPage();
-			if (!prefersReducedMotion) {
+			if (!shouldReduceVideo && isVideoActivated) {
 				video?.play?.().catch(() => {});
 			}
+		};
+
+		const activateVideo = () => {
+			if (
+				shouldReduceVideo ||
+				isVideoActivated ||
+				!(video instanceof HTMLVideoElement) ||
+				!(videoSource instanceof HTMLSourceElement)
+			) {
+				return;
+			}
+
+			const src = videoSource.dataset.src;
+			if (!src) {
+				return;
+			}
+
+			isVideoActivated = true;
+			videoSource.src = src;
+			video.load();
+			video.play().catch(() => {});
+		};
+
+		const scheduleVideoActivation = () => {
+			if (shouldReduceVideo) {
+				return;
+			}
+
+			if ("requestIdleCallback" in window) {
+				window.requestIdleCallback(activateVideo, { timeout: 2200 });
+				return;
+			}
+
+			window.setTimeout(activateVideo, 1400);
 		};
 
 		const preloadRoute = (href) => {
@@ -132,8 +174,8 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		};
 
 		lockPage();
-		if (prefersReducedMotion) {
-			if (video) {
+		if (shouldReduceVideo) {
+			if (video instanceof HTMLVideoElement) {
 				video.pause();
 				video.removeAttribute("autoplay");
 			}
@@ -142,7 +184,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			requestAnimationFrame(() => {
 				root.dataset.state = "ready";
 			});
-			video?.play?.().catch(() => {});
+			scheduleVideoActivation();
 		}
 
 		optionLinks.forEach((link) => {
@@ -152,6 +194,9 @@ const splashTitle = profileConfig.name || siteConfig.title;
 					passive: true,
 				});
 				link.addEventListener("focus", () => preloadRoute(href));
+				link.addEventListener("pointerenter", activateVideo, {
+					passive: true,
+				});
 			}
 
 			link.addEventListener("click", (event) => {
@@ -166,6 +211,21 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		window.addEventListener("pageshow", () => {
 			restoreSplash();
+		});
+
+		document.addEventListener("visibilitychange", () => {
+			if (!(video instanceof HTMLVideoElement)) {
+				return;
+			}
+
+			if (document.hidden) {
+				video.pause();
+				return;
+			}
+
+			if (!shouldReduceVideo && isVideoActivated) {
+				video.play().catch(() => {});
+			}
 		});
 	})();
 </script>

@@ -1,0 +1,42 @@
+---
+import { profileConfig, siteConfig } from "@/config";
+
+import "../styles/splash.css";
+import HeadTags from "./partials/HeadTags.astro";
+
+interface Props {
+	title?: string;
+	description?: string;
+	lang?: string;
+}
+
+const { title, description, lang } = Astro.props;
+const configHue = siteConfig.themeColor.hue;
+const pageTitle = title
+	? `${title} - ${siteConfig.title}`
+	: siteConfig.subtitle
+		? `${siteConfig.title} - ${siteConfig.subtitle}`
+		: siteConfig.title;
+const siteLang = (lang || siteConfig.lang).replace("_", "-");
+---
+
+<!doctype html>
+<html lang={siteLang} data-overlayscrollbars-initialize>
+	<head>
+		<HeadTags
+			title={pageTitle}
+			description={description}
+			configHue={configHue}
+		/>
+		<slot name="head" />
+		<link
+			rel="alternate"
+			type="application/rss+xml"
+			title={profileConfig.name}
+			href={`${Astro.site}rss.xml`}
+		/>
+	</head>
+	<body data-overlayscrollbars-initialize>
+		<slot />
+	</body>
+</html>

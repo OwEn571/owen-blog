@@ -265,34 +265,6 @@ const filterableEntries = entries.map((entry) => ({
 		initModuleFilterRoots();
 	}
 
-	function setupSwupListeners() {
-		if (filterWindow._moduleFilterSwupListenerAttached) {
-			return;
-		}
-
-		function trySetupSwup() {
-			if (typeof filterWindow !== "undefined" && filterWindow.swup) {
-				filterWindow.swup.hooks.on(
-					"content:replace",
-					initModuleFilterRoots,
-				);
-				filterWindow._moduleFilterSwupListenerAttached = true;
-				return true;
-			}
-			return false;
-		}
-
-		if (!trySetupSwup()) {
-			let retryCount = 0;
-			const retryInterval = setInterval(() => {
-				if (trySetupSwup() || ++retryCount >= 10) {
-					clearInterval(retryInterval);
-				}
-			}, 100);
-		}
-	}
-
-	setTimeout(setupSwupListeners, 200);
 </script>
 
 <style>

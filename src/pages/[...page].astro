@@ -1,5 +1,6 @@
 ---
-import MainGridLayout from "@layouts/MainGridLayout.astro";
+import SplashSelector from "@components/features/home/SplashSelector.astro";
+import SplashLayout from "@layouts/SplashLayout.astro";
 import type { GetStaticPaths } from "astro";
 
 import { PAGE_SIZE } from "../constants/constants";
@@ -25,9 +26,9 @@ if (!isHomeLaunchpad) {
 }
 ---
 
-<MainGridLayout
-	showSplash={true}
-	splashOnly={true}
+<SplashLayout
 	title="入口"
 	description="四个内容模块的开屏入口"
-/>
+>
+	<SplashSelector />
+</SplashLayout>

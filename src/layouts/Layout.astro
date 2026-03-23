@@ -122,6 +122,8 @@ const bannerOffsetByPosition = {
 };
 const bannerOffset =
 	bannerOffsetByPosition[siteConfig.banner.position || "center"];
+const gtmId = import.meta.env.PUBLIC_GTM_ID || "";
+const clarityId = import.meta.env.PUBLIC_CLARITY_ID || "";
 
 // 构建字体配置的 CSS 变量
 // ASCII 字体优先级最高（用于英文、数字等），CJK 字体作为回退
@@ -167,7 +169,7 @@ if (siteConfig.font) {
 >
 	<head>
 		<!-- 第三方分析脚本 -->
-		<AnalyticsScripts />
+		<AnalyticsScripts gtmId={gtmId} clarityId={clarityId} />
 
 		<!-- SEO Meta Tags, Open Graph, Twitter Card, Favicons, Theme Init -->
 		<HeadTags
@@ -212,13 +214,17 @@ if (siteConfig.font) {
 		style={bodyFontFamily ? `font-family: ${bodyFontFamily};` : ""}
 		data-overlayscrollbars-initialize
 	>
-		<noscript
-			><iframe
-				src="https://www.googletagmanager.com/ns.html?id=GTM-KRX3XGVH"
-				height="0"
-				width="0"
-				style="display:none;visibility:hidden"></iframe></noscript
-		>
+		{
+			gtmId && (
+				<noscript
+					><iframe
+						src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+						height="0"
+						width="0"
+						style="display:none;visibility:hidden"></iframe></noscript
+				>
+			)
+		}
 		<!-- 页面顶部渐变高光效果 - 只在full和semifull模式下显示 -->
 		{shouldShowTopHighlight && <div class="top-gradient-highlight" />}
 
@@ -358,28 +364,36 @@ if (siteConfig.font) {
 </style>
 
 <script>
-	// Swup 页面过渡管理器 - 统一入口
-	// 所有功能已重构为模块化架构，详见 src/scripts/ 目录
-	import { initSwupManager } from "../scripts/swup-manager";
+	const bootPageRuntime = async () => {
+		const runtime = await import("../scripts/page-runtime");
+		await runtime.initPageRuntime();
+	};
 
-	// 初始化 Swup 管理器
-	initSwupManager();
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", () => {
+			void bootPageRuntime();
+		}, { once: true });
+	} else {
+		void bootPageRuntime();
+	}
 </script>
 
 <!-- 代码块折叠功能 -->
 <script>
-	import "../scripts/code-collapse.js";
-</script>
+	const loadCodeCollapse = async () => {
+		if (!document.querySelector(".expressive-code")) {
+			return;
+		}
 
-<!-- 主题切换综合性能优化器（包含代码块优化、重型元素优化、性能诊断） -->
-<script>
-	const loadThemeOptimizer = () => {
-		void import("../scripts/theme-optimizer.js");
+		await import("../scripts/code-collapse.js");
 	};
 
-	if ("requestIdleCallback" in window) {
-		window.requestIdleCallback(loadThemeOptimizer, { timeout: 1800 });
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", () => {
+			void loadCodeCollapse();
+		}, { once: true });
 	} else {
-		setTimeout(loadThemeOptimizer, 1200);
+		void loadCodeCollapse();
 	}
 </script>
+

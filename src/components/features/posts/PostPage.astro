@@ -126,33 +126,9 @@ const initialLayoutClass = defaultLayout === "grid" ? "grid-mode" : "list-mode";
 	document.addEventListener("DOMContentLoaded", initLayout);
 	if (document.readyState !== "loading") {initLayout();}
 
-	function setupSwupListeners() {
-		if ((window as any)._postListSwupListenerAttached) {return;}
-
-		function trySetupSwup() {
-			if (typeof window !== "undefined" && (window as any).swup) {
-				(window as any).swup.hooks.on("content:replace", initLayout);
-				(window as any)._postListSwupListenerAttached = true;
-				return true;
-			}
-			return false;
-		}
-
-		if (!trySetupSwup()) {
-			let retryCount = 0;
-			const retryInterval = setInterval(() => {
-				if (trySetupSwup() || ++retryCount >= 10) {
-					clearInterval(retryInterval);
-					if (retryCount >= 10) {
-						window.addEventListener("popstate", () =>
-							requestAnimationFrame(initLayout),
-						);
-					}
-				}
-			}, 100);
-		}
-	}
-	setTimeout(setupSwupListeners, 200);
+	window.addEventListener("popstate", () => {
+		requestAnimationFrame(initLayout);
+	});
 
 	function publishLayoutInit() {
 		const container = document.getElementById("post-list-container");

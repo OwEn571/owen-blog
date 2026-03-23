@@ -230,7 +230,6 @@ const {
 		applyWallpaperMode();
 	}
 
-	// 支持 Swup 页面过渡 - 在内容替换之前就应用布局，避免闪烁
 	function setupSwupLayoutSync() {
 		// @ts-ignore
 		if (typeof window !== 'undefined' && window.swup) {
@@ -291,20 +290,8 @@ const {
 		return false;
 	}
 
-	// 尝试立即设置，如果失败则延迟重试
-	if (!setupSwupLayoutSync()) {
-		const checkSwup = setInterval(function() {
-			if (setupSwupLayoutSync()) {
-				clearInterval(checkSwup);
-			}
-		}, 50);
+	setupSwupLayoutSync();
 
-		setTimeout(function() {
-			clearInterval(checkSwup);
-		}, 2000);
-	}
-
-	// 支持 Swup 页面过渡
 	document.addEventListener('swup:page:view', function() {
 		applyWallpaperMode();
 
