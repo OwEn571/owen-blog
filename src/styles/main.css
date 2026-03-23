@@ -33,7 +33,7 @@
 
 /* 确保平滑滚动 */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   background: var(--page-bg);
 }
 
@@ -304,8 +304,8 @@ body.immersive-preloading {
   body.immersive-page .license-container,
   body.immersive-page .post-comment-card,
   body.immersive-page .premium-pagination-track {
-    backdrop-filter: blur(22px) saturate(1.08) !important;
-    -webkit-backdrop-filter: blur(22px) saturate(1.08) !important;
+    backdrop-filter: blur(16px) saturate(1.04) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(1.04) !important;
     contain: paint;
     backface-visibility: hidden;
   }
@@ -320,8 +320,16 @@ body.immersive-preloading {
   body.immersive-page .module-page .card-base-daily,
   body.immersive-page .post-article-card {
     box-shadow:
-      0 22px 52px rgba(15, 23, 42, 0.18),
+      0 18px 40px rgba(15, 23, 42, 0.14),
       inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  }
+
+  body.immersive-page .module-stage:hover,
+  body.immersive-page .module-stat-card:hover,
+  body.immersive-page .module-content-shell:hover,
+  body.immersive-page .module-page .apple-post-card:hover,
+  body.immersive-page .module-page .card-base-daily:hover {
+    transform: none;
   }
 }
 

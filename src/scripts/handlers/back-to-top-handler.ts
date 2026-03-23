@@ -21,6 +21,7 @@ export class BackToTopHandler {
 	private navbar: HTMLElement | null = null;
 	private bannerEnabled: boolean;
 	private scrollHandler: () => void;
+	private resizeHandler: () => void;
 
 	constructor(bannerEnabled: boolean) {
 		this.bannerEnabled = bannerEnabled;
@@ -28,6 +29,7 @@ export class BackToTopHandler {
 			this.handleScroll.bind(this),
 			SCROLL_CONFIG.throttleInterval
 		);
+		this.resizeHandler = this.handleResize.bind(this);
 	}
 
 	/**
@@ -55,8 +57,10 @@ export class BackToTopHandler {
 	 * 绑定事件监听
 	 */
 	private bindEvents(): void {
-		window.onscroll = this.scrollHandler;
-		window.onresize = this.handleResize.bind(this);
+		window.removeEventListener('scroll', this.scrollHandler);
+		window.removeEventListener('resize', this.resizeHandler);
+		window.addEventListener('scroll', this.scrollHandler, { passive: true });
+		window.addEventListener('resize', this.resizeHandler, { passive: true });
 	}
 
 	/**
@@ -179,8 +183,8 @@ export class BackToTopHandler {
 	 * 销毁处理器
 	 */
 	destroy(): void {
-		window.onscroll = null;
-		window.onresize = null;
+		window.removeEventListener('scroll', this.scrollHandler);
+		window.removeEventListener('resize', this.resizeHandler);
 		this.backToTopBtn = null;
 		this.toc = null;
 		this.navbar = null;

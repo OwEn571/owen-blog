@@ -2,23 +2,28 @@
 import { Icon } from "astro-icon/components";
 ---
 
-<!-- There can't be a filter on parent element, or it will break `fixed` -->
 <div class="back-to-top-wrapper block">
-    <div id="back-to-top-btn" class="back-to-top-btn hide flex items-center rounded-2xl overflow-hidden transition"
-         onclick="backToTop()">
-        <button aria-label="Back to Top" class="btn-card h-[3.75rem] w-[3.75rem]">
-            <Icon name="material-symbols:keyboard-arrow-up-rounded" class="mx-auto"></Icon>
-        </button>
-    </div>
+	<button
+		id="back-to-top-btn"
+		type="button"
+		class="back-to-top-btn hide btn-card flex items-center justify-center rounded-2xl overflow-hidden transition"
+		aria-label="Back to Top"
+	>
+		<Icon
+			name="material-symbols:keyboard-arrow-up-rounded"
+			class="mx-auto"
+		></Icon>
+	</button>
 </div>
 
 <style lang="stylus">
   .back-to-top-wrapper
     width: 3.75rem
     height: 3.75rem
-    position: absolute
-    right: 0
-    top: 0
+    position: fixed
+    right: 6rem
+    bottom: 10rem
+    z-index: 120
     pointer-events: none
 
   .back-to-top-btn
@@ -26,14 +31,13 @@ import { Icon } from "astro-icon/components";
     font-size: 2.25rem
     font-weight: bold
     border: none
-    position: fixed
-    bottom: 10rem
+    width: 3.75rem
+    height: 3.75rem
     opacity: 1
-    right: 6rem
     cursor: pointer
     transform: translateX(5rem)
     pointer-events: auto
-    transition: box-shadow 1s ease-in-out
+    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12)
 
     i
       font-size: 1.75rem
@@ -57,9 +61,24 @@ import { Icon } from "astro-icon/components";
 
 </style>
 
-<script is:raw is:inline>
-    function backToTop() {
-        // 直接使用原生滚动，避免OverlayScrollbars冲突
-        window.scroll({top: 0, behavior: 'smooth'});
-    }
+<script is:inline>
+	(() => {
+		const bindBackToTop = () => {
+			const button = document.getElementById("back-to-top-btn");
+			if (!(button instanceof HTMLButtonElement) || button.dataset.bound === "true") {
+				return;
+			}
+
+			button.dataset.bound = "true";
+			button.addEventListener("click", () => {
+				window.scrollTo({ top: 0, behavior: "smooth" });
+			});
+		};
+
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", bindBackToTop, { once: true });
+		} else {
+			bindBackToTop();
+		}
+	})();
 </script>

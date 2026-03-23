@@ -360,7 +360,7 @@
 
 	.toc-group-header {
 		display: flex;
-		align-items: center;
+		align-items: stretch;
 		gap: 8px;
 	}
 
@@ -509,6 +509,7 @@
 
 	.toc-text {
 		display: block;
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

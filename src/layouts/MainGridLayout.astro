@@ -285,78 +285,16 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 							document.body.classList.remove("immersive-preloading");
 						};
 
-						const waitForIdle = () =>
+						const waitForWindowLoad = () =>
 							new Promise((resolve) => {
-								if ("requestIdleCallback" in window) {
-									window.requestIdleCallback(() => resolve(undefined), {
-										timeout: 1400,
-									});
+								if (document.readyState === "complete") {
+									resolve(undefined);
 									return;
 								}
 
-								window.setTimeout(resolve, 260);
-							});
-
-						const waitForStableLayout = (node) =>
-							new Promise((resolve) => {
-								let stableCount = 0;
-								let lastHeight = -1;
-								let lastWidth = -1;
-								let lastMutation = performance.now();
-								let frameId = 0;
-								let timeoutHandle = 0;
-
-								const observer = new MutationObserver(() => {
-									lastMutation = performance.now();
-									stableCount = 0;
-								});
-
-								const finish = () => {
-									window.cancelAnimationFrame(frameId);
-									window.clearTimeout(timeoutHandle);
-									observer.disconnect();
-									resolve(undefined);
-								};
-
-								const check = () => {
-									const currentHeight = node.scrollHeight;
-									const currentWidth = node.scrollWidth;
-									const pendingImages = Array.from(node.querySelectorAll("img")).some(
-										(image) =>
-											image instanceof HTMLImageElement &&
-											(!image.complete || image.naturalWidth === 0),
-									);
-									const layoutStable =
-										currentHeight === lastHeight &&
-										currentWidth === lastWidth &&
-										!pendingImages &&
-										performance.now() - lastMutation > 320;
-
-									if (layoutStable) {
-										stableCount += 1;
-									} else {
-										stableCount = 0;
-									}
-
-									lastHeight = currentHeight;
-									lastWidth = currentWidth;
-
-									if (stableCount >= 8) {
-										finish();
-										return;
-									}
-
-									frameId = window.requestAnimationFrame(check);
-								};
-
-								observer.observe(node, {
-									childList: true,
-									subtree: true,
-									attributes: true,
-									characterData: true,
-								});
-								timeoutHandle = window.setTimeout(finish, 4600);
-								check();
+								const finish = () => resolve(undefined);
+								window.addEventListener("load", finish, { once: true });
+								window.setTimeout(finish, 12000);
 							});
 
 						const armGate = () => {
@@ -489,27 +427,22 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 										: Promise.resolve();
 
 								Promise.all([
+									waitForWindowLoad(),
 									fontReady,
 									...images.map((image, index) => waitForImage(image, index)),
 									...embeds.map((embed) => waitForEmbed(embed)),
 									backgroundVideoReady,
-								])
-									.then(() => waitForStableLayout(root))
-									.then(() => waitForIdle())
-									.then(() => {
-										requestAnimationFrame(() => {
-											requestAnimationFrame(() => {
-												requestAnimationFrame(finalize);
-											});
-										});
+								]).then(() => {
+									requestAnimationFrame(() => {
+										requestAnimationFrame(finalize);
 									});
+								});
 
-							timeoutId = window.setTimeout(finalize, 22000);
+							timeoutId = window.setTimeout(finalize, 26000);
 						};
 
 						if (!gateWindow.__mizukiImmersiveReadyGateBound) {
 							gateWindow.__mizukiImmersiveReadyGateBound = true;
-							document.addEventListener("swup:contentReplaced", armGate);
 							window.addEventListener("pageshow", armGate);
 							window.addEventListener(
 								"pagehide",

@@ -258,8 +258,6 @@ if (siteConfig.font) {
 					loadPlaygroundScript();
 				}
 
-				document.addEventListener("swup:contentReplaced", loadPlaygroundScript);
-				document.addEventListener("swup:pageView", loadPlaygroundScript);
 			})();
 		</script>
 		<script is:inline>
@@ -297,8 +295,6 @@ if (siteConfig.font) {
 				}
 
 				window.addEventListener("pageshow", scheduleCleanup);
-				document.addEventListener("swup:contentReplaced", scheduleCleanup);
-				document.addEventListener("swup:pageView", scheduleCleanup);
 			})();
 		</script>
 

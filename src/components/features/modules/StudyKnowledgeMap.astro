@@ -208,16 +208,18 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 			window.scrollY +
 			target.getBoundingClientRect().top -
 			Math.max(96, window.innerHeight * 0.16);
-		window.scrollTo({
-			top: Math.max(0, top),
-			behavior: "auto",
-		});
-		target.classList.remove("is-filter-targeted");
-		void target.offsetWidth;
-		target.classList.add("is-filter-targeted");
-		window.setTimeout(() => {
+		window.requestAnimationFrame(() => {
+			window.scrollTo({
+				top: Math.max(0, top),
+				behavior: "auto",
+			});
 			target.classList.remove("is-filter-targeted");
-		}, 1200);
+			void target.offsetWidth;
+			target.classList.add("is-filter-targeted");
+			window.setTimeout(() => {
+				target.classList.remove("is-filter-targeted");
+			}, 1200);
+		});
 	}
 
 	function initStudyMap(root: Element) {

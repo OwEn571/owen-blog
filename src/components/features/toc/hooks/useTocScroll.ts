@@ -75,7 +75,7 @@ export function scrollActiveIntoView(
 		top = bottommost.offsetTop - tocHeight * 0.8;
 	}
 
-	container.scrollTo({ top, left: 0, behavior: "smooth" });
+	container.scrollTo({ top, left: 0, behavior: "auto" });
 }
 
 /**

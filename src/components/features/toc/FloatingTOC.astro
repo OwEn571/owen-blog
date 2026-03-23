@@ -234,8 +234,13 @@ const { fallbackForSidebar = false } = Astro.props;
 
 	:global(.floating-toc-group-header) {
 		display: flex;
-		align-items: center;
+		align-items: stretch;
 		gap: 0.45rem;
+	}
+
+	:global(.floating-toc-group-header .floating-toc-item) {
+		flex: 1 1 auto;
+		min-width: 0;
 	}
 
 	:global(.floating-toc-children) {
@@ -264,6 +269,8 @@ const { fallbackForSidebar = false } = Astro.props;
 		align-items: center;
 		justify-content: center;
 		align-self: center;
+		flex-shrink: 0;
+		margin-left: auto;
 		transition:
 			transform 0.2s ease,
 			border-color 0.2s ease,
@@ -343,6 +350,8 @@ const { fallbackForSidebar = false } = Astro.props;
 	}
 
 	:global(.floating-toc-text) {
+		min-width: 0;
+		flex: 1;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
