@@ -940,21 +940,36 @@ except SyntaxError as exc:
 		return element;
 	}
 
-	function buildPythonCodeCardElement({ title, packages, source }) {
-		const root = createElement("div", "python-code-card");
-		root.dataset.pythonCodeCard = "true";
-		root.dataset.pythonTitle = title;
-		root.dataset.pythonPackages = packages.join(",");
+	function normalizePythonCardTitle(value) {
+		const normalized = String(value || "").trim();
+		if (!normalized) {
+			return "";
+		}
+
+		const collapsed = normalized.toLowerCase().replace(/\s+/g, "");
+		if (collapsed === "python" || collapsed === "python3" || collapsed === "py") {
+			return "";
+		}
+
+		return normalized;
+	}
+
+function buildPythonCodeCardElement({ title, packages, source }) {
+	const normalizedTitle = normalizePythonCardTitle(title);
+	const hasCustomTitle = Boolean(normalizedTitle);
+	const root = createElement("div", "python-code-card");
+	root.dataset.pythonCodeCard = "true";
+	root.dataset.pythonTitle = normalizedTitle;
+	root.dataset.pythonPackages = packages.join(",");
 
 		const toolbar = createElement("div", "python-code-card__toolbar");
-		const toolbarMeta = createElement("div", "python-code-card__toolbar-meta");
-		const badge = createElement("span", "python-code-card__badge", "Python Example");
-		const titleElement = createElement("strong", "python-code-card__title", title);
-		const toolbarSide = createElement("div", "python-code-card__toolbar-side");
+	const toolbarMeta = createElement("div", "python-code-card__toolbar-meta");
+	const badge = createElement("span", "python-code-card__badge", "Python3");
+	const toolbarSide = createElement("div", "python-code-card__toolbar-side");
 		const packagesElement = createElement(
 			"span",
 			"python-code-card__meta",
-			packages.length > 0 ? `packages: ${packages.join(", ")}` : "pure stdlib",
+			`packages: ${packages.join(", ")}`,
 		);
 		const linesElement = createElement(
 			"span",
@@ -963,24 +978,26 @@ except SyntaxError as exc:
 		);
 
 		const details = createElement("details", "python-code-card__details");
-		details.open = true;
+		details.open = false;
 
 		const summary = createElement("summary", "python-code-card__summary");
 		const summaryCopy = createElement("div", "python-code-card__summary-copy");
-		const summaryLabel = createElement(
-			"span",
-			"python-code-card__summary-label",
-			"Code Block",
-		);
+	const summaryLabel = createElement(
+		"span",
+		"python-code-card__summary-label",
+		hasCustomTitle ? normalizedTitle : "点击展开代码",
+	);
 		const summaryNote = createElement(
 			"span",
 			"python-code-card__summary-note",
-			"折叠阅读或展开查看完整代码",
+			packages.length > 0
+				? `Python3 · ${packages.join(", ")} · ${source.split("\n").length} lines`
+				: `Python3 · ${source.split("\n").length} lines`,
 		);
 		const summaryToggle = createElement(
 			"span",
 			"python-code-card__summary-toggle",
-			"折叠代码",
+			"展开",
 		);
 
 		const body = createElement("div", "python-code-card__body");
@@ -999,8 +1016,20 @@ except SyntaxError as exc:
 		sourceField.hidden = true;
 		sourceField.value = source;
 
+	if (hasCustomTitle) {
+		const titleElement = createElement(
+			"strong",
+			"python-code-card__title",
+			normalizedTitle,
+		);
 		toolbarMeta.append(badge, titleElement);
-		toolbarSide.append(packagesElement, linesElement);
+	} else {
+		toolbarMeta.append(badge);
+	}
+		if (packages.length > 0) {
+			toolbarSide.append(packagesElement);
+		}
+		toolbarSide.append(linesElement);
 		toolbar.append(toolbarMeta, toolbarSide);
 
 		summaryCopy.append(summaryLabel, summaryNote);
@@ -1031,7 +1060,7 @@ except SyntaxError as exc:
 		const title =
 			root.dataset.pythonTitle ||
 			root.querySelector(".python-playground__title")?.textContent?.trim() ||
-			"Python Playground";
+			"";
 		const packages = (root.dataset.pythonPackages || "")
 			.split(",")
 			.map((item) => item.trim())
@@ -1053,7 +1082,7 @@ except SyntaxError as exc:
 			return;
 		}
 
-		label.textContent = details.open ? "折叠代码" : "展开代码";
+		label.textContent = details.open ? "收起" : "展开";
 	}
 
 	function bindPythonCodeCard(root) {

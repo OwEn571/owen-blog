@@ -110,14 +110,36 @@ print([sqrt(n) for n in nums])
 		};
 
 		toggle.addEventListener("click", () => {
+			if (root.dataset.pythonLabBound === "true") {
+				return;
+			}
 			setOpen(panel.hidden);
 		});
 
 		close.addEventListener("click", () => {
+			if (root.dataset.pythonLabBound === "true") {
+				return;
+			}
 			setOpen(false);
 		});
 
+		document.addEventListener("mousedown", (event) => {
+			if (root.dataset.pythonLabBound === "true") {
+				return;
+			}
+			if (
+				root.dataset.state === "open" &&
+				event.target instanceof Node &&
+				!root.contains(event.target)
+			) {
+				setOpen(false);
+			}
+		});
+
 		document.addEventListener("keydown", (event) => {
+			if (root.dataset.pythonLabBound === "true") {
+				return;
+			}
 			if (event.key === "Escape" && root.dataset.state === "open") {
 				setOpen(false);
 			}
@@ -127,15 +149,10 @@ print([sqrt(n) for n in nums])
 
 <style lang="stylus">
   .python-lab-fab-shell
-    position fixed
-    right 6rem
-    bottom 5rem
-    z-index 120
-    display flex
-    flex-direction column
-    align-items flex-end
-    gap .85rem
-    pointer-events none
+    position relative
+    z-index 2
+    width 3.5rem
+    height 3.5rem
 
   .python-lab-fab,
   .python-lab-panel
@@ -195,9 +212,12 @@ print([sqrt(n) for n in nums])
     display none
 
   .python-lab-panel
-    width 30rem
+    position absolute
+    right 0
+    bottom calc(100% + 1rem)
+    width 27rem
     max-width calc(100vw - 1.5rem)
-    max-height calc(100vh - 7rem)
+    max-height unquote("min(36rem, calc(100vh - 8rem))")
     display grid
     gap .9rem
     padding 1rem
@@ -210,6 +230,7 @@ print([sqrt(n) for n in nums])
     overflow hidden
     position relative
     transition transform .24s ease, box-shadow .24s ease, border-color .24s ease
+    transform-origin bottom right
 
   .python-lab-panel::after
     content ""
@@ -221,9 +242,12 @@ print([sqrt(n) for n in nums])
     box-shadow 0 0 0 1px rgba(118, 156, 255, .16), 0 0 38px rgba(118, 156, 255, .14), 0 0 82px rgba(132, 115, 255, .1)
 
   .python-lab-fab-shell[data-state="open"] .python-lab-panel
-    transform translateY(-2px)
+    transform translateY(-2px) scale(1)
     border-color rgba(118, 156, 255, .24)
     box-shadow 0 0 34px rgba(118, 156, 255, .14), 0 36px 96px rgba(15, 23, 42, .24), inset 0 1px 0 rgba(255,255,255,.72)
+
+  .python-lab-panel[hidden]
+    display none !important
 
   .python-lab-panel__header
     display flex
@@ -378,19 +402,19 @@ print([sqrt(n) for n in nums])
 
   @media (max-width: 820px)
     .python-lab-fab-shell
-      right 2rem
-      left auto
-      bottom 10.5rem
-      align-items flex-end
+      width 3.5rem
+      height 3.5rem
 
     .python-lab-fab
       width 3.5rem
       height 3.5rem
 
     .python-lab-panel
-      width calc(100vw - 2rem)
+      width unquote("min(24rem, calc(100vw - 2rem))")
       max-width 30rem
       max-height calc(100vh - 6rem)
+      right 0
+      bottom calc(100% + .9rem)
 
     .python-lab-panel__editor
       height 42vh

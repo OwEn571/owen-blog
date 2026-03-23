@@ -498,9 +498,11 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					</div>
 				</div>
 
-				<BackToTop></BackToTop>
-				<FloatingPythonLab />
-				{shouldRenderImmersiveFloatTOC && <FloatingTOC fallbackForSidebar={isSidebarTOC} />}
+				<div class="floating-utility-rail">
+					<FloatingPythonLab />
+					{shouldRenderImmersiveFloatTOC && <FloatingTOC fallbackForSidebar={isSidebarTOC} />}
+					<BackToTop></BackToTop>
+				</div>
 				{shouldRenderImmersiveSidebarTOC && (
 					<div class="absolute inset-x-0 top-0 z-20 hidden 2xl:block pointer-events-none">
 						<div class="relative max-w-[var(--page-width)] mx-auto px-2 md:px-4">
@@ -581,9 +583,11 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						</div>
 					</div>
 
-					<BackToTop></BackToTop>
-					<FloatingPythonLab />
-					{shouldRenderFloatTOC && <FloatingTOC />}
+					<div class="floating-utility-rail">
+						<FloatingPythonLab />
+						{shouldRenderFloatTOC && <FloatingTOC />}
+						<BackToTop></BackToTop>
+					</div>
 				</div>
 			</div>
 

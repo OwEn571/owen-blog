@@ -55,16 +55,10 @@ const { fallbackForSidebar = false } = Astro.props;
 
 <style>
 	.floating-toc-wrapper {
-		position: fixed;
-		right: 6rem;
-		bottom: 15rem;
-		z-index: 50;
+		position: relative;
+		z-index: 1;
 		pointer-events: auto;
-		transform: translateX(5rem);
 		display: none;
-		transition:
-			opacity 0.3s ease,
-			transform 0.3s ease;
 	}
 
 	.floating-toc-wrapper.active-toc {
@@ -179,9 +173,6 @@ const { fallbackForSidebar = false } = Astro.props;
 
 	@media (max-width: 768px) {
 		.floating-toc-wrapper {
-			transform: none;
-			right: 2rem;
-			bottom: 6rem;
 			opacity: 0.6;
 		}
 
