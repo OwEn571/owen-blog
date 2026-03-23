@@ -178,6 +178,11 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		z-index: 180;
 		display: block;
 		color-scheme: dark;
+		overflow-x: hidden;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		-webkit-overflow-scrolling: touch;
+		touch-action: pan-y pinch-zoom;
 	}
 
 	.splash-backdrop {
@@ -229,7 +234,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 20rem);
 		border: none;
 		box-shadow: none;
-		overflow: hidden;
+		overflow: visible;
 		isolation: isolate;
 	}
 
@@ -546,6 +551,10 @@ const splashTitle = profileConfig.name || siteConfig.title;
 	}
 
 	@media (max-width: 640px) {
+		.splash-shell {
+			overscroll-behavior-y: contain;
+		}
+
 		.splash-panel {
 			min-height: 100dvh;
 			padding:
@@ -561,6 +570,11 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		.splash-choice {
 			min-height: 13rem;
+		}
+
+		.splash-grid {
+			margin-top: 2rem;
+			padding-bottom: calc(1rem + env(safe-area-inset-bottom));
 		}
 	}
 
