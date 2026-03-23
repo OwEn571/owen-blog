@@ -261,6 +261,11 @@ if (siteConfig.font) {
 				const cleanupImmersiveArtifacts = () => {
 					const hasImmersiveRoot = !!document.querySelector("[data-immersive-ready-root]");
 
+					if (hasImmersiveRoot) {
+						document.body.classList.add("immersive-page");
+						return;
+					}
+
 					if (!hasImmersiveRoot) {
 						document.documentElement.classList.remove("immersive-preloading");
 						document.body.classList.remove("immersive-preloading");
@@ -271,17 +276,23 @@ if (siteConfig.font) {
 					}
 				};
 
+				const scheduleCleanup = () => {
+					requestAnimationFrame(() => {
+						requestAnimationFrame(cleanupImmersiveArtifacts);
+					});
+				};
+
 				if (document.readyState === "loading") {
-					document.addEventListener("DOMContentLoaded", cleanupImmersiveArtifacts, {
+					document.addEventListener("DOMContentLoaded", scheduleCleanup, {
 						once: true,
 					});
 				} else {
-					cleanupImmersiveArtifacts();
+					scheduleCleanup();
 				}
 
-				window.addEventListener("pageshow", cleanupImmersiveArtifacts);
-				document.addEventListener("swup:contentReplaced", cleanupImmersiveArtifacts);
-				document.addEventListener("swup:pageView", cleanupImmersiveArtifacts);
+				window.addEventListener("pageshow", scheduleCleanup);
+				document.addEventListener("swup:contentReplaced", scheduleCleanup);
+				document.addEventListener("swup:pageView", scheduleCleanup);
 			})();
 		</script>
 

@@ -162,6 +162,12 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						},
 						{ once: true },
 					);
+
+					window.addEventListener("pageshow", (event) => {
+						if (event.persisted) {
+							window.location.reload();
+						}
+					});
 				})();
 			</script>
 
@@ -283,12 +289,12 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 							new Promise((resolve) => {
 								if ("requestIdleCallback" in window) {
 									window.requestIdleCallback(() => resolve(undefined), {
-										timeout: 1000,
+										timeout: 1400,
 									});
 									return;
 								}
 
-								window.setTimeout(resolve, 180);
+								window.setTimeout(resolve, 260);
 							});
 
 						const waitForStableLayout = (node) =>
@@ -324,7 +330,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 										currentHeight === lastHeight &&
 										currentWidth === lastWidth &&
 										!pendingImages &&
-										performance.now() - lastMutation > 220;
+										performance.now() - lastMutation > 320;
 
 									if (layoutStable) {
 										stableCount += 1;
@@ -335,7 +341,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 									lastHeight = currentHeight;
 									lastWidth = currentWidth;
 
-									if (stableCount >= 6) {
+									if (stableCount >= 8) {
 										finish();
 										return;
 									}
@@ -349,7 +355,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 									attributes: true,
 									characterData: true,
 								});
-								timeoutHandle = window.setTimeout(finish, 3200);
+								timeoutHandle = window.setTimeout(finish, 4600);
 								check();
 							});
 
@@ -492,11 +498,13 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 									.then(() => waitForIdle())
 									.then(() => {
 										requestAnimationFrame(() => {
-											requestAnimationFrame(finalize);
+											requestAnimationFrame(() => {
+												requestAnimationFrame(finalize);
+											});
 										});
 									});
 
-							timeoutId = window.setTimeout(finalize, 16000);
+							timeoutId = window.setTimeout(finalize, 22000);
 						};
 
 						if (!gateWindow.__mizukiImmersiveReadyGateBound) {

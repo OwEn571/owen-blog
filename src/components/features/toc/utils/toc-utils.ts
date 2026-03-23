@@ -87,7 +87,7 @@ export function scrollToHeading(id: string, offset = 80): void {
 		element.getBoundingClientRect().top + window.scrollY - offset;
 	window.scrollTo({
 		top: targetTop,
-		behavior: "smooth",
+		behavior: "auto",
 	});
 }
 

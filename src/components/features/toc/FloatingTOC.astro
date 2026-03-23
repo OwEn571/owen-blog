@@ -204,7 +204,7 @@ const { fallbackForSidebar = false } = Astro.props;
 
 	:global(.floating-toc-group-header) {
 		display: flex;
-		align-items: stretch;
+		align-items: center;
 		gap: 0.375rem;
 	}
 
@@ -222,23 +222,34 @@ const { fallbackForSidebar = false } = Astro.props;
 	}
 
 	:global(.floating-toc-toggle) {
-		width: 1.9rem;
-		min-width: 1.9rem;
-		height: 1.9rem;
-		border-radius: 999px;
-		border: 1px solid color-mix(in srgb, var(--line-color) 76%, transparent);
-		background: color-mix(in srgb, var(--card-bg) 82%, transparent);
+		width: 1.85rem;
+		min-width: 1.85rem;
+		height: 1.85rem;
+		border-radius: 0.78rem;
+		border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--line-color));
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 90%, rgba(255, 255, 255, 0.18)), color-mix(in srgb, var(--card-bg) 78%, transparent)),
+			radial-gradient(circle at top, color-mix(in srgb, var(--primary) 16%, transparent), transparent 72%);
 		color: var(--primary);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		align-self: center;
-		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.18),
+			0 8px 20px rgba(15, 23, 42, 0.08);
 	}
 
 	:global(.floating-toc-toggle:hover) {
-		background: var(--btn-regular-bg);
-		border-color: color-mix(in srgb, var(--primary) 38%, transparent);
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 94%, rgba(255, 255, 255, 0.2)), color-mix(in srgb, var(--card-bg) 82%, transparent)),
+			radial-gradient(circle at center, color-mix(in srgb, var(--primary) 18%, transparent), transparent 74%);
+		border-color: color-mix(in srgb, var(--primary) 36%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.24),
+			0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent),
+			0 10px 24px color-mix(in srgb, var(--primary) 12%, transparent);
 	}
 
 	:global(.floating-toc-toggle.expanded) {
@@ -246,9 +257,10 @@ const { fallbackForSidebar = false } = Astro.props;
 	}
 
 	:global(.floating-toc-toggle-icon) {
-		font-size: 1rem;
+		font-size: 0.92rem;
 		line-height: 1;
 		transform: translateY(-1px);
+		opacity: 0.9;
 	}
 
 	:global(.floating-toc-item:hover) {
@@ -344,7 +356,9 @@ interface FloatingTOCState {
 	observer: MutationObserver | null;
 	headings: HTMLElement[];
 	tocGroups: FloatingTOCGroup[];
-	expandedGroups: Set<string>;
+	manualExpandedGroups: Set<string>;
+	manualCollapsedGroups: Set<string>;
+	autoExpandedGroup: string | null;
 }
 
 class FloatingTOC {
@@ -378,9 +392,38 @@ class FloatingTOC {
 			observer: null,
 			headings: [],
 			tocGroups: [],
-			expandedGroups: new Set(),
+			manualExpandedGroups: new Set(),
+			manualCollapsedGroups: new Set(),
+			autoExpandedGroup: null,
 		};
 		this.init();
+	}
+
+	isGroupExpanded(groupId: string) {
+		return (
+			this.state.manualExpandedGroups.has(groupId) ||
+			(this.state.autoExpandedGroup === groupId &&
+				!this.state.manualCollapsedGroups.has(groupId))
+		);
+	}
+
+	expandGroupManually(groupId: string) {
+		this.state.manualCollapsedGroups.delete(groupId);
+		this.state.manualExpandedGroups.add(groupId);
+	}
+
+	collapseGroupManually(groupId: string) {
+		this.state.manualExpandedGroups.delete(groupId);
+		this.state.manualCollapsedGroups.add(groupId);
+	}
+
+	setAutoExpandedGroup(groupId: string | null) {
+		if (this.state.autoExpandedGroup === groupId) {
+			return;
+		}
+
+		this.state.autoExpandedGroup = groupId;
+		this.syncExpandedGroups();
 	}
 
 	init() {
@@ -428,7 +471,9 @@ class FloatingTOC {
 		const activeIndex = findActiveHeadingIndex(headings, window.scrollY, 150);
 		const activeHeading = headings[activeIndex];
 		if (activeHeading?.id) {
-			this.ensureVisibleGroup(activeHeading.id);
+			this.syncAutoExpandedGroup(activeHeading.id);
+		} else {
+			this.setAutoExpandedGroup(null);
 		}
 		const links = Array.from(
 			content.querySelectorAll(".floating-toc-item")
@@ -456,32 +501,31 @@ class FloatingTOC {
 	syncExpandedGroups() {
 		this.state.content?.querySelectorAll<HTMLElement>("[data-floating-children]").forEach((container) => {
 			const groupId = container.dataset.floatingChildren || "";
-			container.hidden = !this.state.expandedGroups.has(groupId);
+			container.hidden = !this.isGroupExpanded(groupId);
 		});
 
 		this.state.content?.querySelectorAll<HTMLButtonElement>("[data-floating-toggle]").forEach((button) => {
 			const groupId = button.dataset.floatingToggle || "";
-			const expanded = this.state.expandedGroups.has(groupId);
+			const expanded = this.isGroupExpanded(groupId);
 			button.classList.toggle("expanded", expanded);
 			button.setAttribute("aria-expanded", expanded ? "true" : "false");
 		});
 	}
 
-	ensureVisibleGroup(headingId: string) {
+	syncAutoExpandedGroup(headingId: string) {
 		const parentId = findTOCGroupParentId(this.state.tocGroups, headingId);
 		if (!parentId) {
+			this.setAutoExpandedGroup(null);
 			return;
 		}
 
 		const targetGroup = this.state.tocGroups.find((group) => group.parent.id === parentId);
 		if (!targetGroup || targetGroup.children.length === 0) {
+			this.setAutoExpandedGroup(null);
 			return;
 		}
 
-		if (!this.state.expandedGroups.has(parentId)) {
-			this.state.expandedGroups.add(parentId);
-			this.syncExpandedGroups();
-		}
+		this.setAutoExpandedGroup(parentId);
 	}
 
 		renderItem(item: FloatingTOCItem) {
@@ -559,7 +603,9 @@ class FloatingTOC {
 		);
 
 		this.state.tocGroups = groupTOCItems(tocItems);
-		this.state.expandedGroups = new Set();
+		this.state.manualExpandedGroups = new Set();
+		this.state.manualCollapsedGroups = new Set();
+		this.state.autoExpandedGroup = null;
 		this.state.headings = tocItems.map((item) =>
 			document.getElementById(item.id)!
 		);
@@ -595,10 +641,10 @@ class FloatingTOC {
 					return;
 				}
 
-				if (this.state.expandedGroups.has(groupId)) {
-					this.state.expandedGroups.delete(groupId);
+				if (this.isGroupExpanded(groupId)) {
+					this.collapseGroupManually(groupId);
 				} else {
-					this.state.expandedGroups.add(groupId);
+					this.expandGroupManually(groupId);
 				}
 
 				this.syncExpandedGroups();
@@ -610,7 +656,11 @@ class FloatingTOC {
 				e.preventDefault();
 				const id = link.getAttribute("href")?.slice(1);
 				if (id) {
-					this.ensureVisibleGroup(id);
+					const groupId = findTOCGroupParentId(this.state.tocGroups, id);
+					if (groupId) {
+						this.expandGroupManually(groupId);
+						this.syncExpandedGroups();
+					}
 					scrollToHeading(id, this.navbarOffset);
 					this.close();
 				}

@@ -163,7 +163,7 @@ export function scrollToHeading(id: string, offset = 80): void {
 		const elementPosition = element.offsetTop - offset;
 		window.scrollTo({
 			top: elementPosition,
-			behavior: "smooth",
+			behavior: "auto",
 		});
 	}
 }

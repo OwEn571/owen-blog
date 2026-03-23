@@ -68,6 +68,7 @@ body.immersive-page [data-fullscreen-wallpaper] {
   display: none !important;
 }
 
+.immersive-video-shell,
 body.immersive-page .immersive-video-shell {
   position: fixed;
   inset: 0;
@@ -77,6 +78,7 @@ body.immersive-page .immersive-video-shell {
   isolation: isolate;
 }
 
+.immersive-video,
 body.immersive-page .immersive-video {
   position: absolute;
   inset: -6%;
@@ -90,6 +92,7 @@ body.immersive-page .immersive-video {
   will-change: opacity;
 }
 
+.immersive-video-overlay,
 body.immersive-page .immersive-video-overlay {
   position: absolute;
   inset: 0;
@@ -142,7 +145,10 @@ body.immersive-page .immersive-content-shell::before {
   opacity: 0.44;
 }
 
+.immersive-ready-root,
 body.immersive-page .immersive-ready-root {
+  position: relative;
+  z-index: 1;
   transition: opacity 260ms ease;
 }
 
@@ -281,6 +287,42 @@ body.immersive-preloading {
   body.immersive-page .apple-post-card:hover,
   body.immersive-page .surface-card:hover {
     transform: none;
+  }
+}
+
+@media (min-width: 821px) {
+  body.immersive-page .immersive-navbar-shell,
+  body.immersive-page .module-hero,
+  body.immersive-page .module-stage,
+  body.immersive-page .module-stat-card,
+  body.immersive-page .module-panel,
+  body.immersive-page .module-stream,
+  body.immersive-page .module-content-shell,
+  body.immersive-page .module-page .apple-post-card,
+  body.immersive-page .module-page .card-base-daily,
+  body.immersive-page .post-article-card,
+  body.immersive-page .post-support-card,
+  body.immersive-page .license-container,
+  body.immersive-page .post-comment-card,
+  body.immersive-page .premium-pagination-track {
+    backdrop-filter: blur(22px) saturate(1.08) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.08) !important;
+    contain: paint;
+    backface-visibility: hidden;
+  }
+
+  body.immersive-page .module-hero,
+  body.immersive-page .module-stage,
+  body.immersive-page .module-stat-card,
+  body.immersive-page .module-panel,
+  body.immersive-page .module-stream,
+  body.immersive-page .module-content-shell,
+  body.immersive-page .module-page .apple-post-card,
+  body.immersive-page .module-page .card-base-daily,
+  body.immersive-page .post-article-card {
+    box-shadow:
+      0 22px 52px rgba(15, 23, 42, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   }
 }
 

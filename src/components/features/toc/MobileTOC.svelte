@@ -24,7 +24,9 @@
 
 	let tocItems: TOCItem[] = $state([]);
 	let tocGroups: TOCGroup[] = $state([]);
-	let expandedGroups: string[] = $state([]);
+	let manualExpandedGroups: string[] = $state([]);
+	let manualCollapsedGroups: string[] = $state([]);
+	let autoExpandedGroupId = $state("");
 	let postItems: PostItem[] = $state([]);
 	let activeId = $state("");
 	let isHomePage = $state(false);
@@ -40,24 +42,39 @@
 		await panelManager.togglePanel("mobile-toc-panel", show);
 	};
 
-	const isGroupExpanded = (id: string): boolean => expandedGroups.includes(id);
+	const isGroupExpanded = (id: string): boolean =>
+		manualExpandedGroups.includes(id) ||
+		(autoExpandedGroupId === id && !manualCollapsedGroups.includes(id));
 
 	const toggleGroup = (id: string) => {
 		if (isGroupExpanded(id)) {
-			expandedGroups = expandedGroups.filter((groupId) => groupId !== id);
+			manualExpandedGroups = manualExpandedGroups.filter((groupId) => groupId !== id);
+			if (!manualCollapsedGroups.includes(id)) {
+				manualCollapsedGroups = [...manualCollapsedGroups, id];
+			}
 			return;
 		}
 
-		expandedGroups = [...expandedGroups, id];
+		manualCollapsedGroups = manualCollapsedGroups.filter((groupId) => groupId !== id);
+		if (!manualExpandedGroups.includes(id)) {
+			manualExpandedGroups = [...manualExpandedGroups, id];
+		}
 	};
 
 	const ensureActiveGroupExpanded = (id: string) => {
 		const parentId = findTOCGroupParentId(tocGroups, id);
-		if (!parentId || expandedGroups.includes(parentId)) {
+		if (!parentId) {
+			autoExpandedGroupId = "";
 			return;
 		}
 
-		expandedGroups = [...expandedGroups, parentId];
+		const group = tocGroups.find((item) => item.parent.id === parentId);
+		if (!group || group.children.length === 0) {
+			autoExpandedGroupId = "";
+			return;
+		}
+
+		autoExpandedGroupId = parentId;
 	};
 
 	const isGroupActive = (group: TOCGroup): boolean =>
@@ -92,6 +109,8 @@
 		activeId = currentActiveId;
 		if (currentActiveId) {
 			ensureActiveGroupExpanded(currentActiveId);
+		} else {
+			autoExpandedGroupId = "";
 		}
 	};
 
@@ -176,13 +195,15 @@
 	};
 
 	const init = () => {
-		isHomePage = checkIsHomePage();
+						isHomePage = checkIsHomePage();
 		checkSwupAvailability();
 
 		if (isHomePage) {
 			tocItems = [];
 			tocGroups = [];
-			expandedGroups = [];
+			manualExpandedGroups = [];
+			manualCollapsedGroups = [];
+			autoExpandedGroupId = "";
 			postItems = generatePostItems();
 			return;
 		}
@@ -190,7 +211,9 @@
 		const config = getTOCConfig();
 		tocItems = generateTOCItems(config);
 		tocGroups = groupTOCItems(tocItems);
-		expandedGroups = [];
+		manualExpandedGroups = [];
+		manualCollapsedGroups = [];
+		autoExpandedGroupId = "";
 		postItems = [];
 		setupIntersectionObserver();
 		syncCurrentHeading();
@@ -443,22 +466,33 @@
 	}
 
 	.toc-toggle {
-		width: 2rem;
-		height: 2rem;
+		width: 1.9rem;
+		height: 1.9rem;
 		flex-shrink: 0;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		border: 1px solid color-mix(in srgb, var(--line-color) 75%, transparent);
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--card-bg) 70%, transparent);
+		border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--line-color));
+		border-radius: 0.78rem;
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 88%, rgba(255, 255, 255, 0.18)), color-mix(in srgb, var(--card-bg) 74%, transparent)),
+			radial-gradient(circle at top, color-mix(in srgb, var(--primary) 14%, transparent), transparent 72%);
 		color: var(--primary);
-		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+		transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.18),
+			0 8px 20px rgba(15, 23, 42, 0.08);
 	}
 
 	.toc-toggle:hover {
-		background: var(--btn-plain-bg-hover);
-		border-color: color-mix(in srgb, var(--primary) 32%, transparent);
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 92%, rgba(255, 255, 255, 0.2)), color-mix(in srgb, var(--card-bg) 78%, transparent)),
+			radial-gradient(circle at center, color-mix(in srgb, var(--primary) 18%, transparent), transparent 74%);
+		border-color: color-mix(in srgb, var(--primary) 36%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.22),
+			0 0 0 1px color-mix(in srgb, var(--primary) 14%, transparent),
+			0 10px 24px color-mix(in srgb, var(--primary) 12%, transparent);
 	}
 
 	.toc-toggle.expanded {
