@@ -1151,6 +1151,66 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 		return pythonLabStateMap.get(root) || null;
 	}
 
+	function setPythonLabLoading(root, loading, message) {
+		const labState = getPythonLabState(root);
+		if (!labState) {
+			return;
+		}
+
+		if (labState.loadingMask instanceof HTMLElement) {
+			labState.loadingMask.hidden = !loading;
+		}
+
+		root.dataset.labLoading = loading ? "true" : "false";
+
+		if (typeof message === "string" && message.length > 0) {
+			labState.status.textContent = message;
+		}
+	}
+
+	function schedulePythonLabWarmup(root) {
+		const labState = getPythonLabState(root);
+		if (!labState || labState.runtimeWarmScheduled) {
+			return;
+		}
+
+		const state = getState();
+		if (state.pyodideLoaded || state.pyodidePromise) {
+			return;
+		}
+
+		labState.runtimeWarmScheduled = true;
+		const runWarmup = () => {
+			labState.runtimeWarmScheduled = false;
+			if (root.dataset.state !== "open") {
+				return;
+			}
+
+			labState.status.textContent = "编辑器已就绪，正在预热 Python 运行时…";
+			void ensurePyodide()
+				.then(() => {
+					if (root.dataset.state === "open") {
+						labState.status.textContent = "Python Lab 已就绪，可以直接开始写题。";
+					}
+				})
+				.catch(() => {
+					if (root.dataset.state === "open") {
+						labState.status.textContent =
+							"编辑器已就绪，运行时会在首次执行时继续加载。";
+					}
+				});
+		};
+
+		if ("requestIdleCallback" in window) {
+			labState.runtimeWarmHandle = window.requestIdleCallback(runWarmup, {
+				timeout: 2200,
+			});
+			return;
+		}
+
+		labState.runtimeWarmHandle = window.setTimeout(runWarmup, 1200);
+	}
+
 	function schedulePythonLabValidation(root) {
 		const labState = getPythonLabState(root);
 		if (!labState?.editor) {
@@ -1158,7 +1218,7 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 		}
 
 		const state = getState();
-		if (!state.pyodidePromise || labState.editor.getValue().length > 20000) {
+		if (!state.pyodideLoaded || labState.editor.getValue().length > 8000) {
 			return;
 		}
 
@@ -1211,7 +1271,7 @@ except SyntaxError as exc:
 			} catch (error) {
 				setMonacoMarkers(monaco, model, []);
 			}
-		}, 1100);
+		}, 2200);
 	}
 
 	async function ensurePythonLabEditor(root) {
@@ -1224,7 +1284,9 @@ except SyntaxError as exc:
 			return labState.editor;
 		}
 
-		labState.fallback.hidden = false;
+		setPythonLabLoading(root, true, "正在准备 Monaco 编辑器…");
+		labState.host.hidden = true;
+		labState.fallback.hidden = true;
 		labState.fallback.value = labState.source.value;
 
 		try {
@@ -1239,7 +1301,7 @@ except SyntaxError as exc:
 				value: labState.source.value,
 				language: "python",
 				theme: getMonacoThemeName(),
-				automaticLayout: true,
+				automaticLayout: false,
 				minimap: { enabled: false },
 				scrollBeyondLastLine: false,
 				fontFamily:
@@ -1250,13 +1312,29 @@ except SyntaxError as exc:
 				tabSize: 4,
 				insertSpaces: true,
 				quickSuggestions: { other: true, comments: false, strings: false },
-				quickSuggestionsDelay: 150,
-				wordBasedSuggestions: "currentDocument",
+				quickSuggestionsDelay: 220,
+				wordBasedSuggestions: "off",
 				suggestOnTriggerCharacters: true,
 				acceptSuggestionOnEnter: "on",
 				snippetSuggestions: "inline",
 				glyphMargin: false,
 				folding: false,
+				occurrencesHighlight: "off",
+				selectionHighlight: false,
+				renderValidationDecorations: "editable",
+				renderLineHighlight: "line",
+				matchBrackets: "near",
+				bracketPairColorization: { enabled: false },
+				guides: {
+					bracketPairs: false,
+					indentation: false,
+					highlightActiveIndentation: false,
+				},
+				wordWrap: "off",
+				smoothScrolling: false,
+				overviewRulerLanes: 0,
+				hideCursorInOverviewRuler: true,
+				lineNumbersMinChars: 3,
 				mouseWheelZoom: false,
 				stickyScroll: { enabled: false },
 				scrollbar: {
@@ -1267,7 +1345,15 @@ except SyntaxError as exc:
 				},
 			});
 
+			if (typeof ResizeObserver !== "undefined") {
+				labState.resizeObserver = new ResizeObserver(() => {
+					labState.editor?.layout();
+				});
+				labState.resizeObserver.observe(labState.host);
+			}
+
 			labState.fallback.hidden = true;
+			setPythonLabLoading(root, false, "Monaco 编辑器已就绪。");
 			labState.editor.onDidChangeModelContent(() => {
 				labState.source.value = labState.editor.getValue();
 				labState.fallback.value = labState.source.value;
@@ -1278,6 +1364,7 @@ except SyntaxError as exc:
 		} catch (error) {
 			labState.host.hidden = true;
 			labState.fallback.hidden = false;
+			setPythonLabLoading(root, false, "Monaco 加载失败，已切换到轻量编辑器。");
 			labState.status.textContent =
 				"Monaco 加载失败，已切换到轻量编辑器。";
 			return null;
@@ -1296,21 +1383,21 @@ except SyntaxError as exc:
 		root.dataset.state = nextOpen ? "open" : "closed";
 
 		if (!nextOpen) {
+			setPythonLabLoading(root, false);
 			return;
 		}
 
-		state.status.textContent = "正在准备编辑器…";
-		state.fallback.hidden = false;
-		state.fallback.focus();
+		setPythonLabLoading(root, true, "正在准备编辑器…");
 		void ensurePythonLabEditor(root).then((editor) => {
 			if (!editor) {
 				state.status.textContent =
 					"轻量编辑器已就绪。若 Monaco 稍后可用，会自动切换。";
+				state.fallback.focus();
 				return;
 			}
-			state.status.textContent = "Monaco 编辑器已就绪，运行时会在首次执行时加载。";
 			editor.layout();
 			editor.focus();
+			schedulePythonLabWarmup(root);
 		});
 	}
 
@@ -1398,6 +1485,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		const output = root.querySelector("[data-python-lab-output]");
 		const host = root.querySelector("[data-python-lab-editor]");
 		const fallback = root.querySelector("[data-python-lab-fallback]");
+		const loadingMask = root.querySelector("[data-python-lab-loading]");
 		const status = root.querySelector("[data-python-lab-status]");
 		const source = root.querySelector("[data-python-lab-source]");
 
@@ -1410,6 +1498,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			!(output instanceof HTMLElement) ||
 			!(host instanceof HTMLElement) ||
 			!(fallback instanceof HTMLTextAreaElement) ||
+			!(loadingMask instanceof HTMLElement) ||
 			!(status instanceof HTMLElement) ||
 			!(source instanceof HTMLTextAreaElement)
 		) {
@@ -1425,10 +1514,14 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			output,
 			host,
 			fallback,
+			loadingMask,
 			status,
 			source,
 			editor: null,
 			validationTimer: 0,
+			resizeObserver: null,
+			runtimeWarmScheduled: false,
+			runtimeWarmHandle: 0,
 		});
 
 		toggle.addEventListener("click", () => {
