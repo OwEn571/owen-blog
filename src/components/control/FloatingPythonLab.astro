@@ -153,6 +153,7 @@ print([sqrt(n) for n in nums])
     z-index 2
     width 3.5rem
     height 3.5rem
+    overflow visible
 
   .python-lab-fab-shell[data-state="open"]
     z-index 4
@@ -215,13 +216,14 @@ print([sqrt(n) for n in nums])
     display none
 
   .python-lab-panel
-    position absolute
-    right calc(100% + 1rem)
-    bottom -.25rem
-    width 27rem
-    max-width calc(100vw - 1.5rem)
-    max-height unquote("min(36rem, calc(100vh - 8rem))")
-    display grid
+    position fixed
+    right calc(var(--utility-rail-right, 1.5rem) + var(--utility-rail-size, 3.5rem) + 1rem)
+    bottom calc(var(--utility-rail-bottom, 3.75rem) - .15rem)
+    width 28rem
+    max-width calc(100vw - 6.75rem)
+    max-height calc(100vh - 4rem)
+    display flex
+    flex-direction column
     gap .9rem
     padding 1rem
     border-radius 1.55rem
@@ -230,7 +232,8 @@ print([sqrt(n) for n in nums])
     box-shadow 0 32px 88px rgba(15, 23, 42, .22), inset 0 1px 0 rgba(255,255,255,.72)
     backdrop-filter blur(22px) saturate(1.06)
     -webkit-backdrop-filter blur(22px) saturate(1.06)
-    overflow hidden
+    overflow auto
+    overscroll-behavior contain
     isolation isolate
     transition transform .24s ease, box-shadow .24s ease, border-color .24s ease
     transform-origin bottom right
@@ -296,7 +299,7 @@ print([sqrt(n) for n in nums])
     color rgba(15, 23, 42, .62)
 
   .python-lab-panel__editor-frame
-    min-height 18rem
+    min-height 0
     border-radius 1.2rem
     border 1px solid rgba(118, 156, 255, .14)
     background rgba(9, 12, 19, .94)
@@ -306,14 +309,14 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel__editor
     width 100%
-    min-height 18rem
-    height min(24rem, 46vh)
+    min-height 16rem
+    height min(21rem, 40vh)
     grid-area 1 / 1
 
   .python-lab-panel__fallback
     width 100%
-    min-height 18rem
-    height min(24rem, 46vh)
+    min-height 16rem
+    height min(21rem, 40vh)
     grid-area 1 / 1
     resize none
     padding 1rem 1.05rem
@@ -362,8 +365,8 @@ print([sqrt(n) for n in nums])
     box-shadow 0 0 18px rgba(118, 156, 255, .14), 0 12px 30px rgba(15, 23, 42, .12)
 
   .python-lab-panel__output
-    min-height 8rem
-    max-height 12rem
+    min-height 6rem
+    max-height 9rem
     overflow auto
     padding 1rem
     border-radius 1rem
@@ -415,9 +418,12 @@ print([sqrt(n) for n in nums])
     .python-lab-panel
       width unquote("min(24rem, calc(100vw - 2rem))")
       max-width 30rem
-      max-height calc(100vh - 6rem)
-      right 0
-      bottom calc(100% + .9rem)
+      max-height calc(100vh - 7rem)
+      right var(--utility-rail-right, 1rem)
+      bottom calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) + .9rem)
 
     .python-lab-panel__editor
+      height 42vh
+
+    .python-lab-panel__fallback
       height 42vh
