@@ -1,0 +1,9 @@
+{
+  "title": "算法题",
+  "eyebrow": "Algorithm",
+  "description": "刷力扣、面试题、牛客的题目，各种常见算法的总结等",
+  "size": "medium",
+  "accent": "132 126 255",
+  "icon": "mdi:lightning-bolt-outline",
+  "order": 30
+}

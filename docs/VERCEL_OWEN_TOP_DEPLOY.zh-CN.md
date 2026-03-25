@@ -37,8 +37,7 @@
 
 2. 确认不想启用的功能仍然是关闭状态
    - `commentConfig.enable`
-   - `musicPlayerConfig.enable`
-   - `pioConfig.enable`
+   - 其余可选功能保持为默认关闭即可
 
 3. 本地先过一次构建
 

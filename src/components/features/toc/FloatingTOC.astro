@@ -749,10 +749,10 @@ class FloatingTOC {
 
 const mountFloatingTOC = () => {
 	const floatingWindow = window as Window & {
-		__mizukiFloatingTOC?: FloatingTOC;
+		__owenBlogFloatingTOC?: FloatingTOC;
 	};
-	floatingWindow.__mizukiFloatingTOC?.destroy?.();
-	floatingWindow.__mizukiFloatingTOC = new FloatingTOC();
+	floatingWindow.__owenBlogFloatingTOC?.destroy?.();
+	floatingWindow.__owenBlogFloatingTOC = new FloatingTOC();
 };
 
 document.addEventListener("DOMContentLoaded", mountFloatingTOC);

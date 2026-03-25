@@ -85,9 +85,9 @@ import { Icon } from "astro-icon/components";
 			};
 
 			const cancelScrollAnimation = () => {
-				if (window.__mizukiBackToTopRaf) {
-					window.cancelAnimationFrame(window.__mizukiBackToTopRaf);
-					delete window.__mizukiBackToTopRaf;
+				if (window.__owenBlogBackToTopRaf) {
+					window.cancelAnimationFrame(window.__owenBlogBackToTopRaf);
+					delete window.__owenBlogBackToTopRaf;
 				}
 				cleanupUserInterrupts();
 			};
@@ -101,16 +101,16 @@ import { Icon } from "astro-icon/components";
 				});
 
 				if (progress < 1) {
-					window.__mizukiBackToTopRaf = window.requestAnimationFrame(step);
+					window.__owenBlogBackToTopRaf = window.requestAnimationFrame(step);
 					return;
 				}
 
 				cleanupUserInterrupts();
-				delete window.__mizukiBackToTopRaf;
+				delete window.__owenBlogBackToTopRaf;
 			};
 
-			if (window.__mizukiBackToTopRaf) {
-				window.cancelAnimationFrame(window.__mizukiBackToTopRaf);
+			if (window.__owenBlogBackToTopRaf) {
+				window.cancelAnimationFrame(window.__owenBlogBackToTopRaf);
 			}
 
 			window.addEventListener("wheel", cancelScrollAnimation, { passive: true });
@@ -118,7 +118,7 @@ import { Icon } from "astro-icon/components";
 			window.addEventListener("keydown", cancelScrollAnimation);
 			window.addEventListener("mousedown", cancelScrollAnimation);
 
-			window.__mizukiBackToTopRaf = window.requestAnimationFrame(step);
+			window.__owenBlogBackToTopRaf = window.requestAnimationFrame(step);
 		};
 
 		const bindBackToTop = () => {

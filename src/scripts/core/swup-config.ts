@@ -1,6 +1,6 @@
 /**
- * Swup 配置模块
- * 提供页面过渡动画的配置常量和类型定义
+ * 页面运行时共享选择器配置
+ * 提供当前仍在使用的 DOM 选择器常量和类型定义
  */
 
 // Banner 高度常量
@@ -20,8 +20,6 @@ export const SWUP_SELECTORS = {
 	persistElements: [
 		'#navbar-wrapper',
 		'#sidebar',
-		'.music-player',
-		'#pio-container',
 	],
 
 	// Banner 相关

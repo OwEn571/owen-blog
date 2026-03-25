@@ -5,7 +5,6 @@ import { SidebarTOC } from "@/components/features/toc";
 import Announcement from "@/components/widgets/announcement/Announcement.astro";
 import Calendar from "@/components/widgets/calendar/Calendar.astro";
 import Categories from "@/components/widgets/categories/Categories.astro";
-import MusicPlayer from "@/components/widgets/music-player/MusicPlayer.svelte";
 import Profile from "@/components/widgets/profile/Profile.astro";
 import SiteStats from "@/components/widgets/site-stats/SiteStats.astro";
 import Tags from "@/components/widgets/tags/Tags.astro";
@@ -33,7 +32,6 @@ const componentMap: Record<string, unknown> = {
 	categories: Categories,
 	tags: Tags,
 	toc: SidebarTOC,
-	"music-player": MusicPlayer,
 	"site-stats": SiteStats,
 	calendar: Calendar,
 };
@@ -125,38 +123,11 @@ type WidgetComponentConfig = ReturnType<typeof widgetManager.getComponentsByPosi
     
     init() {
       this.updateResponsiveDisplay();
-      if (!window.__mizukiRightSidebarResizeHandler) {
-        window.__mizukiRightSidebarResizeHandler = () => this.updateResponsiveDisplay();
-        window.addEventListener('resize', window.__mizukiRightSidebarResizeHandler);
+      if (!window.__owenBlogRightSidebarResizeHandler) {
+        window.__owenBlogRightSidebarResizeHandler = () => this.updateResponsiveDisplay();
+        window.addEventListener('resize', window.__owenBlogRightSidebarResizeHandler);
       }
 
-      // 监听SWUP内容替换事件
-      if (typeof window !== 'undefined' && window.swup && !window.__mizukiRightSidebarSwupHooked) {
-        window.__mizukiRightSidebarSwupHooked = true;
-        window.swup.hooks.on('content:replace', () => {
-          // 延迟执行以确保DOM已更新
-          setTimeout(() => {
-            const breakpoints = widgetManager.getBreakpoints();
-            const width = window.innerWidth;
-            let deviceType: 'mobile' | 'tablet' | 'desktop';
-            if (width < breakpoints.mobile) {
-              deviceType = 'mobile';
-            } else if (width < breakpoints.tablet) {
-              deviceType = 'tablet';
-            } else {
-              deviceType = 'desktop';
-            }
-
-            const sidebar = document.getElementById('right-sidebar');
-            if (!sidebar) {return;}
-
-            sidebar.style.setProperty(
-              `--sidebar-${deviceType}-display`,
-              widgetManager.shouldShowSidebar(deviceType) ? 'block' : 'none'
-            );
-          }, 100);
-        });
-      }
     }
     
     updateResponsiveDisplay() {
@@ -185,8 +156,8 @@ type WidgetComponentConfig = ReturnType<typeof widgetManager.getComponentsByPosi
   }
   
   // 初始化右侧边栏管理器
-  if (!window.__mizukiRightSidebarManagerInitialized) {
-    window.__mizukiRightSidebarManagerInitialized = true;
+  if (!window.__owenBlogRightSidebarManagerInitialized) {
+    window.__owenBlogRightSidebarManagerInitialized = true;
     new RightSidebarManager();
   }
 </script>

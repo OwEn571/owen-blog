@@ -11,7 +11,7 @@ export const LinkPresets: Record<LinkPreset, NavBarLink> = {
 	},
 	[LinkPreset.About]: {
 		name: i18n(I18nKey.about),
-		url: "/about/",
+		url: "/study/",
 		icon: "material-symbols:person",
 	},
 	[LinkPreset.Archive]: {

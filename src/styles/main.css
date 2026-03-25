@@ -1,7 +1,3 @@
-/* 导入相册样式 */
-@import "./albums.css";
-/* 导入追番页面样式 */
-@import "./anime.css";
 /* 导入动画样式 */
 @import "./animation-enhancements.css";
 /* 导入渐变按钮样式 */
@@ -618,8 +614,6 @@ html.splash-active #banner-credit {
   /* 禁用复杂选择器元素的过渡 - 仅在非 View Transitions 模式下 */
   .is-theme-transitioning:not(.use-view-transition) .float-panel,
   .is-theme-transitioning:not(.use-view-transition) .float-panel *,
-  .is-theme-transitioning:not(.use-view-transition) .music-player,
-  .is-theme-transitioning:not(.use-view-transition) .music-player *,
   .is-theme-transitioning:not(.use-view-transition) .widget,
   .is-theme-transitioning:not(.use-view-transition) .widget *,
   .is-theme-transitioning:not(.use-view-transition) .dropdown-content,
@@ -756,16 +750,7 @@ html.splash-active #banner-credit {
     @apply bg-[var(--card-bg-transparent)] backdrop-blur-sm;
   }
 
-  .wallpaper-transparent ~ * .music-player .mini-player,
-  .wallpaper-transparent ~ * .music-player .expanded-player,
-  .wallpaper-transparent ~ * .music-player .playlist-panel,
-  body.wallpaper-transparent .music-player .mini-player,
-  body.wallpaper-transparent .music-player .expanded-player,
-  body.wallpaper-transparent .music-player .playlist-panel {
-    background-color: var(--card-bg-transparent) !important;
-    backdrop-filter: blur(8px) !important;
-  }
-  h1,
+    h1,
   h2,
   h3,
   h4,

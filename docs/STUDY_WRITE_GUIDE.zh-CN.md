@@ -4,11 +4,11 @@ Study 模块现在只认这一层目录：
 
 - `src/content/posts/study/`
 
-六张卡片分别对应六个固定写作目录：
+当前常用目录如下：
 
 - `Python Base` -> `src/content/posts/study/python-base/`
 - `LLM Base` -> `src/content/posts/study/llm-base/`
-- `Hot 100` -> `src/content/posts/study/hot-100/`
+- `算法题` -> `src/content/posts/study/算法题/`
 - `Fine Tuning` -> `src/content/posts/study/fine-tuning/`
 - `FastAPI` -> `src/content/posts/study/fastapi/`
 - `Pytorch` -> `src/content/posts/study/pytorch/`
@@ -19,7 +19,7 @@ Study 模块现在只认这一层目录：
 
 - `src/content/posts/study/python-base/list-comprehension.md`
 - `src/content/posts/study/llm-base/transformer-overview.md`
-- `src/content/posts/study/hot-100/two-sum.md`
+- `src/content/posts/study/算法题/two-sum.md`
 
 最小 frontmatter 模板：
 
@@ -29,7 +29,7 @@ title: 文章标题
 published: 2026-03-21
 description: 一句话摘要
 tags: [Study]
-category: 对应卡片名
+category: 你希望展示的分类名
 draft: false
 ---
 ```
@@ -38,7 +38,7 @@ draft: false
 
 - `Python Base`
 - `LLM Base`
-- `Hot 100`
+- `算法题` 或 `Hot 100`
 - `Fine Tuning`
 - `FastAPI`
 - `Pytorch`
@@ -49,7 +49,7 @@ draft: false
 
 - `src/content/posts/study/python-base/template.md`
 - `src/content/posts/study/llm-base/template.md`
-- `src/content/posts/study/hot-100/template.md`
+- `src/content/posts/study/算法题/template.md`
 - `src/content/posts/study/fine-tuning/template.md`
 - `src/content/posts/study/fastapi/template.md`
 - `src/content/posts/study/pytorch/template.md`
@@ -62,7 +62,7 @@ draft: false
 
 1. 在对应目录写 Markdown
 2. 保存
-3. `pnpm dev` 会自动刷新，Study 卡片和文章列表会同步更新
+3. `pnpm dev` 会自动刷新，Study 的知识星点、筛选器和文章列表会同步更新
 
 线上发布：
 

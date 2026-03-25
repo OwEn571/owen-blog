@@ -111,8 +111,8 @@ export function animateWindowScrollTo(
 		return;
 	}
 
-	const existingFrame = (window as Window & { __mizukiScrollRaf?: number })
-		.__mizukiScrollRaf;
+	const existingFrame = (window as Window & { __owenBlogScrollRaf?: number })
+		.__owenBlogScrollRaf;
 	if (existingFrame) {
 		window.cancelAnimationFrame(existingFrame);
 	}
@@ -125,11 +125,11 @@ export function animateWindowScrollTo(
 	};
 
 	const cancelScrollAnimation = () => {
-		const activeFrame = (window as Window & { __mizukiScrollRaf?: number })
-			.__mizukiScrollRaf;
+		const activeFrame = (window as Window & { __owenBlogScrollRaf?: number })
+			.__owenBlogScrollRaf;
 		if (activeFrame) {
 			window.cancelAnimationFrame(activeFrame);
-			delete (window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf;
+			delete (window as Window & { __owenBlogScrollRaf?: number }).__owenBlogScrollRaf;
 		}
 		cleanupUserInterrupts();
 	};
@@ -147,13 +147,13 @@ export function animateWindowScrollTo(
 		});
 
 		if (progress < 1) {
-			(window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf =
+			(window as Window & { __owenBlogScrollRaf?: number }).__owenBlogScrollRaf =
 				window.requestAnimationFrame(step);
 			return;
 		}
 
 		cleanupUserInterrupts();
-		delete (window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf;
+		delete (window as Window & { __owenBlogScrollRaf?: number }).__owenBlogScrollRaf;
 	};
 
 	window.addEventListener("wheel", cancelScrollAnimation, { passive: true });
@@ -161,7 +161,7 @@ export function animateWindowScrollTo(
 	window.addEventListener("keydown", cancelScrollAnimation);
 	window.addEventListener("mousedown", cancelScrollAnimation);
 
-	(window as Window & { __mizukiScrollRaf?: number }).__mizukiScrollRaf =
+	(window as Window & { __owenBlogScrollRaf?: number }).__owenBlogScrollRaf =
 		window.requestAnimationFrame(step);
 }
 

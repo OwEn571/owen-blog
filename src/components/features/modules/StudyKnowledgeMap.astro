@@ -45,9 +45,9 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 
 <script>
 	const mapWindow = window as Window & {
-		__mizukiStudyKnowledgeMapBound?: boolean;
-		__mizukiStudyKnowledgeMapSwupBound?: boolean;
-		__mizukiStudyMapScrollRaf?: number;
+		__owenBlogStudyKnowledgeMapBound?: boolean;
+		__owenBlogStudyKnowledgeMapSwupBound?: boolean;
+		__owenBlogStudyMapScrollRaf?: number;
 		swup?: Swup;
 	};
 
@@ -218,9 +218,9 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 		};
 
 		const cancelScrollAnimation = () => {
-			if (mapWindow.__mizukiStudyMapScrollRaf) {
-				window.cancelAnimationFrame(mapWindow.__mizukiStudyMapScrollRaf);
-				delete mapWindow.__mizukiStudyMapScrollRaf;
+			if (mapWindow.__owenBlogStudyMapScrollRaf) {
+				window.cancelAnimationFrame(mapWindow.__owenBlogStudyMapScrollRaf);
+				delete mapWindow.__owenBlogStudyMapScrollRaf;
 			}
 			cleanupUserInterrupts();
 		};
@@ -233,23 +233,23 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 				behavior: "auto",
 			});
 			if (progress < 1) {
-				mapWindow.__mizukiStudyMapScrollRaf = window.requestAnimationFrame(step);
+				mapWindow.__owenBlogStudyMapScrollRaf = window.requestAnimationFrame(step);
 				return;
 			}
 
 			cleanupUserInterrupts();
-			delete mapWindow.__mizukiStudyMapScrollRaf;
+			delete mapWindow.__owenBlogStudyMapScrollRaf;
 		};
 
-		if (mapWindow.__mizukiStudyMapScrollRaf) {
-			window.cancelAnimationFrame(mapWindow.__mizukiStudyMapScrollRaf);
+		if (mapWindow.__owenBlogStudyMapScrollRaf) {
+			window.cancelAnimationFrame(mapWindow.__owenBlogStudyMapScrollRaf);
 		}
 
 		window.addEventListener("wheel", cancelScrollAnimation, { passive: true });
 		window.addEventListener("touchstart", cancelScrollAnimation, { passive: true });
 		window.addEventListener("keydown", cancelScrollAnimation);
 		window.addEventListener("mousedown", cancelScrollAnimation);
-		mapWindow.__mizukiStudyMapScrollRaf = window.requestAnimationFrame(step);
+		mapWindow.__owenBlogStudyMapScrollRaf = window.requestAnimationFrame(step);
 	}
 
 	function focusCard(root: HTMLElement, directoryName: string) {
@@ -402,8 +402,8 @@ const { cards = [], moduleKey = "study" } = Astro.props;
 		});
 	}
 
-	if (!mapWindow.__mizukiStudyKnowledgeMapBound) {
-		mapWindow.__mizukiStudyKnowledgeMapBound = true;
+	if (!mapWindow.__owenBlogStudyKnowledgeMapBound) {
+		mapWindow.__owenBlogStudyKnowledgeMapBound = true;
 
 		let resizeTimer: number | undefined;
 		mapWindow.addEventListener("resize", () => {

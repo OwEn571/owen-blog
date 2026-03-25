@@ -5,7 +5,6 @@ import type {
 	FooterConfig,
 	FullscreenWallpaperConfig,
 	LicenseConfig,
-	MusicPlayerConfig,
 	NavBarConfig,
 	PermalinkConfig,
 	ProfileConfig,
@@ -24,7 +23,6 @@ const DEFAULT_SITE_URL = "https://owen.top/";
 const SITE_URL = (process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL).endsWith("/")
 	? (process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL)
 	: `${process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL}/`;
-const SITE_LINK = SITE_URL.endsWith("/") ? SITE_URL.slice(0, -1) : SITE_URL;
 
 export const siteConfig: SiteConfig = {
 	title: "我的博客",
@@ -42,10 +40,10 @@ export const siteConfig: SiteConfig = {
 		fixed: true, // 对访问者隐藏主题色选择器
 	},
 
-	// 特色页面开关配置（关闭未使用的页面有助于提升 SEO，关闭后请记得在 navbarConfig 中移除对应链接）
+	// 历史特色页兼容开关：当前博客实际启用的是 Study / Lab / Lounge / Archive 四个主分区
 	featurePages: {
 		anime: false, // 番剧页面开关
-		diary: true, // 日记页面开关
+		diary: false, // 旧日记页面已移除
 		friends: false, // 友链页面开关
 		projects: false, // 项目页面开关
 		skills: false, // 技能页面开关
@@ -60,7 +58,7 @@ export const siteConfig: SiteConfig = {
 		mode: "text-icon",
 		// 顶栏标题文本
 		text: "OwEn",
-		// 顶栏标题图标路径，默认使用 public/assets/home/home.png
+		// 顶栏标题图标路径
 		icon: "/assets/common/owen.png",
 		// 网站Logo图片路径
 		logo: "/assets/common/owen.png",
@@ -321,19 +319,9 @@ export const announcementConfig: AnnouncementConfig = {
 	link: {
 		enable: false, // 启用链接
 		text: "Learn More", // 链接文本
-		url: "/about/", // 链接 URL
+		url: "/study/", // 链接 URL
 		external: false, // 内部链接
 	},
-};
-
-export const musicPlayerConfig: MusicPlayerConfig = {
-	enable: false, // 启用音乐播放器功能
-	mode: "meting", // 音乐播放器模式，可选 "local" 或 "meting"
-	meting_api:
-		"https://meting.mysqil.com/api?server=:server&type=:type&id=:id&auth=:auth&r=:r", // Meting API 地址
-	id: "14164869977", // 歌单ID
-	server: "netease", // 音乐源服务器。有的meting的api源支持更多平台,一般来说,netease=网易云音乐, tencent=QQ音乐, kugou=酷狗音乐, xiami=虾米音乐, baidu=百度音乐
-	type: "playlist", // 播单类型
 };
 
 export const footerConfig: FooterConfig = {
@@ -482,39 +470,13 @@ export const sakuraConfig: SakuraConfig = {
 	zIndex: 100, // 层级，确保樱花在合适的层级显示
 };
 
-// Pio 看板娘配置
-export const pioConfig: import("./types/config").PioConfig = {
-	enable: false, // 启用看板娘
-	models: ["/pio/models/pio/model.json"], // 默认模型路径
-	position: "left", // 模型位置
-	width: 280, // 默认宽度
-	height: 250, // 默认高度
-	mode: "draggable", // 默认为可拖拽模式
-	hiddenOnMobile: true, // 默认在移动设备上隐藏
-	dialog: {
-		welcome: "Welcome!", // 欢迎词
-		touch: [
-			"What are you doing?",
-			"Stop touching me!",
-			"HENTAI!",
-			"Don't bully me like that!",
-		], // 触摸提示
-		home: "Click here to go back to homepage!", // 首页提示
-		skin: ["Want to see my new outfit?", "The new outfit looks great~"], // 换装提示
-		close: "QWQ See you next time~", // 关闭提示
-		link: SITE_LINK, // 关于链接
-	},
-};
-
 // 导出所有配置的统一接口
 export const widgetConfigs = {
 	profile: profileConfig,
 	announcement: announcementConfig,
-	music: musicPlayerConfig,
 	layout: sidebarLayoutConfig,
 	sakura: sakuraConfig,
 	fullscreenWallpaper: fullscreenWallpaperConfig,
-	pio: pioConfig,
 	share: shareConfig,
 } as const;
 

@@ -123,13 +123,13 @@ const {
 
 <script>
 	const deckWindow = window as Window & {
-		__mizukiModuleDirectoryDeckBound?: boolean;
+		__owenBlogModuleDirectoryDeckBound?: boolean;
 	};
 	if (
 		typeof deckWindow !== "undefined" &&
-		!deckWindow.__mizukiModuleDirectoryDeckBound
+		!deckWindow.__owenBlogModuleDirectoryDeckBound
 	) {
-		deckWindow.__mizukiModuleDirectoryDeckBound = true;
+		deckWindow.__owenBlogModuleDirectoryDeckBound = true;
 
 		const syncActiveCards = (moduleKey: string, directory: string) => {
 			document

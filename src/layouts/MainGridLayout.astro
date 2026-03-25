@@ -442,8 +442,8 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 							timeoutId = window.setTimeout(finalize, 26000);
 						};
 
-						if (!gateWindow.__mizukiImmersiveReadyGateBound) {
-							gateWindow.__mizukiImmersiveReadyGateBound = true;
+						if (!gateWindow.__owenBlogImmersiveReadyGateBound) {
+							gateWindow.__owenBlogImmersiveReadyGateBound = true;
 							window.addEventListener("pageshow", armGate);
 							window.addEventListener(
 								"pagehide",

@@ -5,7 +5,6 @@ import type { MarkdownHeading } from "astro";
 import { buildComponentProps } from "@/utils/widget-renderer";
 
 import { widgetManager } from "../../../utils/widget-manager";
-import MusicPlayer from "../../widgets/music-player/MusicPlayer.svelte";
 import Announcement from "../announcement/Announcement.astro";
 import Calendar from "../calendar/Calendar.astro";
 import Categories from "../categories/Categories.astro";
@@ -34,7 +33,6 @@ const componentMap: Record<string, unknown> = {
 	categories: Categories,
 	tags: Tags,
 	toc: SidebarTOC,
-	"music-player": MusicPlayer,
 	"site-stats": SiteStats,
 	calendar: Calendar,
 };
@@ -146,7 +144,7 @@ type WidgetComponentConfig = ReturnType<typeof widgetManager.getComponentsByPosi
 	hasMobileComponents: mobileTopComponents.length > 0 || mobileStickyComponents.length > 0,
 	hasTabletComponents: tabletTopComponents.length > 0 || tabletStickyComponents.length > 0
 }}>
-	const SIDEBAR_MANAGER_KEY = '__mizukiSidebarManagerInitialized';
+	const SIDEBAR_MANAGER_KEY = '__owenBlogSidebarManagerInitialized';
 
 	// 响应式布局管理
 	class SidebarManager {
@@ -156,46 +154,11 @@ type WidgetComponentConfig = ReturnType<typeof widgetManager.getComponentsByPosi
 		
 		init() {
 			this.updateResponsiveDisplay();
-			if (!window.__mizukiSidebarResizeHandler) {
-				window.__mizukiSidebarResizeHandler = () => this.updateResponsiveDisplay();
-				window.addEventListener('resize', window.__mizukiSidebarResizeHandler);
+			if (!window.__owenBlogSidebarResizeHandler) {
+				window.__owenBlogSidebarResizeHandler = () => this.updateResponsiveDisplay();
+				window.addEventListener('resize', window.__owenBlogSidebarResizeHandler);
 			}
 			
-			// 监听SWUP内容替换事件
-			if (typeof window !== 'undefined' && window.swup && !window.__mizukiSidebarSwupHooked) {
-				window.__mizukiSidebarSwupHooked = true;
-				window.swup.hooks.on('content:replace', () => {
-					// 延迟执行以确保DOM已更新
-					setTimeout(() => {
-						const sidebar = document.getElementById('sidebar');
-						if (!sidebar) {return;}
-
-						const width = window.innerWidth;
-						let deviceType;
-						let hasComponents = false;
-						let showConfig = false;
-
-						if (width < breakpoints.mobile) {
-							deviceType = 'mobile';
-							hasComponents = hasMobileComponents;
-							showConfig = mobileShowSidebar;
-						} else if (width < breakpoints.tablet) {
-							deviceType = 'tablet';
-							hasComponents = hasTabletComponents;
-							showConfig = tabletShowSidebar;
-						} else {
-							deviceType = 'desktop';
-							hasComponents = hasTabletComponents;
-							showConfig = desktopShowSidebar;
-						}
-
-						sidebar.style.setProperty(
-							`--sidebar-${deviceType}-display`,
-							showConfig && hasComponents ? 'block' : 'none'
-						);
-					}, 100);
-				});
-			}
 		}
 		
 		updateResponsiveDisplay() {

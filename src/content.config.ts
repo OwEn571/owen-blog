@@ -39,11 +39,6 @@ const postsCollection = defineCollection({
 		nextSlug: z.string().default(""),
 	}),
 });
-const specCollection = defineCollection({
-	loader: glob({ pattern: "**/*.md", base: "./src/content/spec" }),
-	schema: z.object({}),
-});
 export const collections = {
 	posts: postsCollection,
-	spec: specCollection,
 };

@@ -1,54 +1,50 @@
-# OwEn Blog
+# owen-blog
 
-Personal blog source for [owen.top](https://owen.top/).
+OwEn 的个人博客源码仓库，对应线上站点 [owen.top](https://owen.top/)。
 
-This repository is no longer a generic template showcase. It is the actual source code of my blog, built with Astro and customized around four long-term content areas:
+这个仓库已经整理成面向实际写作和发布的版本，不再保留原模板的大量演示页、示例数据和无用脚本。当前内容结构围绕四个主分区：
 
-- `Study`: study notes, algorithm writeups, Python / LLM / FastAPI / PyTorch learning records
-- `Lab`: experiments, demos, and interactive prototypes
-- `Lounge`: lighter personal writing, reviews, and life fragments
-- `Archive`: collected links, resources, and structured references
+- `Study`：学习记录、算法题解、Python / LLM / FastAPI / PyTorch 笔记
+- `Lab`：实验、Demo、交互原型
+- `Lounge`：轻内容、随笔、生活记录
+- `Archive`：整理过的链接、资源、结构化归档
 
-## Project Structure
+## 常用入口
 
-Main content lives here:
+- 项目结构说明：[docs/PROJECT_STRUCTURE.zh-CN.md](docs/PROJECT_STRUCTURE.zh-CN.md)
+- Study 写作说明：[docs/STUDY_WRITE_GUIDE.zh-CN.md](docs/STUDY_WRITE_GUIDE.zh-CN.md)
+- 目录模块与 Python 代码说明：[docs/MODULE_DIRECTORY_AND_PYTHON_GUIDE.zh-CN.md](docs/MODULE_DIRECTORY_AND_PYTHON_GUIDE.zh-CN.md)
+- Vercel 部署说明：[docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md](docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md)
 
-- `src/content/posts/study/`
-- `src/content/posts/lab/`
-- `src/content/posts/lounge/`
-- `src/content/posts/archive/`
-
-Important project files:
-
-- [src/config.ts](/Users/owen/mizuki/src/config.ts): site config
-- [src/data/module-blueprint.ts](/Users/owen/mizuki/src/data/module-blueprint.ts): module copy and shared module metadata
-- [src/styles/main.css](/Users/owen/mizuki/src/styles/main.css): global styles
-- [docs/STUDY_WRITE_GUIDE.zh-CN.md](/Users/owen/mizuki/docs/STUDY_WRITE_GUIDE.zh-CN.md): Study writing guide
-- [docs/MODULE_DIRECTORY_AND_PYTHON_GUIDE.zh-CN.md](/Users/owen/mizuki/docs/MODULE_DIRECTORY_AND_PYTHON_GUIDE.zh-CN.md): directory modules and runnable Python blocks
-
-## Local Development
+## 本地开发
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Useful commands:
+常用命令：
 
 ```bash
 pnpm check
 pnpm build
 pnpm preview
+pnpm new-post
 ```
 
-## Deployment
+## 内容目录
 
-The production site is deployed through Vercel and updated by pushing to the `main` branch.
+主要文章内容位于：
 
-If I need to re-check the deployment setup, the internal notes are here:
+- `src/content/posts/study/`
+- `src/content/posts/lab/`
+- `src/content/posts/lounge/`
+- `src/content/posts/archive/`
 
-- [docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md](/Users/owen/mizuki/docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md)
+## 发布方式
 
-## Acknowledgement
+当前正式站通过 Vercel 部署，推送 `main` 分支后会自动重新构建并更新线上版本。
 
-This project started from the open-source [Mizuki](https://github.com/matsuzaka-yuki/mizuki) blog project and has since been heavily reworked for my own use.
+## 致谢
+
+项目最初基于开源博客项目 [Mizuki](https://github.com/matsuzaka-yuki/mizuki)，现已按 OwEn 自己的写作和发布流程做了深度改造与裁剪。

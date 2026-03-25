@@ -319,8 +319,8 @@ export const studyTiles: StudyTile[] = [
 		size: "medium",
 		accent: "132 126 255",
 		icon: "mdi:lightning-bolt-outline",
-		contentPrefix: "study/hot-100/",
-		writePath: "src/content/posts/study/hot-100/",
+		contentPrefix: "study/算法题/",
+		writePath: "src/content/posts/study/算法题/",
 	},
 	{
 		id: "fine-tuning",

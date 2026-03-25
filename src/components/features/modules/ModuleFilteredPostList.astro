@@ -119,7 +119,7 @@ const filterableEntries = entries.map((entry) => ({
 
 <script>
 	const filterWindow = window as Window & {
-		__mizukiModuleFilterBound?: boolean;
+		__owenBlogModuleFilterBound?: boolean;
 		_moduleFilterSwupListenerAttached?: boolean;
 		swup?: any;
 	};
@@ -236,8 +236,8 @@ const filterableEntries = entries.map((entry) => ({
 			.forEach((root) => initModuleFilterRoot(root));
 	}
 
-	if (!filterWindow.__mizukiModuleFilterBound) {
-		filterWindow.__mizukiModuleFilterBound = true;
+	if (!filterWindow.__owenBlogModuleFilterBound) {
+		filterWindow.__owenBlogModuleFilterBound = true;
 
 		filterWindow.addEventListener(
 			"moduleDirectory:filterchange",

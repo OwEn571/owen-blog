@@ -147,14 +147,6 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		const preloadRoute = (href) => {
 			if (!href) return;
-			try {
-				if (window.swup?.preload) {
-					window.swup.preload(href);
-					return;
-				}
-			} catch (error) {
-				console.warn("Splash preload failed:", error);
-			}
 
 			if (!document.head.querySelector(`link[rel="prefetch"][href="${href}"]`)) {
 				const link = document.createElement("link");
