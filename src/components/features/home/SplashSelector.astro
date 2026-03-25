@@ -8,7 +8,7 @@ import { homeSections } from "./entry-data";
 const splashTitle = profileConfig.name || siteConfig.title;
 ---
 
-<div id="splash-selector" class="splash-shell" data-state="opening" role="dialog" aria-modal="true" aria-label="开屏入口选择">
+<div id="splash-selector" class="splash-shell" data-state="opening" data-theme="dark" role="dialog" aria-modal="true" aria-label="开屏入口选择">
 	<div class="splash-backdrop">
 		<video
 			class="splash-video"
@@ -17,11 +17,13 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			playsinline
 			preload="none"
 			poster="/assets/opening/qidian-splash-poster.jpg"
+			data-poster-dark="/assets/opening/qidian-splash-poster.jpg"
+			data-poster-light="/assets/opening/sakura-field-day-poster.svg"
 			disableRemotePlayback
 			data-splash-video
 			aria-hidden="true"
 		>
-			<source data-src="/assets/opening/qidian-splash.mp4" type="video/mp4" />
+			<source data-src-dark="/assets/opening/qidian-splash.mp4" data-src-light="/assets/opening/sakura-field-day.mp4" type="video/mp4" />
 		</video>
 		<div class="splash-backdrop-overlay"></div>
 	</div>
@@ -91,6 +93,42 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			/(?:^|slow-)?2g/i.test(connection?.effectiveType || "");
 		let isNavigating = false;
 		let isVideoActivated = false;
+		let themeObserver;
+
+		const resolveTheme = () =>
+			document.documentElement.classList.contains("dark") ? "dark" : "light";
+
+		const applyThemeAssets = (reloadVideo = false) => {
+			const theme = resolveTheme();
+			root.dataset.theme = theme;
+
+			if (!(video instanceof HTMLVideoElement) || !(videoSource instanceof HTMLSourceElement)) {
+				return;
+			}
+
+			const nextPoster =
+				theme === "dark" ? video.dataset.posterDark : video.dataset.posterLight;
+			if (nextPoster) {
+				video.poster = nextPoster;
+			} else {
+				video.removeAttribute("poster");
+			}
+
+			const nextSrc =
+				theme === "dark" ? videoSource.dataset.srcDark : videoSource.dataset.srcLight;
+			if (!nextSrc || (!reloadVideo && !isVideoActivated)) {
+				return;
+			}
+
+			if (videoSource.getAttribute("src") !== nextSrc) {
+				videoSource.src = nextSrc;
+				video.load();
+			}
+
+			if (!shouldReduceVideo && isVideoActivated) {
+				video.play().catch(() => {});
+			}
+		};
 
 		const lockPage = () => {
 			document.documentElement.classList.add("splash-active");
@@ -104,6 +142,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		const restoreSplash = () => {
 			isNavigating = false;
+			applyThemeAssets(isVideoActivated);
 			root.dataset.state = "ready";
 			lockPage();
 			if (!shouldReduceVideo && isVideoActivated) {
@@ -121,15 +160,8 @@ const splashTitle = profileConfig.name || siteConfig.title;
 				return;
 			}
 
-			const src = videoSource.dataset.src;
-			if (!src) {
-				return;
-			}
-
 			isVideoActivated = true;
-			videoSource.src = src;
-			video.load();
-			video.play().catch(() => {});
+			applyThemeAssets(true);
 		};
 
 		const scheduleVideoActivation = () => {
@@ -165,6 +197,15 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			window.location.assign(href);
 		};
 
+		applyThemeAssets(false);
+		themeObserver = new MutationObserver(() => {
+			applyThemeAssets(isVideoActivated);
+		});
+		themeObserver.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["class"],
+		});
+
 		lockPage();
 		if (shouldReduceVideo) {
 			if (video instanceof HTMLVideoElement) {
@@ -198,6 +239,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		});
 
 		window.addEventListener("pagehide", () => {
+			themeObserver?.disconnect?.();
 			unlockPage();
 		});
 
@@ -545,6 +587,125 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		gap: 0.2rem;
 		font-weight: 600;
 		color: rgb(var(--splash-accent) / 0.96);
+	}
+
+
+	.splash-shell[data-theme="light"] {
+		color-scheme: light;
+	}
+
+	.splash-shell[data-theme="light"] .splash-backdrop {
+		background: linear-gradient(180deg, #fffdfd 0%, #fff2f7 100%);
+	}
+
+	.splash-shell[data-theme="light"] .splash-video {
+		opacity: 0.97;
+		filter: brightness(1.04) saturate(1.08) contrast(1.02);
+		transform: scale(1.015);
+	}
+
+	.splash-shell[data-theme="light"] .splash-backdrop-overlay {
+		background:
+			radial-gradient(circle at 16% 20%, rgba(255, 186, 209, 0.34), transparent 24rem),
+			radial-gradient(circle at 78% 26%, rgba(229, 198, 255, 0.28), transparent 22rem),
+			radial-gradient(circle at 68% 78%, rgba(255, 222, 232, 0.28), transparent 20rem),
+			linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 241, 247, 0.66)),
+			radial-gradient(circle at center, transparent 48%, rgba(255, 255, 255, 0.16) 100%);
+	}
+
+	.splash-shell[data-theme="light"] .splash-panel {
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 244, 248, 0.42)),
+			radial-gradient(circle at top left, rgba(255, 255, 255, 0.44), transparent 20rem);
+	}
+
+	.splash-shell[data-theme="light"] .splash-status {
+		background: rgba(255, 255, 255, 0.62);
+		border-color: rgba(255, 180, 204, 0.22);
+		color: rgba(136, 72, 101, 0.7);
+	}
+
+	.splash-shell[data-theme="light"] .splash-kicker,
+	.splash-shell[data-theme="light"] .splash-choice-eyebrow {
+		color: rgba(120, 76, 100, 0.48);
+	}
+
+	.splash-shell[data-theme="light"] .splash-title {
+		color: rgba(84, 45, 61, 0.96);
+		text-shadow: 0 16px 34px rgba(255, 190, 212, 0.22);
+	}
+
+	.splash-shell[data-theme="light"] .splash-description {
+		color: rgba(103, 71, 86, 0.72);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice {
+		border-color: rgba(255, 181, 206, 0.22);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 244, 248, 0.48)),
+			radial-gradient(circle at top right, rgb(var(--splash-accent) / 0.12), transparent 12rem),
+			radial-gradient(circle at bottom left, rgba(255, 189, 220, 0.18), transparent 12rem);
+		box-shadow:
+			0 26px 72px rgba(178, 106, 137, 0.12),
+			0 0 18px rgba(255, 184, 207, 0.08);
+		backdrop-filter: blur(30px) saturate(1.08);
+		-webkit-backdrop-filter: blur(30px) saturate(1.08);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice::before {
+		background: radial-gradient(circle, rgba(255, 183, 208, 0.42), transparent 72%);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice::after {
+		box-shadow:
+			0 0 0 1px rgba(255, 184, 207, 0.16),
+			0 0 22px rgba(255, 184, 207, 0.18),
+			0 0 48px rgba(255, 184, 207, 0.14),
+			0 0 92px rgba(255, 184, 207, 0.08);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice:hover,
+	.splash-shell[data-theme="light"] .splash-choice:focus-visible {
+		border-color: rgba(255, 164, 195, 0.32);
+		box-shadow:
+			0 28px 84px rgba(178, 106, 137, 0.16),
+			0 0 18px rgba(255, 184, 207, 0.16),
+			0 0 36px rgba(255, 184, 207, 0.16),
+			0 0 88px rgba(255, 184, 207, 0.12),
+			0 0 128px rgba(255, 184, 207, 0.08);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice-icon {
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 240, 246, 0.62));
+		color: rgba(116, 71, 93, 0.96);
+		border-color: rgba(255, 190, 213, 0.24);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice:hover .splash-choice-icon,
+	.splash-shell[data-theme="light"] .splash-choice:focus-visible .splash-choice-icon {
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 235, 243, 0.76));
+		box-shadow: 0 0 22px rgba(255, 183, 208, 0.18);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice-title {
+		color: rgba(83, 48, 64, 0.94);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice-description {
+		color: rgba(102, 74, 87, 0.72);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice:hover .splash-choice-title {
+		color: rgba(68, 37, 52, 0.98);
+		text-shadow: 0 0 18px rgba(255, 182, 206, 0.2);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice-footer {
+		color: rgba(116, 82, 98, 0.52);
+	}
+
+	.splash-shell[data-theme="light"] .splash-choice-enter {
+		color: rgba(203, 91, 137, 0.94);
 	}
 
 	.splash-shell[data-state="opening"] .splash-panel,

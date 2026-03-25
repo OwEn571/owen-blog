@@ -3597,3 +3597,228 @@ html.splash-active #banner-credit {
     grid-template-columns: 1fr;
   }
 }
+
+
+:root:not(.dark) {
+  --day-rose-rgb: 255 164 196;
+  --day-blush-rgb: 255 239 245;
+  --day-lilac-rgb: 230 214 255;
+}
+
+:root:not(.dark) body {
+  background:
+    radial-gradient(circle at top left, rgb(var(--day-rose-rgb) / 0.22), transparent 28rem),
+    radial-gradient(circle at top right, rgb(var(--day-lilac-rgb) / 0.18), transparent 25rem),
+    radial-gradient(circle at bottom center, rgba(255, 255, 255, 0.72), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 252, 253, 0.98), rgba(255, 245, 249, 0.98));
+  color: rgba(78, 45, 62, 0.9);
+}
+
+:root:not(.dark) .top-gradient-highlight {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.82) 0%, rgba(255, 239, 245, 0.5) 34%, rgba(255, 224, 234, 0.16) 64%, rgba(255, 224, 234, 0.04) 82%, transparent 100%);
+}
+
+:root:not(.dark) body.immersive-page {
+  background:
+    radial-gradient(circle at 12% 16%, rgb(var(--day-rose-rgb) / 0.16), transparent 24rem),
+    radial-gradient(circle at 84% 20%, rgb(var(--day-lilac-rgb) / 0.14), transparent 22rem),
+    radial-gradient(circle at 72% 80%, rgba(255, 214, 228, 0.14), transparent 24rem),
+    linear-gradient(180deg, rgba(255, 250, 252, 0.22), rgba(255, 242, 247, 0.36));
+  color: rgba(79, 45, 61, 0.92);
+}
+
+:root:not(.dark) body.immersive-page .immersive-video {
+  opacity: 0.97;
+  filter: blur(5px) brightness(1.02) saturate(1.08) contrast(1.03);
+}
+
+:root:not(.dark) body.immersive-page .immersive-video-overlay {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 188, 210, 0.18), transparent 24rem),
+    radial-gradient(circle at 84% 20%, rgba(229, 198, 255, 0.16), transparent 20rem),
+    radial-gradient(circle at 72% 78%, rgba(255, 224, 234, 0.14), transparent 20rem),
+    linear-gradient(180deg, rgba(255, 252, 253, 0.08), rgba(255, 243, 248, 0.18)),
+    radial-gradient(circle at center, transparent 58%, rgba(255, 255, 255, 0.06) 100%);
+}
+
+:root:not(.dark) body.immersive-page .immersive-navbar-shell {
+  border-color: rgba(255, 198, 218, 0.28);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 241, 247, 0.2));
+  box-shadow:
+    0 26px 70px rgba(176, 102, 136, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+:root:not(.dark) body.immersive-page .immersive-content-shell::before {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(255, 191, 214, 0.16), transparent 22rem),
+    radial-gradient(circle at 86% 8%, rgba(229, 198, 255, 0.12), transparent 18rem);
+}
+
+:root:not(.dark) body.immersive-page .immersive-preload-overlay {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 252, 0.72), rgba(255, 239, 245, 0.9)),
+    radial-gradient(circle at top, rgba(255, 188, 210, 0.22), transparent 20rem);
+}
+
+:root:not(.dark) body.immersive-page .immersive-preload-panel {
+  border-color: rgba(255, 191, 214, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 243, 248, 0.82)),
+    radial-gradient(circle at top right, rgba(255, 188, 210, 0.16), transparent 10rem);
+  box-shadow:
+    0 24px 70px rgba(176, 102, 136, 0.16),
+    0 0 36px rgba(255, 188, 210, 0.12);
+}
+
+:root:not(.dark) body.immersive-page .immersive-preload-spinner {
+  border-color: rgba(255, 191, 214, 0.18);
+  border-top-color: rgba(219, 94, 140, 0.9);
+}
+
+:root:not(.dark) body.immersive-page .immersive-preload-title {
+  color: rgba(160, 94, 124, 0.56);
+}
+
+:root:not(.dark) body.immersive-page .immersive-preload-copy {
+  color: rgba(96, 60, 77, 0.82);
+}
+
+:root:not(.dark) body.immersive-page .nav-brand {
+  border-color: rgba(255, 196, 217, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 242, 247, 0.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.48),
+    0 10px 28px rgba(176, 102, 136, 0.08);
+}
+
+:root:not(.dark) body.immersive-page .nav-brand:hover {
+  border-color: rgba(255, 170, 200, 0.3);
+  box-shadow:
+    0 18px 36px rgba(176, 102, 136, 0.1),
+    0 0 18px rgba(255, 182, 206, 0.18),
+    0 0 36px rgba(255, 182, 206, 0.16),
+    0 0 72px rgba(255, 182, 206, 0.1);
+}
+
+:root:not(.dark) body.immersive-page .nav-brand-avatar {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.48),
+    0 10px 24px rgba(255, 182, 206, 0.16);
+}
+
+:root:not(.dark) body.immersive-page #navbar-links-container .btn-plain:hover,
+:root:not(.dark) body.immersive-page #search-bar:hover,
+:root:not(.dark) body.immersive-page #navbar .theme-switch-btn:hover,
+:root:not(.dark) body.immersive-page #navbar .btn-plain.w-11:hover,
+:root:not(.dark) body.immersive-page #navbar .btn-plain.h-11:hover {
+  border-color: rgba(255, 173, 201, 0.22);
+  box-shadow: 0 10px 24px rgba(176, 102, 136, 0.08);
+}
+
+:root:not(.dark) .section-hero--home,
+:root:not(.dark) .section-hero--blue,
+:root:not(.dark) .section-hero--cyan,
+:root:not(.dark) .section-hero--emerald,
+:root:not(.dark) .section-hero--amber {
+  background:
+    radial-gradient(circle at top right, rgba(255, 196, 217, 0.22), transparent 18rem),
+    radial-gradient(circle at left center, rgba(255, 255, 255, 0.42), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 244, 248, 0.72));
+}
+
+:root:not(.dark) .section-kicker,
+:root:not(.dark) .surface-kicker,
+:root:not(.dark) .section-metric-label {
+  color: rgba(130, 87, 108, 0.5);
+}
+
+:root:not(.dark) .section-description,
+:root:not(.dark) .surface-copy {
+  color: rgba(100, 69, 84, 0.7);
+}
+
+:root:not(.dark) .section-metric {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 242, 247, 0.62));
+  border-color: rgba(255, 195, 216, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+:root:not(.dark) .surface-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 243, 248, 0.72));
+}
+
+:root:not(.dark) .surface-card:hover {
+  border-color: rgba(255, 170, 200, 0.22);
+  box-shadow:
+    0 30px 70px rgba(176, 102, 136, 0.12),
+    0 0 18px rgba(255, 182, 206, 0.16),
+    0 0 34px rgba(255, 182, 206, 0.14),
+    0 0 72px rgba(255, 182, 206, 0.08);
+}
+
+:root:not(.dark) .module-badge,
+:root:not(.dark) .module-panel-meta,
+:root:not(.dark) .module-panel-badge {
+  background: rgba(255, 184, 207, 0.12);
+  border-color: rgba(255, 184, 207, 0.18);
+  color: rgba(136, 84, 108, 0.62);
+}
+
+:root:not(.dark) .module-stage-pill {
+  background: linear-gradient(180deg, rgba(255, 190, 211, 0.12), rgba(255, 190, 211, 0.06));
+  color: rgba(114, 72, 92, 0.78);
+  border-color: rgba(255, 190, 211, 0.18);
+}
+
+:root:not(.dark) .module-copy-item {
+  border-color: rgba(255, 194, 215, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 243, 248, 0.5)), radial-gradient(circle at top right, rgba(255, 191, 214, 0.12), transparent 10rem);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 16px 36px rgba(176, 102, 136, 0.08);
+}
+
+:root:not(.dark) .module-panel-icon {
+  background: rgba(255, 186, 209, 0.16);
+  box-shadow:
+    0 0 0 1px rgba(255, 186, 209, 0.18),
+    0 0 20px rgba(255, 186, 209, 0.16);
+}
+
+:root:not(.dark) .module-page .apple-post-card,
+:root:not(.dark) .module-page .card-base-daily,
+:root:not(.dark) .module-content-shell,
+:root:not(.dark) body.immersive-page .post-article-card,
+:root:not(.dark) body.immersive-page .post-support-card,
+:root:not(.dark) body.immersive-page .license-container,
+:root:not(.dark) body.immersive-page .post-comment-card,
+:root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card,
+:root:not(.dark) body.immersive-page .post-markdown-flow .python-playground,
+:root:not(.dark) body.immersive-page .floating-toc-panel,
+:root:not(.dark) body.immersive-page table-of-contents#toc {
+  border-color: rgba(255, 191, 214, 0.2) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 243, 248, 0.52)),
+    radial-gradient(circle at top right, rgba(255, 188, 210, 0.12), transparent 18rem) !important;
+  box-shadow:
+    0 26px 72px rgba(176, 102, 136, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+}
+
+:root:not(.dark) .module-page .apple-post-card:hover,
+:root:not(.dark) .module-page .card-base-daily:hover {
+  border-color: rgba(255, 168, 198, 0.24) !important;
+  box-shadow:
+    0 28px 68px rgba(176, 102, 136, 0.12),
+    0 0 14px rgba(255, 182, 206, 0.14),
+    0 0 28px rgba(255, 182, 206, 0.12),
+    0 0 56px rgba(255, 182, 206, 0.08) !important;
+}
+
+:root:not(.dark) body.immersive-page .post-article-card::before,
+:root:not(.dark) body.immersive-page .post-support-card::before,
+:root:not(.dark) body.immersive-page .license-container::before,
+:root:not(.dark) body.immersive-page .post-comment-card::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 170, 199, 0.86), transparent);
+}

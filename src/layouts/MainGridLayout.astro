@@ -183,7 +183,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					preload="metadata"
 					disableRemotePlayback
 				>
-					<source src="/assets/opening/qidian-splash.mp4" type="video/mp4" />
+					<source data-src-dark="/assets/opening/qidian-splash.mp4" data-src-light="/assets/opening/sakura-field-day.mp4" type="video/mp4" />
 				</video>
 				<div class="immersive-video-overlay"></div>
 			</div>
@@ -194,11 +194,35 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 
 					const shell = document.querySelector("[data-immersive-video-shell]");
 					const video = shell?.querySelector("[data-immersive-video]");
+					const videoSource = video?.querySelector("source");
 					if (!shell || !(video instanceof HTMLVideoElement)) return;
 
 					const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 					const mobileRenderQuery = window.matchMedia("(max-width: 820px), (pointer: coarse)");
 					let resumeTimer = 0;
+					let themeObserver;
+
+					const resolveTheme = () =>
+						document.documentElement.classList.contains("dark") ? "dark" : "light";
+
+					const applyThemeVideo = () => {
+						if (!(videoSource instanceof HTMLSourceElement)) {
+							return;
+						}
+
+						const theme = resolveTheme();
+						shell.dataset.theme = theme;
+						const nextSrc =
+							theme === "dark" ? videoSource.dataset.srcDark : videoSource.dataset.srcLight;
+						if (!nextSrc) {
+							return;
+						}
+
+						if (videoSource.getAttribute("src") !== nextSrc) {
+							videoSource.src = nextSrc;
+							video.load();
+						}
+					};
 
 					const tryPlayVideo = () => {
 						video.play().catch(() => {});
@@ -237,7 +261,18 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						}
 					};
 
+					applyThemeVideo();
 					syncMotionPreference();
+					themeObserver = new MutationObserver(() => {
+						applyThemeVideo();
+						if (!document.hidden && !mediaQuery.matches) {
+							scheduleResume(mobileRenderQuery.matches ? 120 : 0);
+						}
+					});
+					themeObserver.observe(document.documentElement, {
+						attributes: true,
+						attributeFilter: ["class"],
+					});
 					mediaQuery.addEventListener?.("change", syncMotionPreference);
 					mobileRenderQuery.addEventListener?.("change", syncMotionPreference);
 
@@ -252,6 +287,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					window.addEventListener(
 						"pagehide",
 						() => {
+							themeObserver?.disconnect?.();
 							window.clearTimeout(resumeTimer);
 							video.pause();
 						},
