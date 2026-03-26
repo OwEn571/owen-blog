@@ -43,7 +43,7 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 ---
 <div id="navbar" class="z-50 onload-animation group" data-transparent-mode={navbarTransparentMode} data-is-home={isHomePage}>
     <div class="absolute h-8 left-0 right-0 -top-8 bg-[var(--card-bg)] transition"></div> <!-- used for onload animation -->
-    <div class:list={[className, "relative !overflow-visible max-w-[var(--page-width)] h-[4.5rem] mx-auto flex items-center gap-3 px-4"]}>
+    <div class:list={[className, "relative !overflow-visible max-w-[var(--page-width)] h-[4.5rem] mx-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4"]}>
         <a href={url('/')} data-no-swup class="nav-brand btn-plain scale-animation rounded-lg h-[2.5rem] md:h-[3.25rem] md:[.enable-banner_&]:h-[2.5rem] md:[.enable-banner_&]:group-[.scrolled]:h-[3.25rem] px-5 font-bold active:scale-95 shrink-0 transition-all duration-300">
             <div class="nav-brand-inner flex flex-row items-center text-md">
 				{/* 使用navbarTitle配置或默认配置 */}
@@ -64,7 +64,7 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
                 )}
             </div>
         </a>
-        <div class="nav-links-shell hidden md:flex min-w-0 flex-1 items-center justify-center px-2 xl:px-4">
+        <div class="nav-links-shell hidden md:flex min-w-0 items-center justify-center px-2 xl:px-4">
             <div id="navbar-links-container" class="nav-links flex items-center space-x-1 transition-opacity duration-300">
                 {links.map((l) => {
                     return <DropdownMenu link={l} />;

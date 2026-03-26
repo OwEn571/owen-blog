@@ -4610,6 +4610,7 @@ body.immersive-page .immersive-navbar-shell {
   position: relative;
   z-index: 30;
   pointer-events: none;
+  overflow: hidden;
 }
 
 #navbar .nav-links {
@@ -4624,6 +4625,7 @@ body.immersive-page .immersive-navbar-shell {
   position: relative;
   z-index: 320;
   flex-shrink: 0;
+  justify-self: end;
   overflow: visible;
   padding: 0.25rem;
   border-radius: 1.25rem;
