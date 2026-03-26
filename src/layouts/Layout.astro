@@ -548,6 +548,66 @@ if (siteConfig.font) {
 					applyTheme: window.__owenApplyTheme,
 				};
 
+				const bindDirectControls = () => {
+					const searchSwitch = document.getElementById("search-switch");
+					if (searchSwitch instanceof HTMLButtonElement) {
+						searchSwitch.onclick = (event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							toggleFloatPanel("search-panel");
+						};
+					}
+
+					const desktopSearchTrigger = document.querySelector(".owen-search-trigger");
+					if (desktopSearchTrigger instanceof HTMLButtonElement) {
+						desktopSearchTrigger.onclick = (event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							setDesktopSearchExpanded(true);
+						};
+					}
+
+					const displayButton = document.getElementById("display-settings-switch");
+					if (displayButton instanceof HTMLButtonElement) {
+						displayButton.onclick = (event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							toggleFloatPanel("display-setting");
+						};
+					}
+
+					const navMenuButton = document.getElementById("nav-menu-switch");
+					if (navMenuButton instanceof HTMLButtonElement) {
+						navMenuButton.onclick = (event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							toggleFloatPanel("nav-menu-panel");
+						};
+					}
+
+					const pythonToggle = document.querySelector("[data-python-lab-toggle]");
+					if (pythonToggle instanceof HTMLButtonElement) {
+						pythonToggle.onclick = (event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							toggleControl("python-lab");
+						};
+					}
+
+					const pythonClose = document.querySelector("[data-python-lab-close]");
+					if (pythonClose instanceof HTMLButtonElement) {
+						pythonClose.onclick = (event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							setPythonLabOpen(false);
+						};
+					}
+				};
+
+				bindDirectControls();
+				window.setTimeout(bindDirectControls, 120);
+				window.addEventListener("pageshow", bindDirectControls);
+
 				document.addEventListener(
 					"click",
 					(event) => {
