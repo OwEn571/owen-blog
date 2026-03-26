@@ -638,6 +638,17 @@ if (!customElements.get("table-of-contents")) {
 		background: color-mix(in srgb, var(--primary) 14%, transparent);
 	}
 
+	:global(.dark) table-of-contents#toc .toc-toggle {
+		border-color: rgba(214, 226, 255, 0.14);
+		background: rgba(214, 226, 255, 0.08);
+		color: rgba(235, 241, 255, 0.92);
+	}
+
+	:global(.dark) table-of-contents#toc .toc-toggle:hover {
+		border-color: rgba(214, 226, 255, 0.24);
+		background: rgba(214, 226, 255, 0.14);
+	}
+
 	table-of-contents#toc .toc-toggle.expanded {
 		transform: rotate(180deg);
 	}

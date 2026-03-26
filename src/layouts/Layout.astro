@@ -462,6 +462,10 @@ if (siteConfig.font) {
 						return;
 					}
 
+					if (open && typeof window.__owenEnsurePythonLabRuntime === "function") {
+						window.__owenEnsurePythonLabRuntime();
+					}
+
 					panel.hidden = !open;
 					root.dataset.state = open ? "open" : "closed";
 					toggle.setAttribute("aria-expanded", open ? "true" : "false");
@@ -470,7 +474,13 @@ if (siteConfig.font) {
 						if (fallback instanceof HTMLTextAreaElement) {
 							window.setTimeout(() => fallback.focus(), 0);
 						}
+						if (typeof window.__owenBootstrapPythonLabFallback === "function") {
+							window.__owenBootstrapPythonLabFallback(true);
+						}
 						return;
+					}
+					if (typeof window.__owenBootstrapPythonLabFallback === "function") {
+						window.__owenBootstrapPythonLabFallback(false);
 					}
 					root.style.zIndex = "";
 				};
@@ -497,12 +507,45 @@ if (siteConfig.font) {
 				window.__owenCloseDesktopSearch = () => setDesktopSearchExpanded(false);
 				window.__owenSetPythonLabOpen = setPythonLabOpen;
 				window.__owenTogglePythonLab = () => toggleControl("python-lab");
+				window.__owenApplyTheme = (theme) => {
+					localStorage.setItem("theme", theme);
+					const dark = theme === "dark";
+					document.documentElement.classList.add("is-theme-transitioning");
+					window.dispatchEvent(
+						new CustomEvent("owen:theme-transition", {
+							detail: { phase: "start", theme, dark },
+						}),
+					);
+
+					window.setTimeout(() => {
+						document.documentElement.classList.toggle("dark", dark);
+						document.documentElement.setAttribute(
+							"data-theme",
+							dark ? "github-dark" : "github-light",
+						);
+						window.dispatchEvent(
+							new CustomEvent("owen:theme-applied", {
+								detail: { theme, dark },
+							}),
+						);
+					}, 210);
+
+					window.setTimeout(() => {
+						document.documentElement.classList.remove("is-theme-transitioning");
+						window.dispatchEvent(
+							new CustomEvent("owen:theme-transition", {
+								detail: { phase: "end", theme, dark },
+							}),
+						);
+					}, 760);
+				};
 				window.__owenUiController = {
 					openFloatPanel,
 					closeFloatPanel,
 					toggleFloatPanel,
 					setDesktopSearchExpanded,
 					setPythonLabOpen,
+					applyTheme: window.__owenApplyTheme,
 				};
 
 				document.addEventListener(

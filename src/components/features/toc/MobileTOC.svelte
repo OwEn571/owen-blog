@@ -460,6 +460,17 @@
 		border-color: color-mix(in srgb, var(--primary) 18%, transparent);
 	}
 
+	:global(.dark) .toc-toggle {
+		border-color: rgba(214, 226, 255, 0.14);
+		background: rgba(214, 226, 255, 0.08);
+		color: rgba(235, 241, 255, 0.92);
+	}
+
+	:global(.dark) .toc-toggle:hover {
+		border-color: rgba(214, 226, 255, 0.24);
+		background: rgba(214, 226, 255, 0.14);
+	}
+
 	.toc-toggle.expanded {
 		transform: rotate(180deg);
 	}

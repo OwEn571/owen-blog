@@ -223,34 +223,20 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			const nextTheme = resolveTheme() === "dark" ? "light" : "dark";
 			const dark = nextTheme === "dark";
 
-			window.dispatchEvent(
-				new CustomEvent("owen:theme-transition", {
-					detail: { phase: "start", theme: nextTheme, dark },
-				}),
-			);
-
-			window.setTimeout(() => {
+			if (typeof window.__owenApplyTheme === "function") {
+				window.__owenApplyTheme(nextTheme);
+			} else {
 				document.documentElement.classList.toggle("dark", dark);
 				document.documentElement.setAttribute(
 					"data-theme",
 					dark ? "github-dark" : "github-light",
 				);
 				localStorage.setItem("theme", nextTheme);
-				window.dispatchEvent(
-					new CustomEvent("owen:theme-applied", {
-						detail: { theme: nextTheme, dark },
-					}),
-				);
-			}, prefersReducedMotion ? 0 : 210);
+			}
 
 			window.setTimeout(() => {
-				window.dispatchEvent(
-					new CustomEvent("owen:theme-transition", {
-						detail: { phase: "end", theme: nextTheme, dark },
-					}),
-				);
 				isThemeSwitching = false;
-			}, prefersReducedMotion ? 0 : 760);
+			}, prefersReducedMotion ? 0 : 860);
 		};
 
 		applyThemeAssets(false);

@@ -101,6 +101,39 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 					setTheme(Boolean(detail.dark));
 				});
 
+				window.__owenApplyTheme = (theme) => {
+					const dark = theme === "dark";
+					localStorage.setItem("theme", theme);
+					document.documentElement.classList.add("is-theme-transitioning");
+					window.dispatchEvent(
+						new CustomEvent("owen:theme-transition", {
+							detail: { phase: "start", theme, dark },
+						}),
+					);
+
+					window.setTimeout(() => {
+						document.documentElement.classList.toggle("dark", dark);
+						document.documentElement.setAttribute(
+							"data-theme",
+							dark ? "github-dark" : "github-light",
+						);
+						window.dispatchEvent(
+							new CustomEvent("owen:theme-applied", {
+								detail: { theme, dark },
+							}),
+						);
+					}, 210);
+
+					window.setTimeout(() => {
+						document.documentElement.classList.remove("is-theme-transitioning");
+						window.dispatchEvent(
+							new CustomEvent("owen:theme-transition", {
+								detail: { phase: "end", theme, dark },
+							}),
+						);
+					}, 760);
+				};
+
 				window.addEventListener("pageshow", resetTransitionState);
 				window.addEventListener("load", resetTransitionState, { once: true });
 				document.addEventListener("visibilitychange", () => {

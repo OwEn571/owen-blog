@@ -177,42 +177,8 @@ print([sqrt(n) for n in nums])
 			document.body.appendChild(script);
 		};
 
-		toggle.addEventListener("click", () => {
-			if (root.dataset.pythonLabBound === "true") {
-				return;
-			}
-			ensureRuntimeScript();
-			setOpen(panel.hidden);
-		});
-
-		close.addEventListener("click", () => {
-			if (root.dataset.pythonLabBound === "true") {
-				return;
-			}
-			setOpen(false);
-		});
-
-		document.addEventListener("mousedown", (event) => {
-			if (root.dataset.pythonLabBound === "true") {
-				return;
-			}
-			if (
-				root.dataset.state === "open" &&
-				event.target instanceof Node &&
-				!root.contains(event.target)
-			) {
-				setOpen(false);
-			}
-		});
-
-		document.addEventListener("keydown", (event) => {
-			if (root.dataset.pythonLabBound === "true") {
-				return;
-			}
-			if (event.key === "Escape" && root.dataset.state === "open") {
-				setOpen(false);
-			}
-		});
+		window.__owenEnsurePythonLabRuntime = ensureRuntimeScript;
+		window.__owenBootstrapPythonLabFallback = setOpen;
 	})();
 </script>
 
