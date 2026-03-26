@@ -131,6 +131,18 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 }
 
 export function setTheme(theme: LIGHT_DARK_MODE): void {
+	type ThemeWindow = Window & {
+		__owenApplyTheme?: (theme: LIGHT_DARK_MODE) => void;
+	};
+
+	if (typeof window !== "undefined") {
+		const themedWindow = window as ThemeWindow;
+		if (typeof themedWindow.__owenApplyTheme === "function") {
+			themedWindow.__owenApplyTheme(theme);
+			return;
+		}
+	}
+
 	localStorage.setItem("theme", theme);
 	applyThemeToDocument(theme);
 }

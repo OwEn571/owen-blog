@@ -37,11 +37,6 @@ const fakeResult: SearchResult[] = [
 	},
 ];
 
-const togglePanel = () => {
-	const panel = document.getElementById("search-panel");
-	panel?.classList.toggle("float-panel-closed");
-};
-
 const toggleDesktopSearch = () => {
 	// 如果窗口刚获得焦点，不自动展开搜索框
 	if (windowJustFocused) {
@@ -60,24 +55,6 @@ const focusDesktopInput = () => {
 		) as HTMLInputElement;
 		input?.focus();
 	}, 0);
-};
-
-const handleDesktopTriggerClick = (event: MouseEvent) => {
-	event.preventDefault();
-	event.stopPropagation();
-
-	if (typeof window !== "undefined" && typeof (window as any).__owenOpenDesktopSearch === "function") {
-		(window as any).__owenOpenDesktopSearch();
-		return;
-	}
-
-	if (!isDesktopSearchExpanded) {
-		isDesktopSearchExpanded = true;
-		focusDesktopInput();
-		return;
-	}
-
-	focusDesktopInput();
 };
 
 const collapseDesktopSearch = () => {
@@ -114,16 +91,6 @@ const closeSearchPanel = (): void => {
 	keywordDesktop = "";
 	keywordMobile = "";
 	result = [];
-};
-
-const toggleMobileSearchPanel = (event?: MouseEvent): void => {
-	event?.preventDefault();
-	event?.stopPropagation();
-	if (typeof window !== "undefined" && typeof (window as any).__owenToggleFloatPanel === "function") {
-		(window as any).__owenToggleFloatPanel("search-panel");
-		return;
-	}
-	togglePanel();
 };
 
 const handleResultClick = (event: Event, url: string): void => {
@@ -268,7 +235,6 @@ onDestroy(() => {
             class="owen-search-trigger absolute inset-y-0 left-0 z-[1] inline-flex w-11 items-center justify-center rounded-[inherit]"
             aria-label="Search"
             data-ui-control="desktop-search"
-            onclick={handleDesktopTriggerClick}
         >
             <Icon icon="material-symbols:search" class="text-[1.25rem] transition {isDesktopSearchExpanded ? 'text-black/30 dark:text-white/30' : ''}"></Icon>
         </button>
@@ -286,7 +252,7 @@ onDestroy(() => {
 </div>
 
 <!-- toggle btn for phone/tablet view -->
-<button onclick={toggleMobileSearchPanel} aria-label="Search Panel" id="search-switch" data-ui-control="search-panel"
+<button aria-label="Search Panel" id="search-switch" data-ui-control="search-panel"
         class="btn-plain scale-animation lg:!hidden rounded-lg w-11 h-11 active:scale-90">
     <Icon icon="material-symbols:search" class="text-[1.25rem]"></Icon>
 </button>

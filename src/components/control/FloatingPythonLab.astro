@@ -9,6 +9,7 @@ import { url } from "@/utils/url-utils";
 		class="python-lab-fab"
 		data-python-lab-toggle
 		data-ui-control="python-lab"
+		onclick="if(window.__owenTogglePythonLab){window.__owenTogglePythonLab();}else{const root=this.closest('[data-python-lab]');const panel=root&&root.querySelector('[data-python-lab-panel]');const fallback=root&&root.querySelector('[data-python-lab-fallback]');const open=root&&root.dataset.state==='open';if(root&&panel){root.dataset.state=open?'closed':'open';panel.hidden=!!open;this.setAttribute('aria-expanded',open?'false':'true');root.style.zIndex=open?'':'70';if(!open&&fallback&&typeof fallback.focus==='function'){setTimeout(()=>fallback.focus(),0);}}} return false;"
 		aria-expanded="false"
 		aria-controls="python-lab-panel"
 		aria-label="打开 Python Lab"
@@ -38,6 +39,7 @@ import { url } from "@/utils/url-utils";
 				class="python-lab-panel__close"
 				data-python-lab-close
 				data-ui-control-close="python-lab"
+				onclick="if(window.__owenSetPythonLabOpen){window.__owenSetPythonLabOpen(false);}else{const root=this.closest('[data-python-lab]');const panel=root&&root.querySelector('[data-python-lab-panel]');const toggle=root&&root.querySelector('[data-python-lab-toggle]');if(root&&panel){root.dataset.state='closed';panel.hidden=true;root.style.zIndex='';if(toggle&&typeof toggle.setAttribute==='function'){toggle.setAttribute('aria-expanded','false');}}} return false;"
 				aria-label="收起 Python Lab"
 			>
 				<Icon name="mdi:close" />
