@@ -5,7 +5,7 @@ import { Icon } from "astro-icon/components";
 import { url } from "@/utils/url-utils";
 ---
 
-<div class="hidden lg:block relative z-[96] w-11 h-11 shrink-0 pointer-events-auto" id="desktop-search-host">
+<div class="hidden lg:block relative z-[1200] w-11 h-11 shrink-0 overflow-visible pointer-events-auto" id="desktop-search-host">
 	<div id="search-bar" class="owen-search-shell btn-plain active:scale-90" role="search" aria-label="Desktop Search" data-open="false">
 		<button
 			type="button"
@@ -35,7 +35,7 @@ import { url } from "@/utils/url-utils";
 <div
 	id="search-panel"
 	data-ui-panel="search-panel"
-	class="float-panel float-panel-closed fixed md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-[320] search-panel shadow-2xl rounded-2xl p-2"
+	class="float-panel float-panel-closed fixed top-20 left-4 right-4 md:left-auto md:w-[30rem] lg:w-[24rem] md:right-4 z-[1300] search-panel shadow-2xl rounded-2xl p-2"
 >
 	<div id="search-bar-inside" class="owen-search-inside">
 		<Icon name="material-symbols:search" class="owen-search-inside__icon text-[1.25rem]" />
@@ -225,10 +225,16 @@ import { url } from "@/utils/url-utils";
 
 		const showPanel = () => {
 			panel.classList.remove("float-panel-closed");
+			panel.style.opacity = "1";
+			panel.style.transform = "translateY(0)";
+			panel.style.pointerEvents = "auto";
 		};
 
 		const hidePanel = () => {
 			panel.classList.add("float-panel-closed");
+			panel.style.opacity = "";
+			panel.style.transform = "";
+			panel.style.pointerEvents = "";
 		};
 
 		const setDesktopOpen = (open) => {

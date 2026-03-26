@@ -2756,7 +2756,7 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
   position: fixed;
   right: var(--utility-rail-right);
   bottom: var(--utility-rail-bottom);
-  z-index: 920;
+  z-index: 1200;
     isolation: isolate;
     display: flex;
     flex-direction: column;
