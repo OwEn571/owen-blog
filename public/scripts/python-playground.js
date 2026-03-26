@@ -5,6 +5,7 @@
 	const MONACO_VERSION = "0.52.2";
 	const MONACO_BASE_URL = `https://cdn.jsdelivr.net/npm/monaco-editor@${MONACO_VERSION}/min`;
 	const MONACO_LOADER_ID = "mizuki-monaco-loader";
+	const PYTHON_LAB_POSITION_KEY = "owen-python-lab-position";
 	const INDENT = "    ";
 	const editorStateMap = new WeakMap();
 	const pythonLabStateMap = new WeakMap();
@@ -1151,6 +1152,38 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 		return pythonLabStateMap.get(root) || null;
 	}
 
+	function getStoredPythonLabPosition() {
+		try {
+			const raw = localStorage.getItem(PYTHON_LAB_POSITION_KEY);
+			if (!raw) {
+				return null;
+			}
+			const parsed = JSON.parse(raw);
+			if (
+				typeof parsed?.right !== "number" ||
+				typeof parsed?.bottom !== "number"
+			) {
+				return null;
+			}
+			return parsed;
+		} catch (error) {
+			return null;
+		}
+	}
+
+	function storePythonLabPosition(position) {
+		try {
+			localStorage.setItem(PYTHON_LAB_POSITION_KEY, JSON.stringify(position));
+		} catch (error) {
+			// ignore storage failures
+		}
+	}
+
+	function applyPythonLabPosition(root, right, bottom) {
+		root.style.setProperty("--python-lab-panel-right", `${Math.round(right)}px`);
+		root.style.setProperty("--python-lab-panel-bottom", `${Math.round(bottom)}px`);
+	}
+
 	function setPythonLabLoading(root, loading, message) {
 		const labState = getPythonLabState(root);
 		if (!labState) {
@@ -1166,6 +1199,16 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 		if (typeof message === "string" && message.length > 0) {
 			labState.status.textContent = message;
 		}
+	}
+
+	function clampPythonLabPosition(panel, right, bottom) {
+		const rect = panel.getBoundingClientRect();
+		const maxRight = Math.max(16, window.innerWidth - rect.width - 16);
+		const maxBottom = Math.max(16, window.innerHeight - rect.height - 16);
+		return {
+			right: Math.min(Math.max(right, 16), maxRight),
+			bottom: Math.min(Math.max(bottom, 16), maxBottom),
+		};
 	}
 
 	function schedulePythonLabWarmup(root) {
@@ -1284,93 +1327,103 @@ except SyntaxError as exc:
 			return labState.editor;
 		}
 
-		setPythonLabLoading(root, true, "正在准备 Monaco 编辑器…");
-		labState.host.hidden = true;
-		labState.fallback.hidden = true;
-		labState.fallback.value = labState.source.value;
-
-		try {
-			const monaco = await ensureMonaco();
-			ensureMonacoTheme(monaco);
-			ensureMonacoCompletion(monaco);
-			ensureMonacoHover(monaco);
-			ensureMonacoSignatureHelp(monaco);
-
-			labState.host.hidden = false;
-			labState.editor = monaco.editor.create(labState.host, {
-				value: labState.source.value,
-				language: "python",
-				theme: getMonacoThemeName(),
-				automaticLayout: false,
-				fixedOverflowWidgets: true,
-				overflowWidgetsDomNode: document.body,
-				minimap: { enabled: false },
-				scrollBeyondLastLine: false,
-				fontFamily:
-					'"SF Mono", "JetBrains Mono Variable", "JetBrains Mono", Menlo, Monaco, ui-monospace, Consolas, "Liberation Mono", "Courier New", monospace',
-				fontSize: 14,
-				lineHeight: 24,
-				padding: { top: 14, bottom: 14 },
-				tabSize: 4,
-				insertSpaces: true,
-				quickSuggestions: { other: true, comments: false, strings: false },
-				quickSuggestionsDelay: 220,
-				wordBasedSuggestions: "off",
-				suggestOnTriggerCharacters: true,
-				acceptSuggestionOnEnter: "on",
-				snippetSuggestions: "inline",
-				glyphMargin: false,
-				folding: false,
-				occurrencesHighlight: "off",
-				selectionHighlight: false,
-				renderValidationDecorations: "editable",
-				renderLineHighlight: "line",
-				matchBrackets: "near",
-				bracketPairColorization: { enabled: false },
-				guides: {
-					bracketPairs: false,
-					indentation: false,
-					highlightActiveIndentation: false,
-				},
-				wordWrap: "off",
-				smoothScrolling: false,
-				overviewRulerLanes: 0,
-				hideCursorInOverviewRuler: true,
-				lineNumbersMinChars: 3,
-				mouseWheelZoom: false,
-				stickyScroll: { enabled: false },
-				scrollbar: {
-					vertical: "auto",
-					horizontal: "auto",
-					useShadows: false,
-					alwaysConsumeMouseWheel: false,
-				},
-			});
-
-			if (typeof ResizeObserver !== "undefined") {
-				labState.resizeObserver = new ResizeObserver(() => {
-					labState.editor?.layout();
-				});
-				labState.resizeObserver.observe(labState.host);
-			}
-
-			labState.fallback.hidden = true;
-			setPythonLabLoading(root, false, "Monaco 编辑器已就绪。");
-			labState.editor.onDidChangeModelContent(() => {
-				labState.source.value = labState.editor.getValue();
-				labState.fallback.value = labState.source.value;
-				schedulePythonLabValidation(root);
-			});
-
-			return labState.editor;
-		} catch (error) {
-			labState.host.hidden = true;
-			labState.fallback.hidden = false;
-			setPythonLabLoading(root, false, "Monaco 加载失败，已切换到轻量编辑器。");
-			labState.status.textContent =
-				"Monaco 加载失败，已切换到轻量编辑器。";
-			return null;
+		if (labState.editorPromise) {
+			return labState.editorPromise;
 		}
+
+		labState.editorPromise = (async () => {
+			setPythonLabLoading(root, true, "正在准备 Monaco 编辑器…");
+			labState.host.hidden = true;
+			labState.fallback.hidden = true;
+			labState.fallback.value = labState.source.value;
+
+			try {
+				const monaco = await ensureMonaco();
+				ensureMonacoTheme(monaco);
+				ensureMonacoCompletion(monaco);
+				ensureMonacoHover(monaco);
+				ensureMonacoSignatureHelp(monaco);
+
+				labState.host.hidden = false;
+				labState.editor = monaco.editor.create(labState.host, {
+					value: labState.source.value,
+					language: "python",
+					theme: getMonacoThemeName(),
+					automaticLayout: false,
+					fixedOverflowWidgets: true,
+					overflowWidgetsDomNode: document.body,
+					minimap: { enabled: false },
+					scrollBeyondLastLine: false,
+					fontFamily:
+						'"SF Mono", "JetBrains Mono Variable", "JetBrains Mono", Menlo, Monaco, ui-monospace, Consolas, "Liberation Mono", "Courier New", monospace',
+					fontSize: 14,
+					lineHeight: 24,
+					padding: { top: 14, bottom: 14 },
+					tabSize: 4,
+					insertSpaces: true,
+					quickSuggestions: { other: true, comments: false, strings: false },
+					quickSuggestionsDelay: 220,
+					wordBasedSuggestions: "off",
+					suggestOnTriggerCharacters: true,
+					acceptSuggestionOnEnter: "on",
+					snippetSuggestions: "inline",
+					glyphMargin: false,
+					folding: false,
+					occurrencesHighlight: "off",
+					selectionHighlight: false,
+					renderValidationDecorations: "editable",
+					renderLineHighlight: "line",
+					matchBrackets: "near",
+					bracketPairColorization: { enabled: false },
+					guides: {
+						bracketPairs: false,
+						indentation: false,
+						highlightActiveIndentation: false,
+					},
+					wordWrap: "off",
+					smoothScrolling: false,
+					overviewRulerLanes: 0,
+					hideCursorInOverviewRuler: true,
+					lineNumbersMinChars: 3,
+					mouseWheelZoom: false,
+					stickyScroll: { enabled: false },
+					scrollbar: {
+						vertical: "auto",
+						horizontal: "auto",
+						useShadows: false,
+						alwaysConsumeMouseWheel: false,
+					},
+				});
+
+				if (typeof ResizeObserver !== "undefined") {
+					labState.resizeObserver = new ResizeObserver(() => {
+						labState.editor?.layout();
+					});
+					labState.resizeObserver.observe(labState.host);
+				}
+
+				labState.fallback.hidden = true;
+				setPythonLabLoading(root, false, "Monaco 编辑器已就绪。");
+				labState.editor.onDidChangeModelContent(() => {
+					labState.source.value = labState.editor.getValue();
+					labState.fallback.value = labState.source.value;
+					schedulePythonLabValidation(root);
+				});
+
+				return labState.editor;
+			} catch (error) {
+				labState.host.hidden = true;
+				labState.fallback.hidden = false;
+				setPythonLabLoading(root, false, "Monaco 加载失败，已切换到轻量编辑器。");
+				labState.status.textContent =
+					"Monaco 加载失败，已切换到轻量编辑器。";
+				return null;
+			} finally {
+				labState.editorPromise = null;
+			}
+		})();
+
+		return labState.editorPromise;
 	}
 
 	function togglePythonLab(root, shouldOpen) {
@@ -1389,8 +1442,24 @@ except SyntaxError as exc:
 			return;
 		}
 
+		if (state.editor) {
+			setPythonLabLoading(root, false, "Python Lab 已就绪，可以继续写。");
+			state.editor.layout();
+			state.editor.focus();
+			return;
+		}
+
+		if (!state.host.hidden) {
+			setPythonLabLoading(root, false, "轻量编辑器已就绪，可以继续写。");
+			state.fallback.focus();
+			return;
+		}
+
 		setPythonLabLoading(root, true, "正在准备编辑器…");
 		void ensurePythonLabEditor(root).then((editor) => {
+			if (root.dataset.state !== "open") {
+				return;
+			}
 			if (!editor) {
 				state.status.textContent =
 					"轻量编辑器已就绪。若 Monaco 稍后可用，会自动切换。";
@@ -1487,6 +1556,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		const output = root.querySelector("[data-python-lab-output]");
 		const host = root.querySelector("[data-python-lab-editor]");
 		const fallback = root.querySelector("[data-python-lab-fallback]");
+		const dragHandle = root.querySelector("[data-python-lab-drag-handle]");
 		const loadingMask = root.querySelector("[data-python-lab-loading]");
 		const status = root.querySelector("[data-python-lab-status]");
 		const source = root.querySelector("[data-python-lab-source]");
@@ -1500,6 +1570,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			!(output instanceof HTMLElement) ||
 			!(host instanceof HTMLElement) ||
 			!(fallback instanceof HTMLTextAreaElement) ||
+			!(dragHandle instanceof HTMLElement) ||
 			!(loadingMask instanceof HTMLElement) ||
 			!(status instanceof HTMLElement) ||
 			!(source instanceof HTMLTextAreaElement)
@@ -1520,11 +1591,19 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			status,
 			source,
 			editor: null,
+			editorPromise: null,
 			validationTimer: 0,
 			resizeObserver: null,
 			runtimeWarmScheduled: false,
 			runtimeWarmHandle: 0,
+			dragPointerId: null,
+			isDragging: false,
 		});
+
+		const storedPosition = getStoredPythonLabPosition();
+		if (storedPosition) {
+			applyPythonLabPosition(root, storedPosition.right, storedPosition.bottom);
+		}
 
 		toggle.addEventListener("click", () => {
 			togglePythonLab(root);
@@ -1557,11 +1636,63 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		document.addEventListener("mousedown", (event) => {
 			if (
 				root.dataset.state === "open" &&
+				!getPythonLabState(root)?.isDragging &&
 				event.target instanceof Node &&
 				!root.contains(event.target)
 			) {
 				togglePythonLab(root, false);
 			}
+		});
+
+		dragHandle.addEventListener("pointerdown", (event) => {
+			if (event.button !== 0 || event.target instanceof HTMLElement && event.target.closest("button")) {
+				return;
+			}
+
+			const currentState = getPythonLabState(root);
+			if (!currentState) {
+				return;
+			}
+
+			const rect = panel.getBoundingClientRect();
+			const startRight = window.innerWidth - rect.right;
+			const startBottom = window.innerHeight - rect.bottom;
+			const startX = event.clientX;
+			const startY = event.clientY;
+
+			currentState.isDragging = true;
+			root.dataset.dragging = "true";
+
+			const onMove = (moveEvent) => {
+				const deltaX = moveEvent.clientX - startX;
+				const deltaY = moveEvent.clientY - startY;
+				const next = clampPythonLabPosition(
+					panel,
+					startRight - deltaX,
+					startBottom - deltaY,
+				);
+				applyPythonLabPosition(root, next.right, next.bottom);
+			};
+
+			const onUp = () => {
+				const finalRect = panel.getBoundingClientRect();
+				const next = clampPythonLabPosition(
+					panel,
+					window.innerWidth - finalRect.right,
+					window.innerHeight - finalRect.bottom,
+				);
+				applyPythonLabPosition(root, next.right, next.bottom);
+				storePythonLabPosition(next);
+				currentState.isDragging = false;
+				root.dataset.dragging = "false";
+				window.removeEventListener("pointermove", onMove);
+				window.removeEventListener("pointerup", onUp);
+				window.removeEventListener("pointercancel", onUp);
+			};
+
+			window.addEventListener("pointermove", onMove);
+			window.addEventListener("pointerup", onUp, { once: true });
+			window.addEventListener("pointercancel", onUp, { once: true });
 		});
 	}
 

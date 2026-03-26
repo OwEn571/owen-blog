@@ -2,10 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+	font-family: "ZenMaruGothic-Medium";
+	src: url("/assets/font/ZenMaruGothic-Medium.ttf") format("truetype");
+	font-weight: 500;
+	font-display: swap;
+}
+
 :root {
 	--owen-font-ui: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
 	--owen-font-display: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
-	--owen-font-reading: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+	--owen-font-reading: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SF Pro Text", system-ui, sans-serif;
+	--owen-font-accent: "ZenMaruGothic-Medium", "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
 }
 
 html,
@@ -229,8 +237,9 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
 /* Owen splash typography refinement */
 :root {
   --owen-font-ui: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
-  --owen-font-display: "ZenMaruGothic-Medium", "SF Pro Rounded", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --owen-font-display: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
   --owen-font-reading: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SF Pro Text", system-ui, sans-serif;
+  --owen-font-accent: "ZenMaruGothic-Medium", "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
 }
 
 body {

@@ -53,7 +53,8 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		<div class="splash-copy">
 			<p class="splash-kicker">Opening Screen</p>
-			<h1 class="splash-title"><TypewriterText text={`${splashTitle} 的内容入口`} speed={94} deleteSpeed={42} pauseTime={4200} showCaret={true} class="splash-title__typed" /></h1>
+			<h1 class="splash-title">{`${splashTitle} 的内容入口`}</h1>
+			<p class="splash-subtitle"><TypewriterText text="从四个分区开始，进入你的内容宇宙。" speed={42} deleteSpeed={18} pauseTime={4800} showCaret={true} class="splash-subtitle__typed" /></p>
 			<p class="splash-description">
 				先从这里选择你想进入的界面。四个分区保持同一套引擎，但拥有不同的内容节奏和观看方式。
 			</p>
@@ -506,8 +507,19 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		min-height: 1em;
 	}
 
-	.splash-description {
+	.splash-subtitle {
 		margin-top: 1rem;
+		max-width: min(100%, 26ch);
+		font-family: var(--owen-font-accent, "SF Pro Rounded", "PingFang SC", system-ui, sans-serif);
+		font-size: clamp(1.08rem, 1.7vw, 1.28rem);
+		line-height: 1.72;
+		letter-spacing: 0.01em;
+		color: rgba(238, 243, 252, 0.84);
+		text-wrap: pretty;
+	}
+
+	.splash-description {
+		margin-top: 0.82rem;
 		max-width: 42rem;
 		font-family: var(--owen-font-reading, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif);
 		font-size: 1.02rem;
@@ -735,6 +747,10 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 	.splash-shell[data-theme="light"] .splash-description {
 		color: rgba(103, 71, 86, 0.72);
+	}
+
+	.splash-shell[data-theme="light"] .splash-subtitle {
+		color: rgba(146, 88, 114, 0.86);
 	}
 
 	.splash-shell[data-theme="light"] .splash-choice {

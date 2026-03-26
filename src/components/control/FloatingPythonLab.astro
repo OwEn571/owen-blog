@@ -24,7 +24,7 @@ import { Icon } from "astro-icon/components";
 		hidden
 		aria-label="Floating Python Lab"
 	>
-		<div class="python-lab-panel__header">
+		<div class="python-lab-panel__header" data-python-lab-drag-handle>
 			<div class="python-lab-panel__copy">
 				<p class="python-lab-panel__eyebrow">Floating Workspace</p>
 				<h3 class="python-lab-panel__title">Python Lab</h3>
@@ -197,6 +197,8 @@ print([sqrt(n) for n in nums])
     width 3.5rem
     height 3.5rem
     overflow visible
+    --python-lab-panel-right calc(var(--utility-rail-right, 1.5rem) + var(--utility-rail-size, 3.5rem) + 1rem)
+    --python-lab-panel-bottom calc(var(--utility-rail-bottom, 3.75rem) - .15rem)
 
   .python-lab-fab-shell[data-state="open"]
     z-index 4
@@ -260,13 +262,14 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel
     position fixed
-    right calc(var(--utility-rail-right, 1.5rem) + var(--utility-rail-size, 3.5rem) + 1rem)
-    bottom calc(var(--utility-rail-bottom, 3.75rem) - .15rem)
+    right var(--python-lab-panel-right)
+    bottom var(--python-lab-panel-bottom)
     width 28rem
     max-width calc(100vw - 6.75rem)
+    height unquote("min(40rem, calc(100vh - 4rem))")
     max-height calc(100vh - 4rem)
-    display flex
-    flex-direction column
+    display grid
+    grid-template-rows auto auto minmax(18rem, 1fr) auto minmax(6.25rem, auto)
     gap .9rem
     padding 1rem
     border-radius 1.55rem
@@ -275,11 +278,10 @@ print([sqrt(n) for n in nums])
     box-shadow 0 32px 88px rgba(15, 23, 42, .22), inset 0 1px 0 rgba(255,255,255,.72)
     backdrop-filter blur(22px) saturate(1.06)
     -webkit-backdrop-filter blur(22px) saturate(1.06)
-    overflow visible
-    overflow-y auto
-    overscroll-behavior contain
+    overflow hidden
+    overscroll-behavior none
     isolation isolate
-    transition transform .24s ease, box-shadow .24s ease, border-color .24s ease
+    transition transform .24s ease, box-shadow .24s ease, border-color .24s ease, right .18s ease, bottom .18s ease
     transform-origin bottom right
 
   .python-lab-panel::after
@@ -304,6 +306,12 @@ print([sqrt(n) for n in nums])
     align-items flex-start
     justify-content space-between
     gap 1rem
+    cursor grab
+    user-select none
+    touch-action none
+
+  .python-lab-fab-shell[data-dragging="true"] .python-lab-panel__header
+    cursor grabbing
 
   .python-lab-panel__eyebrow
     font-size .72rem
@@ -344,10 +352,11 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel__editor-frame
     min-height 0
+    height 100%
     border-radius 1.2rem
     border 1px solid rgba(118, 156, 255, .14)
     background rgba(9, 12, 19, .94)
-    overflow visible
+    overflow hidden
     display grid
     align-items stretch
     position relative
@@ -397,17 +406,17 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel__editor
     width 100%
-    min-height 16rem
-    height min(21rem, 40vh)
+    min-height 0
+    height 100%
     grid-area 1 / 1
     position relative
     z-index 1
-    overflow visible
+    overflow hidden
 
   .python-lab-panel__fallback
     width 100%
-    min-height 16rem
-    height min(21rem, 40vh)
+    min-height 0
+    height 100%
     grid-area 1 / 1
     resize none
     padding 1rem 1.05rem
@@ -456,8 +465,8 @@ print([sqrt(n) for n in nums])
     box-shadow 0 0 18px rgba(118, 156, 255, .14), 0 12px 30px rgba(15, 23, 42, .12)
 
   .python-lab-panel__output
-    min-height 6rem
-    max-height 9rem
+    min-height 6.25rem
+    max-height 10rem
     overflow auto
     padding 1rem
     border-radius 1rem
@@ -471,9 +480,8 @@ print([sqrt(n) for n in nums])
     word-break break-word
 
   :global(.monaco-editor),
-  :global(.monaco-editor .overflow-guard),
-  :global(.monaco-editor .monaco-scrollable-element)
-    overflow visible !important
+  :global(.monaco-editor .overflow-guard)
+    overflow hidden !important
 
   :global(.suggest-widget),
   :global(.monaco-editor-hover),
@@ -484,6 +492,34 @@ print([sqrt(n) for n in nums])
     border-radius 1rem !important
     overflow hidden !important
     box-shadow 0 24px 54px rgba(15, 23, 42, .18), 0 0 18px rgba(118, 156, 255, .12) !important
+
+  .python-lab-panel__fallback,
+  .python-lab-panel__output
+    scrollbar-width thin
+    scrollbar-color rgba(126, 98, 141, .34) transparent
+
+  .python-lab-panel__fallback::-webkit-scrollbar,
+  .python-lab-panel__output::-webkit-scrollbar
+    width .72rem
+    height .72rem
+
+  .python-lab-panel__fallback::-webkit-scrollbar-track,
+  .python-lab-panel__output::-webkit-scrollbar-track
+    background transparent
+
+  .python-lab-panel__fallback::-webkit-scrollbar-thumb,
+  .python-lab-panel__output::-webkit-scrollbar-thumb
+    border .18rem solid transparent
+    border-radius 999px
+    background rgba(126, 98, 141, .28)
+    background-clip padding-box
+
+  :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider)
+    border-radius 999px !important
+    background rgba(126, 98, 141, .28) !important
+
+  :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider:hover)
+    background rgba(126, 98, 141, .38) !important
 
   :root:not(.dark) .python-lab-fab
     border-color rgba(236, 174, 198, .2)
@@ -556,6 +592,12 @@ print([sqrt(n) for n in nums])
     background rgba(255, 249, 251, .9)
     color rgba(67, 42, 53, .88)
 
+  :root:not(.dark) :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider)
+    background rgba(197, 118, 154, .24) !important
+
+  :root:not(.dark) :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider:hover)
+    background rgba(197, 118, 154, .34) !important
+
   :root.dark .python-lab-fab
     background linear-gradient(180deg, rgba(11,14,22,.78), rgba(5,8,14,.58)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 8rem)
     color rgba(236, 241, 255, .9)
@@ -599,12 +641,7 @@ print([sqrt(n) for n in nums])
     .python-lab-panel
       width unquote("min(24rem, calc(100vw - 2rem))")
       max-width 30rem
+      height unquote("min(36rem, calc(100vh - 7rem))")
       max-height calc(100vh - 7rem)
-      right var(--utility-rail-right, 1rem)
-      bottom calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) + .9rem)
-
-    .python-lab-panel__editor
-      height 42vh
-
-    .python-lab-panel__fallback
-      height 42vh
+      right var(--python-lab-panel-right, var(--utility-rail-right, 1rem))
+      bottom var(--python-lab-panel-bottom, calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) + .9rem))

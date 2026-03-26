@@ -30,7 +30,8 @@
 :root {
   --owen-font-ui: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
   --owen-font-display: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
-  --owen-font-reading: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --owen-font-reading: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SF Pro Text", system-ui, sans-serif;
+  --owen-font-accent: "ZenMaruGothic-Medium", "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
 }
 
 /* 确保平滑滚动 */
@@ -1450,6 +1451,17 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
 
   .module-title__typed {
     min-height: 1em;
+  }
+
+  .module-subtitle {
+    margin-top: 0.95rem;
+    max-width: min(100%, 28ch);
+    font-family: var(--owen-font-accent);
+    font-size: clamp(1.06rem, 1.45vw, 1.24rem);
+    line-height: 1.72;
+    letter-spacing: 0.012em;
+    color: rgba(230, 237, 248, 0.82);
+    text-wrap: pretty;
   }
 
   .module-description {
@@ -4233,8 +4245,9 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
 /* Owen typography refinement */
 :root {
   --owen-font-ui: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
-  --owen-font-display: "ZenMaruGothic-Medium", "SF Pro Rounded", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --owen-font-display: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
   --owen-font-reading: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SF Pro Text", system-ui, sans-serif;
+  --owen-font-accent: "ZenMaruGothic-Medium", "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
 }
 
 body {
@@ -4333,11 +4346,25 @@ body.immersive-page .post-markdown-flow .custom-md > :where(h2, h3, h4)::before 
 }
 
 :root:not(.dark) .module-description,
+:root:not(.dark) .module-subtitle,
 :root:not(.dark) .module-stage-caption,
 :root:not(.dark) .module-panel-copy,
 :root:not(.dark) .module-content-description,
 :root:not(.dark) .module-stream-content p {
   color: rgba(104, 74, 90, 0.76);
+}
+
+:root.dark .module-subtitle {
+  color: rgba(226, 235, 250, 0.84);
+}
+
+:root:not(.dark) .module-subtitle {
+  color: rgba(144, 88, 113, 0.82);
+}
+
+.banner-subtitle {
+  font-family: var(--owen-font-accent);
+  letter-spacing: 0.02em;
 }
 
 :root:not(.dark) body.immersive-page .post-markdown-flow .custom-md > :where(h2, h3, h4)::before {
