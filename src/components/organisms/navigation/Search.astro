@@ -37,10 +37,10 @@ import { url } from "@/utils/url-utils";
 	data-ui-panel="search-panel"
 	class="float-panel float-panel-closed fixed md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-[320] search-panel shadow-2xl rounded-2xl p-2"
 >
-	<div id="search-bar-inside" class="owen-search-inside lg:hidden">
+	<div id="search-bar-inside" class="owen-search-inside">
 		<Icon name="material-symbols:search" class="owen-search-inside__icon text-[1.25rem]" />
 		<input
-			id="search-input-mobile"
+			id="search-input-panel"
 			placeholder={i18n(I18nKey.search)}
 			class="owen-search-inside__input"
 			type="search"
@@ -187,7 +187,7 @@ import { url } from "@/utils/url-utils";
 		const desktopTrigger = desktopBar?.querySelector(".owen-search-trigger");
 		const desktopInput = document.getElementById("search-input-desktop");
 		const mobileTrigger = document.getElementById("search-switch");
-		const mobileInput = document.getElementById("search-input-mobile");
+		const panelInput = document.getElementById("search-input-panel");
 		const panel = document.getElementById("search-panel");
 		const results = document.getElementById("search-results");
 
@@ -196,7 +196,7 @@ import { url } from "@/utils/url-utils";
 			!(desktopTrigger instanceof HTMLButtonElement) ||
 			!(desktopInput instanceof HTMLInputElement) ||
 			!(mobileTrigger instanceof HTMLButtonElement) ||
-			!(mobileInput instanceof HTMLInputElement) ||
+			!(panelInput instanceof HTMLInputElement) ||
 			!(panel instanceof HTMLElement) ||
 			!(results instanceof HTMLElement)
 		) {
@@ -265,7 +265,7 @@ import { url } from "@/utils/url-utils";
 		const performSearch = async (nextKeyword) => {
 			keyword = nextKeyword.trim();
 			desktopInput.value = keyword;
-			mobileInput.value = keyword;
+			panelInput.value = keyword;
 
 			if (!keyword) {
 				results.innerHTML = "";
@@ -310,8 +310,18 @@ import { url } from "@/utils/url-utils";
 		const toggleDesktopSearch = (event) => {
 			event.preventDefault();
 			event.stopPropagation();
-			setDesktopOpen(!desktopOpen);
-			if (!desktopOpen && keyword) {
+			if (desktopOpen) {
+				setDesktopOpen(false);
+				hidePanel();
+				return;
+			}
+			setDesktopOpen(true);
+			showPanel();
+			window.setTimeout(() => {
+				panelInput.focus();
+				panelInput.select();
+			}, 0);
+			if (keyword) {
 				showPanel();
 			}
 		};
@@ -322,7 +332,7 @@ import { url } from "@/utils/url-utils";
 			const shouldOpen = panel.classList.contains("float-panel-closed");
 			if (shouldOpen) {
 				showPanel();
-				window.setTimeout(() => mobileInput.focus(), 0);
+				window.setTimeout(() => panelInput.focus(), 0);
 				if (keyword) {
 					scheduleSearch(keyword);
 				}
@@ -338,15 +348,13 @@ import { url } from "@/utils/url-utils";
 			scheduleSearch(event.currentTarget.value);
 		});
 
-		mobileInput.addEventListener("input", (event) => {
+		panelInput.addEventListener("input", (event) => {
 			scheduleSearch(event.currentTarget.value);
 		});
 
 		desktopInput.addEventListener("focus", () => {
 			setDesktopOpen(true);
-			if (keyword) {
-				showPanel();
-			}
+			showPanel();
 		});
 
 		desktopInput.addEventListener("keydown", (event) => {

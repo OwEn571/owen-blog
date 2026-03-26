@@ -183,6 +183,9 @@ print([sqrt(n) for n in nums])
 			toggle.addEventListener("click", (event) => {
 				event.preventDefault();
 				event.stopPropagation();
+				if (root.dataset.pythonLabBound === "true") {
+					return;
+				}
 				const open = root.dataset.state === "open";
 				if (!open) {
 					ensureRuntimeScript();
@@ -196,6 +199,9 @@ print([sqrt(n) for n in nums])
 			close.addEventListener("click", (event) => {
 				event.preventDefault();
 				event.stopPropagation();
+				if (root.dataset.pythonLabBound === "true") {
+					return;
+				}
 				setOpen(false);
 			});
 		}
