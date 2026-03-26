@@ -65,13 +65,13 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
                 )}
             </div>
         </a>
-        <div id="navbar-links-container" class="hidden md:flex items-center space-x-1 transition-opacity duration-300">
+        <div id="navbar-links-container" class="nav-links hidden md:flex items-center space-x-1 transition-opacity duration-300">
             {links.map((l) => {
                 return <DropdownMenu link={l} />;
             })}
         </div>
-        <div class="flex items-center gap-1">
-            <div id="search-container">
+        <div class="nav-action-group flex items-center gap-1">
+            <div id="search-container" class="nav-search-shell">
                 <Search client:only="svelte"></Search>
             </div>
             {/* 只在 sidebar 模式下显示移动端 TOC 按钮 */}

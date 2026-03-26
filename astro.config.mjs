@@ -30,6 +30,8 @@ import rehypeExternalLinks from "rehype-external-links";
 import { remarkFixGithubAdmonitions } from "./src/plugins/remark-fix-github-admonitions.js";
 import { remarkPythonPlayground } from "./src/plugins/remark-python-playground.mjs";
 
+const umamiShareUrl = process.env.PUBLIC_UMAMI_SHARE_URL || false;
+
 // https://astro.build/config
 export default defineConfig({
 	site: siteConfig.siteURL,
@@ -40,7 +42,7 @@ export default defineConfig({
 
 	integrations: [
 		umami({
-			shareUrl: false,
+			shareUrl: umamiShareUrl || false,
 		}),
 		tailwind({
 			nesting: true,

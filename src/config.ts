@@ -20,6 +20,8 @@ import type {
 const SITE_LANG = "zh_CN"; // 语言代码，例如：'en', 'zh_CN', 'ja' 等。
 const SITE_TIMEZONE = 8; //设置你的网站时区 from -12 to 12 default in UTC+8
 const DEFAULT_SITE_URL = "https://owen.top/";
+const TWIKOO_ENV_ID = process.env.PUBLIC_TWIKOO_ENV_ID || "";
+const TWIKOO_REGION = process.env.PUBLIC_TWIKOO_REGION || "";
 const SITE_URL = (process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL).endsWith("/")
 	? (process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL)
 	: `${process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL}/`;
@@ -301,9 +303,10 @@ export const expressiveCodeConfig: ExpressiveCodeConfig = {
 };
 
 export const commentConfig: CommentConfig = {
-	enable: false, // 启用评论功能。当设置为 false 时，评论组件将不会显示在文章区域。
+	enable: Boolean(TWIKOO_ENV_ID), // 配置 PUBLIC_TWIKOO_ENV_ID 后自动启用评论功能。
 	twikoo: {
-		envId: "",
+		envId: TWIKOO_ENV_ID,
+		region: TWIKOO_REGION || undefined,
 		lang: SITE_LANG,
 	},
 };

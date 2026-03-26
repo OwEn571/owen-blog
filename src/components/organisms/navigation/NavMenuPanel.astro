@@ -45,20 +45,26 @@ const processedLinks: ProcessedNavBarLink[] = (Astro.props as NavMenuPanelProps)
 	}),
 )
 ---
-<div id="nav-menu-panel" class:list={["float-panel float-panel-closed absolute transition-all fixed right-4 px-2 py-2 max-h-[80vh] overflow-y-auto"]}>
+<div
+	id="nav-menu-panel"
+	class:list={[
+		"float-panel float-panel-closed fixed right-4 px-2.5 py-2.5 max-h-[calc(100vh-6.75rem)] overflow-y-auto nav-mobile-panel",
+	]}
+>
     {processedLinks.map((link) => (
         <div class="mobile-menu-item">
             {link.children && link.children.length > 0 ? (
                 <div class="mobile-dropdown" data-mobile-dropdown>
                     <button 
-                        class="group flex justify-between items-center py-2 pl-3 pr-1 rounded-lg gap-4 w-full text-left
-                            hover:bg-[var(--btn-plain-bg-hover)] active:bg-[var(--btn-plain-bg-active)] transition"
+                        class="mobile-menu-trigger group"
                         data-mobile-dropdown-trigger
                         aria-expanded="false"
                     >
-                        <div class="flex items-center transition text-black/75 dark:text-white/75 font-bold">
-                            {link.icon && <Icon name={link.icon} class="text-[1.1rem] mr-2" />}
-                            {getLocalizedName(link.name)}
+                        <div class="mobile-menu-copy">
+                            <span class="mobile-menu-icon-shell">
+                                {link.icon && <Icon name={link.icon} class="mobile-menu-icon" />}
+                            </span>
+                            <span class="mobile-menu-title">{getLocalizedName(link.name)}</span>
                         </div>
                         <Icon name="material-symbols:keyboard-arrow-down-rounded"
                               class="transition text-[1.25rem] text-[var(--primary)] mobile-dropdown-arrow duration-200"
@@ -68,36 +74,37 @@ const processedLinks: ProcessedNavBarLink[] = (Astro.props as NavMenuPanelProps)
                         {link.children.map((child) => (
                             <a href={child.external ? child.url : url(child.url)}
                                data-no-swup={!child.external ? true : undefined}
-                               class="group flex justify-between items-center py-2 pl-6 pr-1 rounded-lg gap-4
-                                   hover:bg-[var(--btn-plain-bg-hover)] active:bg-[var(--btn-plain-bg-active)] transition"
+                               class="mobile-submenu-link group"
                                target={child.external ? "_blank" : null}
                             >
-                                <div class="flex items-center transition text-black/60 dark:text-white/60 font-medium">
-                                    {child.icon && <Icon name={child.icon} class="text-[1.1rem] mr-2" />}
-                                    {getLocalizedName(child.name)}
+                                <div class="mobile-menu-copy mobile-menu-copy-sub">
+                                    <span class="mobile-menu-icon-shell mobile-menu-icon-shell-sub">
+                                        {child.icon && <Icon name={child.icon} class="mobile-menu-icon mobile-menu-icon-sub" />}
+                                    </span>
+                                    <span class="mobile-submenu-title">{getLocalizedName(child.name)}</span>
                                 </div>
                                 {child.external && <Icon name="fa7-solid:arrow-up-right-from-square"
-                                      class="transition text-[0.75rem] text-black/25 dark:text-white/25 -translate-x-1"
+                                      class="mobile-submenu-external"
                                 />}
                             </a>
                         ))}
                     </div>
                 </div>
             ) : (
-                <a href={link.external ? link.url : url(link.url)} data-no-swup={!link.external ? true : undefined} class="group flex justify-between items-center py-2 pl-3 pr-1 rounded-lg gap-4
-                    hover:bg-[var(--btn-plain-bg-hover)] active:bg-[var(--btn-plain-bg-active)] transition
-                "
+                <a href={link.external ? link.url : url(link.url)} data-no-swup={!link.external ? true : undefined} class="mobile-menu-link group"
                     target={link.external ? "_blank" : null}
                 >
-                    <div class="flex items-center transition text-black/75 dark:text-white/75 font-bold">
-                        {link.icon && <Icon name={link.icon} class="text-[1.1rem] mr-2" />}
-                        {getLocalizedName(link.name)}
+                    <div class="mobile-menu-copy">
+                        <span class="mobile-menu-icon-shell">
+                            {link.icon && <Icon name={link.icon} class="mobile-menu-icon" />}
+                        </span>
+                        <span class="mobile-menu-title">{getLocalizedName(link.name)}</span>
                     </div>
                     {!link.external && <Icon name="material-symbols:chevron-right-rounded"
-                          class="transition text-[1.25rem] text-[var(--primary)]"
+                          class="mobile-menu-chevron"
                     />}
                     {link.external && <Icon name="fa7-solid:arrow-up-right-from-square"
-                          class="transition text-[0.75rem] text-black/25 dark:text-white/25 -translate-x-1"
+                          class="mobile-submenu-external"
                     />}
                 </a>
             )}
@@ -106,16 +113,220 @@ const processedLinks: ProcessedNavBarLink[] = (Astro.props as NavMenuPanelProps)
 </div>
 
 <style>
+    .nav-mobile-panel {
+        width: min(calc(100vw - 1.5rem), 24rem);
+        border-radius: 1.6rem;
+        border: 1px solid rgba(255, 255, 255, 0.55);
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(249, 251, 255, 0.82)),
+            radial-gradient(circle at top right, rgba(255, 194, 214, 0.18), transparent 14rem);
+        box-shadow:
+            0 28px 80px rgba(15, 23, 42, 0.16),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    :global(.dark) .nav-mobile-panel {
+        border-color: rgba(130, 158, 255, 0.16);
+        background:
+            linear-gradient(180deg, rgba(12, 16, 24, 0.94), rgba(8, 11, 18, 0.88)),
+            radial-gradient(circle at top right, rgba(118, 156, 255, 0.18), transparent 15rem);
+        box-shadow:
+            0 30px 84px rgba(0, 0, 0, 0.34),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .mobile-menu-item + .mobile-menu-item {
+        margin-top: 0.45rem;
+    }
+
+    .mobile-menu-link,
+    .mobile-menu-trigger {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-radius: 1.05rem;
+        padding: 0.9rem 0.95rem;
+        background: rgba(255, 255, 255, 0.42);
+        color: rgba(15, 23, 42, 0.8);
+        transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            background-color 180ms ease,
+            box-shadow 180ms ease;
+        border: 1px solid rgba(255, 255, 255, 0.48);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+
+    :global(.dark) .mobile-menu-link,
+    :global(.dark) .mobile-menu-trigger {
+        background: rgba(255, 255, 255, 0.03);
+        color: rgba(236, 243, 255, 0.82);
+        border-color: rgba(118, 156, 255, 0.1);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .mobile-menu-copy {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 0.82rem;
+    }
+
+    .mobile-menu-copy-sub {
+        gap: 0.72rem;
+    }
+
+    .mobile-menu-icon-shell {
+        display: inline-flex;
+        height: 2.2rem;
+        width: 2.2rem;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.92rem;
+        background: rgba(255, 255, 255, 0.62);
+        color: rgba(209, 85, 132, 0.92);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.78),
+            0 10px 22px rgba(255, 194, 214, 0.18);
+    }
+
+    :global(.dark) .mobile-menu-icon-shell {
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(154, 186, 255, 0.92);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            0 14px 28px rgba(5, 9, 18, 0.28);
+    }
+
+    .mobile-menu-icon-shell-sub {
+        height: 1.92rem;
+        width: 1.92rem;
+        border-radius: 0.78rem;
+        background: rgba(255, 255, 255, 0.52);
+    }
+
+    :global(.dark) .mobile-menu-icon-shell-sub {
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .mobile-menu-icon {
+        font-size: 1.12rem;
+    }
+
+    .mobile-menu-icon-sub {
+        font-size: 1rem;
+    }
+
+    .mobile-menu-title,
+    .mobile-submenu-title {
+        min-width: 0;
+        font-family: var(--owen-font-ui);
+        line-height: 1.2;
+        text-wrap: balance;
+    }
+
+    .mobile-menu-title {
+        font-weight: 650;
+        letter-spacing: -0.02em;
+    }
+
+    .mobile-submenu-title {
+        font-size: 0.96rem;
+        font-weight: 560;
+        color: rgba(15, 23, 42, 0.72);
+    }
+
+    :global(.dark) .mobile-submenu-title {
+        color: rgba(220, 229, 245, 0.72);
+    }
+
+    .mobile-menu-chevron,
+    .mobile-dropdown-arrow {
+        flex: none;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.62);
+        color: rgba(209, 85, 132, 0.88);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+        padding: 0.12rem;
+    }
+
+    :global(.dark) .mobile-menu-chevron,
+    :global(.dark) .mobile-dropdown-arrow {
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(154, 186, 255, 0.88);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .mobile-submenu-external {
+        color: rgba(15, 23, 42, 0.28);
+        font-size: 0.76rem;
+        transform: translateX(-0.15rem);
+    }
+
+    :global(.dark) .mobile-submenu-external {
+        color: rgba(236, 243, 255, 0.28);
+    }
+
     .mobile-submenu {
         @apply max-h-0 overflow-hidden transition-all duration-300 ease-in-out;
+        margin: 0.35rem 0 0 0.45rem;
+        padding-left: 0.9rem;
+        border-left: 1px solid rgba(255, 194, 214, 0.42);
     }
-    
+
+    :global(.dark) .mobile-submenu {
+        border-left-color: rgba(118, 156, 255, 0.22);
+    }
+
     .mobile-dropdown[data-expanded="true"] .mobile-submenu {
         @apply max-h-96;
     }
-    
+
     .mobile-dropdown[data-expanded="true"] .mobile-dropdown-arrow {
         @apply rotate-180;
+    }
+
+    .mobile-submenu-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.9rem;
+        margin-top: 0.42rem;
+        border-radius: 0.98rem;
+        padding: 0.76rem 0.82rem;
+        background: rgba(255, 255, 255, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.34);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+        transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            background-color 180ms ease;
+    }
+
+    :global(.dark) .mobile-submenu-link {
+        background: rgba(255, 255, 255, 0.025);
+        border-color: rgba(118, 156, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    @media (hover: hover) {
+        .mobile-menu-link:hover,
+        .mobile-menu-trigger:hover,
+        .mobile-submenu-link:hover {
+            transform: translateY(-1px);
+            border-color: rgba(255, 194, 214, 0.52);
+            background: rgba(255, 255, 255, 0.66);
+        }
+
+        :global(.dark) .mobile-menu-link:hover,
+        :global(.dark) .mobile-menu-trigger:hover,
+        :global(.dark) .mobile-submenu-link:hover {
+            border-color: rgba(118, 156, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+        }
     }
 </style>
 
@@ -124,6 +335,9 @@ const processedLinks: ProcessedNavBarLink[] = (Astro.props as NavMenuPanelProps)
         const mobileDropdowns = document.querySelectorAll('[data-mobile-dropdown]')
         
         mobileDropdowns.forEach(dropdown => {
+            if (dropdown.getAttribute('data-mobile-dropdown-bound') === 'true') {return}
+            dropdown.setAttribute('data-mobile-dropdown-bound', 'true')
+
             const trigger = dropdown.querySelector('[data-mobile-dropdown-trigger]')
             const submenu = dropdown.querySelector('[data-mobile-submenu]')
             

@@ -1,190 +1,317 @@
 :root {
-  --tk-text: black;
-  --code-block-text: #333; /* 调整为深色但在浅色背景下仍然舒适的值 */
+  --owen-twikoo-border: rgba(118, 156, 255, 0.16);
+  --owen-twikoo-border-strong: rgba(118, 156, 255, 0.24);
+  --owen-twikoo-surface:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(247, 250, 255, 0.52)),
+    radial-gradient(circle at top right, rgba(118, 156, 255, 0.1), transparent 18rem);
+  --owen-twikoo-surface-soft: rgba(15, 23, 42, 0.04);
+  --owen-twikoo-text: rgba(15, 23, 42, 0.82);
+  --owen-twikoo-text-soft: rgba(15, 23, 42, 0.56);
+  --owen-twikoo-accent: rgba(84, 112, 214, 0.96);
+  --owen-twikoo-accent-soft: rgba(118, 156, 255, 0.14);
+  --owen-twikoo-shadow:
+    0 24px 64px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  --owen-twikoo-code-bg: rgba(12, 18, 29, 0.92);
+  --owen-twikoo-code-text: rgba(231, 239, 255, 0.9);
+  --owen-twikoo-radius: 1.25rem;
 }
 
-html.dark {
-  --tk-text: #d1d5db;
-  --code-block-text: #d1d5db; /* 在深色模式下使用更亮的颜色 */
+:root:not(.dark) {
+  --owen-twikoo-border: rgba(255, 191, 214, 0.22);
+  --owen-twikoo-border-strong: rgba(255, 175, 203, 0.34);
+  --owen-twikoo-surface:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 244, 248, 0.7)),
+    radial-gradient(circle at top right, rgba(255, 188, 210, 0.14), transparent 18rem);
+  --owen-twikoo-surface-soft: rgba(255, 241, 246, 0.78);
+  --owen-twikoo-text: rgba(78, 46, 61, 0.9);
+  --owen-twikoo-text-soft: rgba(113, 79, 95, 0.7);
+  --owen-twikoo-accent: rgba(181, 87, 127, 0.96);
+  --owen-twikoo-accent-soft: rgba(255, 190, 213, 0.2);
+  --owen-twikoo-shadow:
+    0 24px 64px rgba(176, 102, 136, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  --owen-twikoo-code-bg: rgba(255, 250, 252, 0.94);
+  --owen-twikoo-code-text: rgba(63, 38, 50, 0.92);
+}
+
+:root.dark {
+  --owen-twikoo-border: rgba(255, 255, 255, 0.08);
+  --owen-twikoo-border-strong: rgba(118, 156, 255, 0.26);
+  --owen-twikoo-surface:
+    linear-gradient(180deg, rgba(10, 14, 22, 0.68), rgba(5, 8, 14, 0.48)),
+    radial-gradient(circle at top right, rgba(118, 156, 255, 0.14), transparent 18rem);
+  --owen-twikoo-surface-soft: rgba(255, 255, 255, 0.04);
+  --owen-twikoo-text: rgba(231, 239, 255, 0.86);
+  --owen-twikoo-text-soft: rgba(206, 219, 245, 0.62);
+  --owen-twikoo-accent: rgba(171, 197, 255, 0.96);
+  --owen-twikoo-accent-soft: rgba(118, 156, 255, 0.14);
+  --owen-twikoo-shadow:
+    0 30px 76px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --owen-twikoo-code-bg: rgba(9, 12, 19, 0.92);
+  --owen-twikoo-code-text: rgba(231, 239, 255, 0.9);
+}
+
+#tcomment {
+  color: var(--owen-twikoo-text);
 }
 
 .tk-comments {
-  @apply text-[var(--tk-text)];
+  color: var(--owen-twikoo-text) !important;
 }
 
-.tk-submit {
-  .tk-avatar {
-    @apply hidden;
-  }
+.tk-comments .tk-comments-container {
+  gap: 1rem;
 }
 
-/* Text Area */
-.tk-row {
-  .tk-col {
-    @apply flex-col-reverse;
-    .tk-input {
-      textarea {
-        @apply rounded-[var(--radius-large)] py-4 px-6 !min-h-[150px] focus:border-[var(--primary)];
-      }
-    }
-  }
+.tk-submit .tk-avatar {
+  display: none !important;
 }
 
-/* Meta */
+.tk-input textarea,
+.tk-meta-input .el-input-group,
+.tk-preview-container,
+.tk-comment,
+.tk-replies .tk-comment {
+  border: 1px solid var(--owen-twikoo-border) !important;
+  background: var(--owen-twikoo-surface) !important;
+  box-shadow: var(--owen-twikoo-shadow) !important;
+  backdrop-filter: blur(22px) saturate(1.06);
+  -webkit-backdrop-filter: blur(22px) saturate(1.06);
+}
+
+.tk-row .tk-col {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.tk-row .tk-col .tk-input textarea {
+  min-height: 10.75rem !important;
+  padding: 1.1rem 1.2rem !important;
+  border-radius: 1.2rem !important;
+  color: var(--owen-twikoo-text) !important;
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.tk-row .tk-col .tk-input textarea:focus {
+  border-color: var(--owen-twikoo-border-strong) !important;
+  box-shadow:
+    0 0 0 1px var(--owen-twikoo-border-strong),
+    0 0 24px var(--owen-twikoo-accent-soft),
+    var(--owen-twikoo-shadow) !important;
+  outline: none;
+}
+
 .tk-meta-input {
-  @apply relative mt-3;
-  div {
-    @apply min-h-10;
-    .el-input-group__prepend {
-      @apply !bg-inherit rounded-l-lg;
-      min-height: inherit;
-    }
-    input {
-      @apply px-4 rounded-r-lg focus:!border-[var(--primary)];
-      min-height: inherit;
-    }
-  }
+  position: relative;
+  margin-top: 0.8rem;
 }
 
-/* Button */
+.tk-meta-input .el-input-group {
+  min-height: 2.85rem;
+  border-radius: 1rem !important;
+  overflow: hidden;
+}
+
+.tk-meta-input .el-input-group__prepend {
+  background: transparent !important;
+  border: none !important;
+  color: var(--owen-twikoo-text-soft) !important;
+}
+
+.tk-meta-input input {
+  min-height: 2.85rem;
+  padding: 0 1rem !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--owen-twikoo-text) !important;
+}
+
+.tk-meta-input input:focus {
+  box-shadow: none !important;
+}
+
 .tk-row.actions {
-  @apply w-full !ml-0 !mt-0;
-  .__markdown {
-    @apply !hidden;
-  }
-  .tk-preview,
-  .tk-send,
-  .tk-cancel {
-    @apply border-none rounded-lg px-3 py-0 h-8
-       !bg-[var(--btn-regular-bg-active)] disabled:!bg-[var(--btn-regular-bg)]
-      !text-[var(--btn-content)] disabled:!text-[#ffffffa1];
-  }
+  width: 100%;
+  margin: 0 !important;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
 }
 
-/* Comment title */
+.tk-row.actions .__markdown {
+  display: none !important;
+}
+
+.tk-preview,
+.tk-send,
+.tk-cancel {
+  min-height: 2.5rem;
+  padding: 0 1rem !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--owen-twikoo-border) !important;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    background 0.22s ease !important;
+}
+
+.tk-send {
+  background: linear-gradient(135deg, var(--owen-twikoo-accent), color-mix(in srgb, var(--owen-twikoo-accent) 56%, white)) !important;
+  color: white !important;
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--owen-twikoo-accent) 24%, transparent) !important;
+}
+
+.tk-preview,
+.tk-cancel {
+  background: var(--owen-twikoo-accent-soft) !important;
+  color: var(--owen-twikoo-accent) !important;
+}
+
+.tk-preview:hover,
+.tk-send:hover,
+.tk-cancel:hover {
+  transform: translateY(-1px) scale(1.015);
+  border-color: var(--owen-twikoo-border-strong) !important;
+  box-shadow:
+    0 0 18px var(--owen-twikoo-accent-soft),
+    0 14px 30px rgba(15, 23, 42, 0.08) !important;
+}
+
 .tk-comments-title {
-  .__comments svg {
-    @apply fill-[var(--primary)];
-  }
+  margin-bottom: 1rem;
+}
+
+.tk-comments-title .__comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--owen-twikoo-text) !important;
+}
+
+.tk-comments-title .__comments svg,
+.tk-action-icon svg {
+  fill: var(--owen-twikoo-accent) !important;
 }
 
 .tk-comment {
-  @apply border-[1px] border-[rgba(144,147,153,0.31)] p-4 rounded-2xl hover:shadow-md transition-all;
-  .tk-action-icon svg {
-    @apply fill-[var(--primary)];
-  }
+  position: relative;
+  padding: 1rem 1rem 1.05rem !important;
+  border-radius: 1.2rem !important;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
 }
 
-.tk-action {
-  .tk-action-count {
-    @apply text-[var(--btn-content)];
-  }
+.tk-comment:hover {
+  transform: translateY(-1px);
+  border-color: var(--owen-twikoo-border-strong) !important;
+  box-shadow:
+    0 0 22px var(--owen-twikoo-accent-soft),
+    var(--owen-twikoo-shadow) !important;
 }
 
-.tk-meta {
-  .tk-tag {
-    @apply border-none rounded-lg text-[var(--btn-content)];
-  }
-
-  .tk-tag-green {
-    @apply bg-[var(--btn-regular-bg)] dark:bg-[var(--primary)] dark:text-[var(--deep-text)];
-  }
+.tk-comment::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--owen-twikoo-accent), transparent);
+  opacity: 0.58;
+  pointer-events: none;
 }
 
-/* Content & Preview */
+.tk-main {
+  color: var(--owen-twikoo-text);
+}
+
+.tk-nick,
+.tk-time,
+.tk-extra,
+.tk-meta .tk-tag {
+  color: var(--owen-twikoo-text-soft) !important;
+}
+
+.tk-meta .tk-tag {
+  border: 1px solid var(--owen-twikoo-border) !important;
+  background: var(--owen-twikoo-accent-soft) !important;
+  border-radius: 999px !important;
+}
+
 .tk-content,
 .tk-preview-container {
-  /* by @microsic
-    Make the picture type emoticons display without wrapping
-  */
-  img {
-    @apply inline !align-bottom;
-  }
-
-  a {
-    @apply underline text-[var(--primary)] font-medium;
-  }
-
-  .tk-ruser {
-    @apply no-underline;
-  }
-
-  :not(pre) > code {
-    @apply bg-[var(--inline-code-bg)] rounded-md text-[--inline-code-color] px-1 py-0.5 font-semibold;
-  }
-
-  li {
-    @apply before:content-["•"] before:text-[var(--primary)];
-  }
+  line-height: 1.9;
 }
 
-/* Replies */
-.tk-replies {
-  .tk-comment {
-    @apply bg-[var(--page-bg)];
-    .tk-content {
-      > span:first-of-type {
-        @apply text-xs;
-      }
-    }
-  }
+.tk-content a,
+.tk-preview-container a {
+  color: var(--owen-twikoo-accent) !important;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
-.twikoo .code-block {
-  pre {
-    @apply !rounded-xl;
-  }
+.tk-content .tk-ruser {
+  text-decoration: none;
+}
 
-  /* Code block fall back */
-  pre:not([class]) {
-    @apply bg-[var(--codeblock-bg)] overflow-auto p-2 text-[var(--code-block-text)];
-  }
+.tk-content :not(pre) > code,
+.tk-preview-container :not(pre) > code {
+  padding: 0.12rem 0.44rem;
+  border-radius: 0.55rem;
+  background: var(--owen-twikoo-accent-soft);
+  color: var(--owen-twikoo-accent);
+  font-weight: 620;
+}
 
-  .copy-btn-icon {
-    width: inherit !important;
-    height: inherit !important;
-  }
+.twikoo .code-block pre,
+.twikoo pre:not([class]) {
+  border-radius: 1rem !important;
+  background: var(--owen-twikoo-code-bg) !important;
+  color: var(--owen-twikoo-code-text) !important;
 }
 
 .tk-expand-wrap .tk-expand,
 .tk-collapse-wrap .tk-expand {
-  @apply hover:rounded-lg mt-1 hover:bg-[var(--btn-plain-bg-hover)];
+  margin-top: 0.45rem;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--owen-twikoo-accent) !important;
 }
 
-/* by @SirTamago 
-Make the emoji component display correctly when there are too many emoji packs
-*/
-.card-base {
-  overflow: visible;
+.tk-expand-wrap .tk-expand:hover,
+.tk-collapse-wrap .tk-expand:hover {
+  background: var(--owen-twikoo-accent-soft) !important;
 }
 
-/* 防止 Twikoo 操作时的意外滚动 */
-.tk-action-icon,
-.tk-owo,
-.tk-submit,
-.tk-cancel,
-.tk-preview,
-.tk-admin,
-.tk-delete,
-.tk-edit {
-  cursor: pointer;
-  transition: all 0.2s ease;
+.tk-action,
+.tk-submit-wrapper,
+.tk-admin-panel {
+  position: relative;
 }
 
-/* 确保点击区域足够大 */
 .tk-action {
-  min-height: 24px;
+  min-height: 1.5rem;
   display: flex;
   align-items: center;
 }
 
-/* 防止表单提交时的意外跳转 */
-.tk-submit-wrapper {
-  position: relative;
+.tk-action-count {
+  color: var(--owen-twikoo-text-soft) !important;
 }
 
-/* 管理面板样式优化 */
-.tk-admin-panel {
-  position: relative;
-  z-index: 100;
+.tk-replies {
+  margin-top: 0.8rem;
+}
+
+.tk-replies .tk-comment {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18)) !important;
+}
+
+:root.dark .tk-replies .tk-comment {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)) !important;
 }

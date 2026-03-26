@@ -103,7 +103,7 @@ const {
     )}
     
     {!isHome && id && (
-        <div class="flex items-center umami-page-views hidden" data-id={id}>
+        <div class="post-meta-views hidden" data-id={id}>
             <div class="meta-icon">
                 <Icon name="material-symbols:visibility-outline-rounded" class="text-xl"></Icon>
             </div>
@@ -122,7 +122,7 @@ const {
     }
 
     async function fetchPageViews() {
-        const container = document.querySelector('.umami-page-views');
+        const container = document.querySelector('.post-meta-views');
         
         if (!window.oddmisc) {
             container?.classList.add('hidden');
@@ -157,3 +157,51 @@ const {
     }
 </script>
 )}
+
+<style>
+	.post-meta-views {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.42rem;
+		min-height: 2rem;
+		padding: 0.28rem 0.68rem 0.28rem 0.48rem;
+		border-radius: 999px;
+		border: 1px solid rgba(118, 156, 255, 0.14);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(247, 250, 255, 0.42)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 10rem);
+		box-shadow:
+			0 12px 28px rgba(15, 23, 42, 0.06),
+			inset 0 1px 0 rgba(255, 255, 255, 0.66);
+		backdrop-filter: blur(18px) saturate(1.04);
+		-webkit-backdrop-filter: blur(18px) saturate(1.04);
+	}
+
+	.post-meta-views .meta-icon {
+		margin-right: 0;
+	}
+
+	:root:not(.dark) .post-meta-views {
+		border-color: rgba(255, 191, 214, 0.18);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 243, 248, 0.52)),
+			radial-gradient(circle at top right, rgba(255, 188, 210, 0.12), transparent 10rem);
+		box-shadow:
+			0 14px 30px rgba(176, 102, 136, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.78);
+	}
+
+	:root:not(.dark) .post-meta-views .meta-icon {
+		color: rgba(181, 87, 127, 0.9);
+	}
+
+	:root.dark .post-meta-views {
+		border-color: rgba(255, 255, 255, 0.08);
+		background:
+			linear-gradient(180deg, rgba(10, 14, 22, 0.56), rgba(5, 8, 14, 0.38)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.12), transparent 10rem);
+		box-shadow:
+			0 16px 34px rgba(0, 0, 0, 0.2),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+</style>

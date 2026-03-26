@@ -121,18 +121,18 @@ const stats = [
 	<div class="flex flex-col gap-1">
 		{
 			stats.map((stat) => (
-				<div class="flex items-center justify-between px-2 py-2">
-					<div class="flex items-center gap-2.5 flex-1 min-w-0">
-						<div class="text-[var(--primary)] text-xl shrink-0">
+				<div class="site-stats-row">
+					<div class="site-stats-row__copy">
+						<div class="site-stats-row__icon">
 							<Icon name={stat.icon} />
 						</div>
-						<span class="text-neutral-700 dark:text-neutral-300 font-medium text-sm break-words leading-tight">
+						<span class="site-stats-row__label">
 							{stat.label}
 						</span>
 					</div>
-					<div class="flex items-center ml-3 shrink-0">
+					<div class="site-stats-row__value-group">
 						<span
-							class="text-base font-bold text-neutral-900 dark:text-neutral-100"
+							class="site-stats-row__value"
 							data-stat-id={stat.id}
 						>
 							{stat.formatted
@@ -140,7 +140,7 @@ const stats = [
 								: stat.value}
 						</span>
 						{stat.suffix && (
-							<span class="text-sm text-neutral-500 dark:text-neutral-400 ml-1">
+							<span class="site-stats-row__suffix">
 								{stat.suffix}
 							</span>
 						)}
@@ -196,3 +196,125 @@ const stats = [
 	// 每小时更新一次（可选，因为天数变化较慢）
 	setInterval(updateDynamicStats, 60 * 60 * 1000);
 </script>
+
+<style>
+	.site-stats-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.9rem;
+		padding: 0.72rem 0.78rem;
+		border-radius: 1rem;
+		border: 1px solid rgba(118, 156, 255, 0.1);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(247, 250, 255, 0.16)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 12rem);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.58),
+			0 14px 34px rgba(15, 23, 42, 0.04);
+		backdrop-filter: blur(18px) saturate(1.02);
+		-webkit-backdrop-filter: blur(18px) saturate(1.02);
+	}
+
+	.site-stats-row__copy {
+		display: flex;
+		align-items: center;
+		gap: 0.72rem;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.site-stats-row__icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.1rem;
+		height: 2.1rem;
+		border-radius: 0.9rem;
+		background: rgba(118, 156, 255, 0.1);
+		color: rgb(var(--primary));
+		font-size: 1.05rem;
+		box-shadow:
+			0 0 0 1px rgba(118, 156, 255, 0.12),
+			0 0 18px rgba(118, 156, 255, 0.08);
+		flex-shrink: 0;
+	}
+
+	.site-stats-row__label {
+		color: rgba(15, 23, 42, 0.72);
+		font-weight: 560;
+		font-size: 0.9rem;
+		line-height: 1.35;
+	}
+
+	.site-stats-row__value-group {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.22rem;
+		flex-shrink: 0;
+	}
+
+	.site-stats-row__value {
+		color: rgba(15, 23, 42, 0.9);
+		font-size: 1rem;
+		font-weight: 720;
+		letter-spacing: -0.02em;
+	}
+
+	.site-stats-row__suffix {
+		color: rgba(15, 23, 42, 0.42);
+		font-size: 0.78rem;
+	}
+
+	:root:not(.dark) .site-stats-row {
+		border-color: rgba(255, 191, 214, 0.18);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 243, 248, 0.52)),
+			radial-gradient(circle at top right, rgba(255, 188, 210, 0.12), transparent 12rem);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.74),
+			0 18px 40px rgba(176, 102, 136, 0.07);
+	}
+
+	:root:not(.dark) .site-stats-row__icon {
+		background: rgba(255, 215, 229, 0.52);
+		color: rgba(181, 87, 127, 0.92);
+		box-shadow:
+			0 0 0 1px rgba(255, 191, 214, 0.18),
+			0 0 18px rgba(255, 188, 210, 0.12);
+	}
+
+	:root:not(.dark) .site-stats-row__label {
+		color: rgba(98, 64, 79, 0.76);
+	}
+
+	:root:not(.dark) .site-stats-row__value {
+		color: rgba(78, 46, 61, 0.94);
+	}
+
+	:root:not(.dark) .site-stats-row__suffix {
+		color: rgba(120, 82, 101, 0.54);
+	}
+
+	:root.dark .site-stats-row {
+		border-color: rgba(255, 255, 255, 0.06);
+		background:
+			linear-gradient(180deg, rgba(12, 16, 25, 0.56), rgba(7, 10, 16, 0.34)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.12), transparent 12rem);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.08),
+			0 18px 44px rgba(0, 0, 0, 0.16);
+	}
+
+	:root.dark .site-stats-row__label {
+		color: rgba(222, 232, 250, 0.72);
+	}
+
+	:root.dark .site-stats-row__value {
+		color: rgba(248, 250, 255, 0.94);
+	}
+
+	:root.dark .site-stats-row__suffix {
+		color: rgba(222, 232, 250, 0.42);
+	}
+</style>

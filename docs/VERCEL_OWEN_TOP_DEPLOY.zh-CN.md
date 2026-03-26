@@ -93,7 +93,18 @@ git remote add origin https://github.com/<你的用户名>/owen-blog.git
 
 - `PUBLIC_SITE_URL=https://owen.top/`
 
+如果你要顺手把评论区和浏览量一起接上，也建议一并加：
+
+- `PUBLIC_TWIKOO_ENV_ID=` 你的 Twikoo 云函数地址或环境 ID
+- `PUBLIC_TWIKOO_REGION=` 例如 `ap-shanghai`
+- `PUBLIC_UMAMI_SHARE_URL=` 你的 Umami share 链接，例如 `https://umami.example.com/share/abc123`
+
 如果界面里已经自动识别对了，直接点 `Deploy` 即可。
+
+说明：
+
+- 配了 `PUBLIC_TWIKOO_ENV_ID` 后，文章页评论区会自动启用
+- 配了 `PUBLIC_UMAMI_SHARE_URL` 后，站点统计和文章浏览量会自动开始显示
 
 ---
 

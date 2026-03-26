@@ -49,11 +49,17 @@ const toggleDesktopSearch = () => {
 	}
 	isDesktopSearchExpanded = !isDesktopSearchExpanded;
 	if (isDesktopSearchExpanded) {
-		setTimeout(() => {
-			const input = document.getElementById("search-input-desktop") as HTMLInputElement;
-			input?.focus();
-		}, 0);
+		focusDesktopInput();
 	}
+};
+
+const focusDesktopInput = () => {
+	setTimeout(() => {
+		const input = document.getElementById(
+			"search-input-desktop",
+		) as HTMLInputElement;
+		input?.focus();
+	}, 0);
 };
 
 const collapseDesktopSearch = () => {
@@ -221,20 +227,22 @@ onDestroy(() => {
 <div class="hidden lg:block relative w-11 h-11 shrink-0">
     <div
         id="search-bar"
-        class="flex transition-all items-center h-11 rounded-lg absolute right-0 top-0 shrink-0
+        class="owen-search-shell flex transition-all items-center h-11 rounded-xl absolute right-0 top-0 shrink-0
             {isDesktopSearchExpanded ? 'bg-black/[0.04] hover:bg-black/[0.06] focus-within:bg-black/[0.06] dark:bg-white/5 dark:hover:bg-white/10 dark:focus-within:bg-white/10' : 'btn-plain active:scale-90'}
             {isDesktopSearchExpanded ? 'w-48' : 'w-11'}"
-        role="button"
-        tabindex="0"
-        aria-label="Search"
+        role="search"
+        aria-label="Desktop Search"
         onmouseenter={() => {if (!isDesktopSearchExpanded) {toggleDesktopSearch()}}}
         onmouseleave={collapseDesktopSearch}
-        onclick={() => {
-            const input = document.getElementById("search-input-desktop") as HTMLInputElement;
-            input?.focus();
-        }}
     >
-        <Icon icon="material-symbols:search" class="absolute text-[1.25rem] pointer-events-none {isDesktopSearchExpanded ? 'left-3' : 'left-1/2 -translate-x-1/2'} transition top-1/2 -translate-y-1/2 {isDesktopSearchExpanded ? 'text-black/30 dark:text-white/30' : ''}"></Icon>
+        <button
+            type="button"
+            class="owen-search-trigger absolute inset-y-0 left-0 z-[1] inline-flex w-11 items-center justify-center rounded-[inherit]"
+            aria-label="Search"
+            onclick={focusDesktopInput}
+        >
+            <Icon icon="material-symbols:search" class="text-[1.25rem] transition {isDesktopSearchExpanded ? 'text-black/30 dark:text-white/30' : ''}"></Icon>
+        </button>
         <input id="search-input-desktop" placeholder={i18n(I18nKey.search)} bind:value={keywordDesktop}
             onfocus={() => {
                 clearTimeout(blurTimer);
@@ -242,7 +250,7 @@ onDestroy(() => {
                 search(keywordDesktop, true);
             }}
             onblur={handleBlur}
-            class="transition-all pl-10 text-sm bg-transparent outline-0
+            class="owen-search-input transition-all pl-10 text-sm bg-transparent outline-0
                 h-full {isDesktopSearchExpanded ? 'w-36' : 'w-0'} text-black/50 dark:text-white/50"
         >
     </div>
@@ -257,7 +265,7 @@ onDestroy(() => {
 <!-- search panel -->
 <div id="search-panel" class="float-panel float-panel-closed absolute md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-50 search-panel shadow-2xl rounded-2xl p-2">
     <!-- search bar inside panel for phone/tablet -->
-    <div id="search-bar-inside" class="flex relative lg:hidden transition-all items-center h-11 rounded-xl
+    <div id="search-bar-inside" class="owen-search-inside flex relative lg:hidden transition-all items-center h-11 rounded-xl
       bg-black/[0.04] hover:bg-black/[0.06] focus-within:bg-black/[0.06]
       dark:bg-white/5 dark:hover:bg-white/10 dark:focus-within:bg-white/10
   ">
@@ -271,7 +279,7 @@ onDestroy(() => {
     {#each result as item}
         <a href={item.url}
            onclick={(e) => handleResultClick(e, item.url)}
-           class="transition first-of-type:mt-2 lg:first-of-type:mt-0 group block
+           class="owen-search-result transition first-of-type:mt-2 lg:first-of-type:mt-0 group block
        rounded-xl text-lg px-3 py-2 hover:bg-[var(--btn-plain-bg-hover)] active:bg-[var(--btn-plain-bg-active)]">
             <div class="transition text-90 inline-flex font-bold group-hover:text-[var(--primary)]">
                 {item.meta.title}<Icon icon="fa7-solid:chevron-right" class="transition text-[0.75rem] translate-x-1 my-auto text-[var(--primary)]"></Icon>
@@ -287,8 +295,100 @@ onDestroy(() => {
     input:focus {
         outline: 0;
     }
+
+    .owen-search-shell,
+    .owen-search-inside,
+    :global(.search-panel) {
+        border: 1px solid rgba(118, 156, 255, 0.12);
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.54), rgba(247, 250, 255, 0.2)),
+            radial-gradient(circle at top right, rgba(118, 156, 255, 0.1), transparent 12rem);
+        box-shadow:
+            0 18px 42px rgba(15, 23, 42, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.66);
+        backdrop-filter: blur(18px) saturate(1.04);
+        -webkit-backdrop-filter: blur(18px) saturate(1.04);
+    }
+
+    .owen-search-shell {
+        overflow: hidden;
+    }
+
+    .owen-search-trigger {
+        color: rgba(15, 23, 42, 0.42);
+        transition: color 0.2s ease, transform 0.2s ease;
+    }
+
+    .owen-search-trigger:hover {
+        color: var(--primary);
+        transform: scale(1.03);
+    }
+
+    .owen-search-input {
+        font-family: var(--owen-font-ui);
+    }
+
     :global(.search-panel) {
         max-height: calc(100vh - 100px);
         overflow-y: auto;
+        border-radius: 1.35rem;
+        padding: 0.6rem;
+    }
+
+    .owen-search-result {
+        border: 1px solid transparent;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.16)),
+            radial-gradient(circle at top right, rgba(118, 156, 255, 0.05), transparent 8rem);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.46);
+    }
+
+    .owen-search-result:hover {
+        border-color: rgba(118, 156, 255, 0.14);
+        box-shadow:
+            0 16px 34px rgba(15, 23, 42, 0.06),
+            0 0 14px rgba(118, 156, 255, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    :global(:root:not(.dark) .search-panel),
+    :global(:root:not(.dark) #search-bar),
+    :global(:root:not(.dark) #search-bar-inside) {
+        border-color: rgba(255, 191, 214, 0.18);
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 243, 248, 0.56)),
+            radial-gradient(circle at top right, rgba(255, 188, 210, 0.12), transparent 12rem);
+        box-shadow:
+            0 18px 42px rgba(176, 102, 136, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    :global(:root:not(.dark) #search-bar .owen-search-trigger),
+    :global(:root:not(.dark) #search-bar-inside .iconify) {
+        color: rgba(181, 87, 127, 0.74);
+    }
+
+    :global(:root:not(.dark) .search-panel .owen-search-result) {
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 243, 248, 0.42)),
+            radial-gradient(circle at top right, rgba(255, 188, 210, 0.08), transparent 8rem);
+    }
+
+    :global(:root.dark .search-panel),
+    :global(:root.dark #search-bar),
+    :global(:root.dark #search-bar-inside) {
+        border-color: rgba(255, 255, 255, 0.08);
+        background:
+            linear-gradient(180deg, rgba(12, 16, 25, 0.64), rgba(7, 10, 16, 0.34)),
+            radial-gradient(circle at top right, rgba(118, 156, 255, 0.14), transparent 12rem);
+        box-shadow:
+            0 20px 46px rgba(0, 0, 0, 0.22),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    :global(:root.dark .search-panel .owen-search-result) {
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+            radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 8rem);
     }
 </style>

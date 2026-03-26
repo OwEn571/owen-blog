@@ -1160,12 +1160,18 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 			}
 			const parsed = JSON.parse(raw);
 			if (
-				typeof parsed?.right !== "number" ||
-				typeof parsed?.bottom !== "number"
+				typeof parsed?.left === "number" &&
+				typeof parsed?.top === "number"
 			) {
-				return null;
+				return parsed;
 			}
-			return parsed;
+			if (
+				typeof parsed?.right === "number" &&
+				typeof parsed?.bottom === "number"
+			) {
+				return parsed;
+			}
+			return null;
 		} catch (error) {
 			return null;
 		}
@@ -1179,9 +1185,41 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 		}
 	}
 
-	function applyPythonLabPosition(root, right, bottom) {
-		root.style.setProperty("--python-lab-panel-right", `${Math.round(right)}px`);
-		root.style.setProperty("--python-lab-panel-bottom", `${Math.round(bottom)}px`);
+	function applyPythonLabPosition(root, position) {
+		if (
+			position &&
+			typeof position.left === "number" &&
+			typeof position.top === "number"
+		) {
+			root.style.setProperty(
+				"--python-lab-panel-left",
+				`${Math.round(position.left)}px`,
+			);
+			root.style.setProperty(
+				"--python-lab-panel-top",
+				`${Math.round(position.top)}px`,
+			);
+			root.style.setProperty("--python-lab-panel-right", "auto");
+			root.style.setProperty("--python-lab-panel-bottom", "auto");
+			return;
+		}
+
+		if (
+			position &&
+			typeof position.right === "number" &&
+			typeof position.bottom === "number"
+		) {
+			root.style.setProperty("--python-lab-panel-left", "auto");
+			root.style.setProperty("--python-lab-panel-top", "auto");
+			root.style.setProperty(
+				"--python-lab-panel-right",
+				`${Math.round(position.right)}px`,
+			);
+			root.style.setProperty(
+				"--python-lab-panel-bottom",
+				`${Math.round(position.bottom)}px`,
+			);
+		}
 	}
 
 	function setPythonLabLoading(root, loading, message) {
@@ -1201,13 +1239,13 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 		}
 	}
 
-	function clampPythonLabPosition(panel, right, bottom) {
+	function clampPythonLabPosition(panel, left, top) {
 		const rect = panel.getBoundingClientRect();
-		const maxRight = Math.max(16, window.innerWidth - rect.width - 16);
-		const maxBottom = Math.max(16, window.innerHeight - rect.height - 16);
+		const maxLeft = Math.max(16, window.innerWidth - rect.width - 16);
+		const maxTop = Math.max(16, window.innerHeight - rect.height - 16);
 		return {
-			right: Math.min(Math.max(right, 16), maxRight),
-			bottom: Math.min(Math.max(bottom, 16), maxBottom),
+			left: Math.min(Math.max(left, 16), maxLeft),
+			top: Math.min(Math.max(top, 16), maxTop),
 		};
 	}
 
@@ -1444,13 +1482,15 @@ except SyntaxError as exc:
 
 		if (state.editor) {
 			setPythonLabLoading(root, false, "Python Lab 已就绪，可以继续写。");
+			state.viewportSyncHandler?.();
 			state.editor.layout();
 			state.editor.focus();
 			return;
 		}
 
-		if (!state.host.hidden) {
+		if (!state.fallback.hidden) {
 			setPythonLabLoading(root, false, "轻量编辑器已就绪，可以继续写。");
+			state.viewportSyncHandler?.();
 			state.fallback.focus();
 			return;
 		}
@@ -1463,9 +1503,11 @@ except SyntaxError as exc:
 			if (!editor) {
 				state.status.textContent =
 					"轻量编辑器已就绪。若 Monaco 稍后可用，会自动切换。";
+				state.viewportSyncHandler?.();
 				state.fallback.focus();
 				return;
 			}
+			state.viewportSyncHandler?.();
 			editor.layout();
 			editor.focus();
 			schedulePythonLabWarmup(root);
@@ -1596,14 +1638,31 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			resizeObserver: null,
 			runtimeWarmScheduled: false,
 			runtimeWarmHandle: 0,
-			dragPointerId: null,
 			isDragging: false,
+			viewportSyncHandler: null,
 		});
 
 		const storedPosition = getStoredPythonLabPosition();
 		if (storedPosition) {
-			applyPythonLabPosition(root, storedPosition.right, storedPosition.bottom);
+			applyPythonLabPosition(root, storedPosition);
 		}
+
+		const syncPanelWithinViewport = () => {
+			if (panel.hidden) {
+				return;
+			}
+			const rect = panel.getBoundingClientRect();
+			const next = clampPythonLabPosition(panel, rect.left, rect.top);
+			applyPythonLabPosition(root, next);
+			storePythonLabPosition(next);
+		};
+
+		const currentState = getPythonLabState(root);
+		if (currentState) {
+			currentState.viewportSyncHandler = syncPanelWithinViewport;
+		}
+
+		window.addEventListener("resize", syncPanelWithinViewport);
 
 		toggle.addEventListener("click", () => {
 			togglePythonLab(root);
@@ -1644,55 +1703,69 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			}
 		});
 
-		dragHandle.addEventListener("pointerdown", (event) => {
-			if (event.button !== 0 || event.target instanceof HTMLElement && event.target.closest("button")) {
+		root.querySelectorAll("[data-python-lab-drag-handle]").forEach((handle) => {
+			if (!(handle instanceof HTMLElement)) {
 				return;
 			}
 
-			const currentState = getPythonLabState(root);
-			if (!currentState) {
-				return;
-			}
+			handle.addEventListener("pointerdown", (event) => {
+				if (
+					event.button !== 0 ||
+					(event.target instanceof HTMLElement &&
+						event.target.closest("button, input, textarea, select, a"))
+				) {
+					return;
+				}
 
-			const rect = panel.getBoundingClientRect();
-			const startRight = window.innerWidth - rect.right;
-			const startBottom = window.innerHeight - rect.bottom;
-			const startX = event.clientX;
-			const startY = event.clientY;
+				const currentState = getPythonLabState(root);
+				if (!currentState) {
+					return;
+				}
 
-			currentState.isDragging = true;
-			root.dataset.dragging = "true";
+				event.preventDefault();
+				handle.setPointerCapture?.(event.pointerId);
 
-			const onMove = (moveEvent) => {
-				const deltaX = moveEvent.clientX - startX;
-				const deltaY = moveEvent.clientY - startY;
-				const next = clampPythonLabPosition(
-					panel,
-					startRight - deltaX,
-					startBottom - deltaY,
-				);
-				applyPythonLabPosition(root, next.right, next.bottom);
-			};
+				const rect = panel.getBoundingClientRect();
+				const startLeft = rect.left;
+				const startTop = rect.top;
+				const startX = event.clientX;
+				const startY = event.clientY;
 
-			const onUp = () => {
-				const finalRect = panel.getBoundingClientRect();
-				const next = clampPythonLabPosition(
-					panel,
-					window.innerWidth - finalRect.right,
-					window.innerHeight - finalRect.bottom,
-				);
-				applyPythonLabPosition(root, next.right, next.bottom);
-				storePythonLabPosition(next);
-				currentState.isDragging = false;
-				root.dataset.dragging = "false";
-				window.removeEventListener("pointermove", onMove);
-				window.removeEventListener("pointerup", onUp);
-				window.removeEventListener("pointercancel", onUp);
-			};
+				currentState.isDragging = true;
+				root.dataset.dragging = "true";
 
-			window.addEventListener("pointermove", onMove);
-			window.addEventListener("pointerup", onUp, { once: true });
-			window.addEventListener("pointercancel", onUp, { once: true });
+				const onMove = (moveEvent) => {
+					const deltaX = moveEvent.clientX - startX;
+					const deltaY = moveEvent.clientY - startY;
+					const next = clampPythonLabPosition(
+						panel,
+						startLeft + deltaX,
+						startTop + deltaY,
+					);
+					applyPythonLabPosition(root, next);
+				};
+
+				const onUp = () => {
+					const finalRect = panel.getBoundingClientRect();
+					const next = clampPythonLabPosition(
+						panel,
+						finalRect.left,
+						finalRect.top,
+					);
+					applyPythonLabPosition(root, next);
+					storePythonLabPosition(next);
+					currentState.isDragging = false;
+					root.dataset.dragging = "false";
+					handle.releasePointerCapture?.(event.pointerId);
+					window.removeEventListener("pointermove", onMove);
+					window.removeEventListener("pointerup", onUp);
+					window.removeEventListener("pointercancel", onUp);
+				};
+
+				window.addEventListener("pointermove", onMove);
+				window.addEventListener("pointerup", onUp, { once: true });
+				window.addEventListener("pointercancel", onUp, { once: true });
+			});
 		});
 	}
 

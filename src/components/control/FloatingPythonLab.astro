@@ -40,7 +40,11 @@ import { Icon } from "astro-icon/components";
 			</button>
 		</div>
 
-		<div class="python-lab-panel__status" data-python-lab-status>
+		<div
+			class="python-lab-panel__status"
+			data-python-lab-status
+			data-python-lab-drag-handle
+		>
 			点击运行时会加载 Monaco 与浏览器内 Python 运行时。
 		</div>
 
@@ -262,6 +266,8 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel
     position fixed
+    left var(--python-lab-panel-left, auto)
+    top var(--python-lab-panel-top, auto)
     right var(--python-lab-panel-right)
     bottom var(--python-lab-panel-bottom)
     width 28rem
@@ -281,7 +287,7 @@ print([sqrt(n) for n in nums])
     overflow hidden
     overscroll-behavior none
     isolation isolate
-    transition transform .24s ease, box-shadow .24s ease, border-color .24s ease, right .18s ease, bottom .18s ease
+    transition transform .24s ease, box-shadow .24s ease, border-color .24s ease, left .18s ease, top .18s ease, right .18s ease, bottom .18s ease
     transform-origin bottom right
 
   .python-lab-panel::after
@@ -297,6 +303,9 @@ print([sqrt(n) for n in nums])
     transform translateY(-2px) scale(1)
     border-color rgba(118, 156, 255, .24)
     box-shadow 0 0 34px rgba(118, 156, 255, .14), 0 36px 96px rgba(15, 23, 42, .24), inset 0 1px 0 rgba(255,255,255,.72)
+
+  .python-lab-fab-shell[data-dragging="true"] .python-lab-panel
+    transition none
 
   .python-lab-panel[hidden]
     display none !important
@@ -349,6 +358,12 @@ print([sqrt(n) for n in nums])
     background rgba(15, 23, 42, .04)
     font-size .83rem
     color rgba(15, 23, 42, .62)
+    cursor grab
+    user-select none
+    touch-action none
+
+  .python-lab-fab-shell[data-dragging="true"] .python-lab-panel__status
+    cursor grabbing
 
   .python-lab-panel__editor-frame
     min-height 0
@@ -643,5 +658,7 @@ print([sqrt(n) for n in nums])
       max-width 30rem
       height unquote("min(36rem, calc(100vh - 7rem))")
       max-height calc(100vh - 7rem)
+      left var(--python-lab-panel-left, auto)
+      top var(--python-lab-panel-top, auto)
       right var(--python-lab-panel-right, var(--utility-rail-right, 1rem))
       bottom var(--python-lab-panel-bottom, calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) + .9rem))
