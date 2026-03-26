@@ -81,6 +81,44 @@ print([sqrt(n) for n in nums])
 	</section>
 </div>
 
+<style lang="stylus">
+  .python-lab-fab-shell
+    filter drop-shadow(0 0 16px rgba(118, 156, 255, .08))
+
+  .python-lab-fab
+    border-radius 1.22rem
+    background linear-gradient(180deg, rgba(255,255,255,.82), rgba(247,250,255,.62)), radial-gradient(circle at top right, rgba(118,156,255,.14), transparent 8rem)
+    box-shadow 0 20px 48px rgba(15, 23, 42, .14), inset 0 1px 0 rgba(255,255,255,.78)
+
+  .python-lab-panel
+    border-radius 1.72rem
+    background linear-gradient(180deg, rgba(255,255,255,.82), rgba(246,250,255,.64)), radial-gradient(circle at top right, rgba(118,156,255,.14), transparent 16rem)
+    box-shadow 0 34px 92px rgba(15, 23, 42, .22), inset 0 1px 0 rgba(255,255,255,.78)
+
+  .python-lab-panel__eyebrow
+    font-family var(--owen-font-ui)
+    font-weight 600
+    letter-spacing .18em
+
+  .python-lab-panel__title
+    font-family var(--owen-font-display)
+    font-size 1.24rem
+    letter-spacing -.04em
+
+  .python-lab-panel__note,
+  .python-lab-panel__status
+    font-family var(--owen-font-reading)
+    line-height 1.72
+
+  :root.dark .python-lab-fab
+    background linear-gradient(180deg, rgba(15,19,30,.76), rgba(9,13,21,.36)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 8rem)
+    box-shadow 0 22px 58px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255,255,255,.08)
+
+  :root.dark .python-lab-panel
+    background linear-gradient(180deg, rgba(14,18,28,.82), rgba(8,12,20,.42)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 16rem)
+    box-shadow 0 38px 104px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255,255,255,.08)
+</style>
+
 <script is:inline>
 	(() => {
 		const current = document.currentScript;

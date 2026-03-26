@@ -3,7 +3,7 @@ title: Python的ACM模式基础
 published: 2026-03-21
 description: 练习ACM模式的几种情况。
 tags: [算法]
-category: Hot 100
+category: 算法
 draft: false
 comment: true
 ---

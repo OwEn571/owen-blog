@@ -599,4 +599,65 @@
 	.mobile-toc-panel::-webkit-scrollbar-thumb:hover {
 		background: var(--text-color-25);
 	}
+	/* Owen mobile toc refinement */
+	.mobile-toc-panel {
+		border-radius: 1.45rem;
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 96%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--card-bg) 90%, transparent)),
+			radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 10%, transparent), transparent 72%);
+		box-shadow:
+			0 24px 60px rgba(15, 23, 42, 0.16),
+			inset 0 1px 0 rgba(255, 255, 255, 0.12);
+		backdrop-filter: blur(24px) saturate(1.04);
+	}
+
+	.toc-group {
+		padding: 7px;
+		border-radius: 18px;
+	}
+
+	.toc-item {
+		border-radius: 16px;
+		font-family: var(--owen-font-reading);
+	}
+
+	.toc-parent {
+		font-family: var(--owen-font-display);
+		font-weight: 660;
+		letter-spacing: -0.02em;
+	}
+
+	.toc-toggle {
+		width: 1.9rem;
+		height: 1.9rem;
+		border-radius: 0.72rem;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.4),
+			0 8px 20px color-mix(in srgb, var(--primary) 8%, transparent);
+	}
+
+	.toc-text {
+		font-weight: 530;
+		letter-spacing: 0.004em;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.toc-parent .toc-text {
+		-webkit-line-clamp: 1;
+	}
+
+	:global(.light) .mobile-toc-panel {
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(252, 244, 248, 0.7)),
+			radial-gradient(circle at top right, rgba(255, 196, 218, 0.16), transparent 72%);
+		border-color: rgba(236, 174, 198, 0.18);
+		box-shadow:
+			0 24px 64px rgba(120, 82, 101, 0.16),
+			inset 0 1px 0 rgba(255, 255, 255, 0.8);
+	}
+
 </style>

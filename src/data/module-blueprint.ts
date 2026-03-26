@@ -154,9 +154,9 @@ export const moduleEntries: ModuleEntry[] = [
 
 export const studyPageContent: StudyPageContent = {
 	heroEyebrow: "Study",
-	heroTitle: "Study 已经收成真正可写内容的学习分区",
+	heroTitle: "Study 是我的学习博客分区",
 	heroDescription:
-		"现在它只做一件事: 承接你的学习型博客。页面会自动扫描 `study/` 下的一级目录，把每个主题映射到知识星点图与下面的文章筛选区。",
+		"这里汇总算法、模型与工程学习笔记。上方知识星点图对应不同主题，下面可以直接筛选并进入文章。",
 	stageBadge: "Knowledge Constellation",
 	deckEyebrow: "Knowledge Map",
 	deckTitle: "Study 主题星图",

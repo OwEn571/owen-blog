@@ -1,5 +1,6 @@
 ---
 import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
+import TypewriterText from "@components/atoms/typewriter-text/TypewriterText.astro";
 import { Icon } from "astro-icon/components";
 
 import { labShelf, labShowcases } from "../data/module-blueprint";
@@ -34,7 +35,7 @@ const heroSummary = [
 		<section class="module-hero module-hero-split">
 			<div class="module-copy">
 				<p class="module-eyebrow">Lab</p>
-				<h1 class="module-title">像展示商品一样展示你的玩具和实验</h1>
+				<h1 class="module-title"><TypewriterText text="像展示商品一样展示你的玩具和实验" speed={22} deleteSpeed={18} pauseTime={2400} showCaret={false} class="module-title__typed" /></h1>
 				<p class="module-description">
 					项目不需要再缩在冷冰冰的列表里。这里更像 iPad App Store
 					的橱窗区，允许每个原型都拥有自己的光效、预览和姿态。

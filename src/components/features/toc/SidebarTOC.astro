@@ -649,3 +649,69 @@ if (!customElements.get("table-of-contents")) {
 		opacity: 0.76;
 	}
 </style>
+
+<style>
+	/* Owen sidebar toc refinement */
+	table-of-contents#toc {
+		padding: 0.4rem;
+		border-radius: 1.5rem;
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 96%, rgba(255, 255, 255, 0.06)), color-mix(in srgb, var(--card-bg) 88%, transparent)),
+			radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 10%, transparent), transparent 72%);
+		border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--line-color));
+		box-shadow:
+			0 26px 64px rgba(15, 23, 42, 0.14),
+			inset 0 1px 0 rgba(255, 255, 255, 0.14);
+		backdrop-filter: blur(22px) saturate(1.04);
+		-webkit-backdrop-filter: blur(22px) saturate(1.04);
+	}
+
+	table-of-contents#toc .toc-group {
+		padding: 0.34rem;
+		border-radius: 1.08rem;
+	}
+
+	table-of-contents#toc .toc-link {
+		min-height: 2.5rem;
+		border-radius: 1rem;
+	}
+
+	table-of-contents#toc .toc-label {
+		font-family: var(--owen-font-reading);
+		font-size: 0.88rem;
+		font-weight: 540;
+		letter-spacing: 0.004em;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	table-of-contents#toc .toc-group-header .toc-label {
+		font-family: var(--owen-font-display);
+		font-weight: 660;
+		letter-spacing: -0.02em;
+		-webkit-line-clamp: 1;
+	}
+
+	table-of-contents#toc .toc-toggle {
+		width: 1.9rem;
+		min-width: 1.9rem;
+		height: 1.9rem;
+		border-radius: 0.72rem;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.42),
+			0 10px 22px color-mix(in srgb, var(--primary) 8%, transparent);
+	}
+
+	:global(.light) table-of-contents#toc {
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(252, 244, 248, 0.62)),
+			radial-gradient(circle at top right, rgba(255, 196, 218, 0.16), transparent 72%);
+		border-color: rgba(236, 174, 198, 0.18);
+		box-shadow:
+			0 26px 68px rgba(120, 82, 101, 0.14),
+			inset 0 1px 0 rgba(255, 255, 255, 0.76);
+	}
+</style>

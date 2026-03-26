@@ -67,6 +67,8 @@
   目录模块与 Python 代码卡说明。
 - `VERCEL_OWEN_TOP_DEPLOY.zh-CN.md`
   Vercel + 域名部署记录。
+- `THEME_AND_COPY_EDIT_GUIDE.zh-CN.md`
+  静态资源、前端文案和主题风格的修改入口说明。
 
 ### `scripts/`
 

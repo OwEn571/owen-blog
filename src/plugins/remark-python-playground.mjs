@@ -51,8 +51,8 @@ function renderPythonCodeCard(source, options) {
 	return `<div class="python-code-card" data-python-code-card="true" data-python-title="${escapeAttribute(normalizedTitle)}" data-python-packages="${escapeAttribute(options.packages.join(","))}">
 	<div class="python-code-card__toolbar">
 		<div class="python-code-card__toolbar-meta">
-			<span class="python-code-card__badge">Python3</span>
-			${hasCustomTitle ? `<strong class="python-code-card__title">${escapeHtml(normalizedTitle)}</strong>` : ""}
+			<span class="python-code-card__eyebrow">Frozen Editor</span>
+			<strong class="python-code-card__title">${hasCustomTitle ? escapeHtml(normalizedTitle) : "Python3 代码片段"}</strong>
 		</div>
 		<div class="python-code-card__toolbar-side">
 			${packagesText ? `<span class="python-code-card__meta">${escapeHtml(packagesText)}</span>` : ""}

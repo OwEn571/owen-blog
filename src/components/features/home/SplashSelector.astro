@@ -1,6 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 
+import TypewriterText from "@components/atoms/typewriter-text/TypewriterText.astro";
 import { profileConfig, siteConfig } from "@/config";
 
 import { homeSections } from "./entry-data";
@@ -39,7 +40,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		<div class="splash-copy">
 			<p class="splash-kicker">Opening Screen</p>
-			<h1 class="splash-title">{splashTitle} 的内容入口</h1>
+			<h1 class="splash-title"><TypewriterText text={`${splashTitle} 的内容入口`} speed={32} deleteSpeed={20} pauseTime={2600} showCaret={true} class="splash-title__typed" /></h1>
 			<p class="splash-description">
 				先从这里选择你想进入的界面。四个分区保持同一套引擎，但拥有不同的内容节奏和观看方式。
 			</p>
@@ -395,27 +396,28 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 	.splash-title {
 		margin-top: 0.65rem;
-		font-family:
-			"SF Pro Display",
-			"SF Pro Text",
-			"PingFang SC",
-			"Hiragino Sans GB",
-			"Microsoft YaHei",
-			system-ui,
-			sans-serif;
-		font-size: clamp(2.8rem, 5vw, 5.3rem);
-		line-height: 0.95;
-		font-weight: 700;
-		letter-spacing: -0.055em;
+		max-width: 11ch;
+		font-family: var(--owen-font-display, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif);
+		font-size: clamp(2.9rem, 5.2vw, 5.55rem);
+		line-height: 0.9;
+		font-weight: 720;
+		letter-spacing: -0.072em;
 		color: rgba(247, 250, 255, 0.96);
-		text-shadow: 0 10px 30px rgba(2, 4, 10, 0.35);
+		text-wrap: balance;
+		text-shadow: 0 14px 34px rgba(2, 4, 10, 0.34);
+	}
+
+	.splash-title__typed {
+		min-height: 1em;
 	}
 
 	.splash-description {
 		margin-top: 1rem;
 		max-width: 42rem;
-		font-size: 1rem;
-		line-height: 1.8;
+		font-family: var(--owen-font-reading, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif);
+		font-size: 1.02rem;
+		line-height: 1.88;
+		letter-spacing: 0.01em;
 		color: rgba(232, 238, 248, 0.72);
 	}
 
@@ -548,25 +550,20 @@ const splashTitle = profileConfig.name || siteConfig.title;
 	.splash-choice-title {
 		margin-top: auto;
 		padding-top: 1.8rem;
-		font-family:
-			"SF Pro Display",
-			"SF Pro Text",
-			"PingFang SC",
-			"Hiragino Sans GB",
-			"Microsoft YaHei",
-			system-ui,
-			sans-serif;
-		font-size: clamp(1.7rem, 3vw, 2.2rem);
-		line-height: 1.02;
-		font-weight: 700;
-		letter-spacing: -0.045em;
+		font-family: var(--owen-font-display, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif);
+		font-size: clamp(1.72rem, 3vw, 2.26rem);
+		line-height: 1;
+		font-weight: 710;
+		letter-spacing: -0.05em;
 		color: rgba(247, 250, 255, 0.94);
 	}
 
 	.splash-choice-description {
 		margin-top: 0.85rem;
-		font-size: 0.96rem;
-		line-height: 1.72;
+		font-family: var(--owen-font-reading, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif);
+		font-size: 0.97rem;
+		line-height: 1.78;
+		letter-spacing: 0.008em;
 		color: rgba(223, 231, 244, 0.66);
 	}
 

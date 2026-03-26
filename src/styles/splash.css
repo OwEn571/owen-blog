@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+	--owen-font-ui: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+	--owen-font-display: "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+	--owen-font-reading: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+}
+
 html,
 body {
 	margin: 0;
@@ -12,6 +18,10 @@ html {
 	background: #fff6fa;
 }
 
+:root:not(.dark) {
+	--hue: 348 !important;
+}
+
 :root.dark html {
 	background: #02050c;
 }
@@ -20,14 +30,7 @@ body {
 	min-height: 100vh;
 	background: linear-gradient(180deg, #fffdfd 0%, #fff3f7 100%);
 	color: rgba(77, 44, 60, 0.94);
-	font-family:
-		"SF Pro Text",
-		"SF Pro Display",
-		"PingFang SC",
-		"Hiragino Sans GB",
-		"Microsoft YaHei",
-		system-ui,
-		sans-serif;
+	font-family: var(--owen-font-ui);
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
@@ -47,4 +50,62 @@ img,
 video,
 svg {
 	display: block;
+}
+/* Owen splash typography refinement */
+:root {
+  --owen-font-ui: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --owen-font-display: "ZenMaruGothic-Medium", "SF Pro Rounded", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --owen-font-reading: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SF Pro Text", system-ui, sans-serif;
+}
+
+body {
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+.splash-status {
+  font-family: var(--owen-font-ui);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+.splash-kicker,
+.splash-choice-eyebrow {
+  font-family: var(--owen-font-ui);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
+
+.splash-title {
+  max-width: 12ch;
+  font-family: var(--owen-font-display);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.078em;
+}
+
+.splash-description {
+  max-width: 41rem;
+  font-family: var(--owen-font-reading);
+  font-size: 1.04rem;
+  line-height: 1.92;
+  letter-spacing: 0.012em;
+}
+
+.splash-choice-title {
+  font-family: var(--owen-font-display);
+  font-weight: 690;
+  line-height: 1.04;
+  letter-spacing: -0.052em;
+  text-wrap: balance;
+}
+
+.splash-choice-description,
+.splash-choice-footer {
+  font-family: var(--owen-font-reading);
+  line-height: 1.82;
+  letter-spacing: 0.01em;
+}
+
+.splash-shell[data-theme="light"] .splash-title {
+  text-shadow: 0 18px 36px rgba(255, 188, 210, 0.24);
 }

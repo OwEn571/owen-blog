@@ -58,6 +58,41 @@ import { Icon } from "astro-icon/components";
 
 </style>
 
+<style lang="stylus">
+  .back-to-top-btn
+    position relative
+    border 1px solid rgba(118, 156, 255, .14)
+    background linear-gradient(180deg, rgba(255,255,255,.8), rgba(247,250,255,.6)), radial-gradient(circle at top right, rgba(118,156,255,.14), transparent 8rem)
+    box-shadow 0 20px 48px rgba(15, 23, 42, .14), inset 0 1px 0 rgba(255,255,255,.72)
+    backdrop-filter blur(18px) saturate(1.04)
+    -webkit-backdrop-filter blur(18px) saturate(1.04)
+
+  .back-to-top-btn::after
+    content ""
+    position absolute
+    inset -1px
+    border-radius inherit
+    pointer-events none
+    opacity 0
+    box-shadow 0 0 0 1px rgba(118, 156, 255, .18), 0 0 24px rgba(118, 156, 255, .16), 0 0 56px rgba(132, 115, 255, .08)
+    transition opacity .22s ease
+
+  .back-to-top-btn:hover,
+  .back-to-top-btn:focus-visible
+    transform translateY(-2px) scale(1.02)
+    box-shadow 0 0 24px rgba(118, 156, 255, .12), 0 24px 56px rgba(15, 23, 42, .16), inset 0 1px 0 rgba(255,255,255,.72)
+
+  .back-to-top-btn:hover::after,
+  .back-to-top-btn:focus-visible::after
+    opacity 1
+
+  :root.dark .back-to-top-btn
+    background linear-gradient(180deg, rgba(15,19,30,.76), rgba(9,13,21,.34)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 8rem)
+    border-color rgba(118, 156, 255, .18)
+    color rgba(220, 230, 255, .92)
+    box-shadow 0 24px 58px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255,255,255,.08)
+</style>
+
 <script is:inline>
 	(() => {
 		const animateToTop = () => {

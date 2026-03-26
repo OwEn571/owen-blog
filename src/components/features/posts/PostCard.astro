@@ -51,7 +51,7 @@ const { remarkPluginFrontmatter } = await render(entry);
 		<a
 			href={url}
 			data-no-swup
-			class="transition group w-full block font-bold mb-3 text-[1.82rem] md:text-[2.05rem] leading-[1.03] tracking-[-0.05em] text-90
+			class="post-card-title transition group w-full block font-bold mb-3 text-[1.82rem] md:text-[2.05rem] leading-[1.03] tracking-[-0.05em] text-90
         hover:text-[var(--primary)] dark:hover:text-[var(--primary)]
         active:text-[var(--title-active)] dark:active:text-[var(--title-active)]
         before:w-1 before:h-6 before:rounded-md before:bg-[var(--primary)]
@@ -92,14 +92,14 @@ const { remarkPluginFrontmatter } = await render(entry);
 
 		<div
 			class:list={[
-				"transition text-75 mb-4 pr-4 text-[0.98rem] leading-7",
+				"post-card-description transition text-75 mb-4 pr-4 text-[0.98rem] leading-7",
 				{ "line-clamp-3 md:line-clamp-2": !description },
 			]}
 		>
 			{description || remarkPluginFrontmatter.excerpt}
 		</div>
 
-		<div class="flex flex-wrap gap-2 mt-2">
+		<div class="post-card-tags flex flex-wrap gap-2 mt-2">
 			{
 				tags && tags.length > 0 ? (
 					tags.map((tag) => (
@@ -133,6 +133,7 @@ const { remarkPluginFrontmatter } = await render(entry);
 				aria-label={title}
 				class:list={[
 					"group",
+					"post-card-cover",
 					"max-h-[20vh] md:max-h-none mx-4 mt-4 -mb-2 md:mb-0 md:mx-0 md:mt-0",
 					"md:w-[var(--coverWidth)] relative md:absolute md:top-3 md:bottom-3 md:right-3 rounded-[1.35rem] overflow-hidden active:scale-95",
 				]}
@@ -238,5 +239,53 @@ const { remarkPluginFrontmatter } = await render(entry);
 	.apple-post-card:hover :global(img) {
 		transform: scale(1.03);
 		filter: saturate(1.05) contrast(1.02);
+	}
+
+	.post-card-title {
+		max-width: min(100%, 18ch);
+		font-family: var(--owen-font-display);
+		text-wrap: balance;
+	}
+
+	.post-card-description {
+		font-family: var(--owen-font-reading);
+		color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+	}
+
+	.post-card-tags {
+		padding-top: 0.15rem;
+	}
+
+	.post-card-cover::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 28%),
+			radial-gradient(circle at top left, rgba(255, 255, 255, 0.22), transparent 40%);
+		z-index: 1;
+	}
+
+	:root:not(.dark) .apple-post-card {
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 250, 0.74)),
+			radial-gradient(circle at top right, rgba(255, 196, 218, 0.14), transparent 16rem);
+		border-color: rgba(236, 174, 198, 0.18);
+		box-shadow:
+			0 28px 68px rgba(120, 82, 101, 0.12),
+			0 0 20px rgba(255, 196, 218, 0.08);
+	}
+
+	:root:not(.dark) .apple-post-card::before {
+		background: linear-gradient(90deg, transparent, rgba(236, 174, 198, 0.9), transparent);
+	}
+
+	:root:not(.dark) .apple-post-card:hover {
+		border-color: rgba(236, 174, 198, 0.28);
+		box-shadow:
+			0 34px 78px rgba(120, 82, 101, 0.16),
+			0 0 20px rgba(255, 196, 218, 0.14),
+			0 0 42px rgba(255, 196, 218, 0.1);
 	}
 </style>
