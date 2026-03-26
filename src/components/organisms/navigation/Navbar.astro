@@ -72,17 +72,17 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
         </div>
         <div class="nav-action-group flex items-center gap-1">
             <div id="search-container" class="nav-search-shell">
-                <Search client:only="svelte"></Search>
+                <Search client:load></Search>
             </div>
             {/* 只在 sidebar 模式下显示移动端 TOC 按钮 */}
-            {siteConfig.toc.enable && siteConfig.toc.mode === "sidebar" && <MobileTOC client:only="svelte"></MobileTOC>}
+            {siteConfig.toc.enable && siteConfig.toc.mode === "sidebar" && <MobileTOC client:load></MobileTOC>}
             {!siteConfig.themeColor.fixed && (
-                    <button aria-label="Display Settings" class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90" id="display-settings-switch">
+                    <button aria-label="Display Settings" class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90" id="display-settings-switch" data-ui-control="display-setting">
                         <Icon name="material-symbols:palette-outline" class="text-[1.25rem]"></Icon>
                     </button>
             )}
             {siteConfig.postListLayout?.allowSwitch && (
-                <LayoutSwitch client:only="svelte" currentLayout={siteConfig.postListLayout.defaultMode}></LayoutSwitch>
+                <LayoutSwitch client:load currentLayout={siteConfig.postListLayout.defaultMode}></LayoutSwitch>
             )}
             <!-- 整体布局方案切换按钮：根据配置决定在哪些设备上显示 -->
             <div class:list={[
@@ -91,21 +91,19 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
                 modeSwitchDisplay === "desktop" ? "hidden md:block" :
                 modeSwitchDisplay === "both" ? "block" : "hidden md:block"
             ]}>
-                <WallpaperSwitch client:only="svelte"></WallpaperSwitch>
+                <WallpaperSwitch client:load></WallpaperSwitch>
             </div>
-            <ThemeSwitch client:only="svelte"></ThemeSwitch>
-            <button aria-label="Menu" name="Nav Menu" class="btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90 md:!hidden" id="nav-menu-switch">
+            <ThemeSwitch client:load></ThemeSwitch>
+            <button aria-label="Menu" name="Nav Menu" class="btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90 md:!hidden" id="nav-menu-switch" data-ui-control="nav-menu-panel">
                 <Icon name="material-symbols:unfold-more" class="text-[1.25rem]"></Icon>
             </button>
         </div>
         <NavMenuPanel links={links}></NavMenuPanel>
-        <DisplaySettings client:only="svelte"></DisplaySettings>
+        <DisplaySettings client:load></DisplaySettings>
     </div>
 </div>
 
 <script>
-	import { panelManager } from "../../../utils/panel-manager";
-
 	const searchContainer = document.getElementById("search-container");
 	const navbarLinksContainer = document.getElementById("navbar-links-container");
 
@@ -150,51 +148,6 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 			observer.observe(navbar, { attributes: true });
 		}
 	}
-
-function togglePanelFallback(panelId: "display-setting" | "nav-menu-panel") {
-	const panel = document.getElementById(panelId);
-	if (!panel) {
-		return;
-	}
-
-	const shouldOpen = panel.classList.contains("float-panel-closed");
-
-	["display-setting", "nav-menu-panel"].forEach((id) => {
-		if (id !== panelId) {
-			document.getElementById(id)?.classList.add("float-panel-closed");
-		}
-	});
-
-	panel.classList.toggle("float-panel-closed", !shouldOpen);
-}
-
-function bindNavbarButtons() {
-	const settingBtn = document.getElementById("display-settings-switch");
-	if (settingBtn instanceof HTMLButtonElement) {
-		settingBtn.onclick = async () => {
-			try {
-				await panelManager.togglePanel("display-setting");
-			} catch (error) {
-				console.error("Failed to toggle display-setting:", error);
-				togglePanelFallback("display-setting");
-			}
-		};
-	}
-
-	const menuBtn = document.getElementById("nav-menu-switch");
-	if (menuBtn instanceof HTMLButtonElement) {
-		menuBtn.onclick = async () => {
-			try {
-				await panelManager.togglePanel("nav-menu-panel");
-			} catch (error) {
-				console.error("Failed to toggle nav-menu-panel:", error);
-				togglePanelFallback("nav-menu-panel");
-			}
-		};
-	}
-}
-
-bindNavbarButtons();
 
 // 为semifull模式添加滚动检测逻辑
 function initSemifullScrollDetection() {

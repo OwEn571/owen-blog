@@ -365,36 +365,64 @@ if (siteConfig.font) {
 				}
 				(window).__owenControlFallbackBound = true;
 
-				const closeFloatPanel = (panelId) => {
+				const FLOAT_PANELS = [
+					"display-setting",
+					"nav-menu-panel",
+					"search-panel",
+					"mobile-toc-panel",
+					"wallpaper-mode-panel",
+				];
+
+				const getFloatPanel = (panelId) => {
 					const panel = document.getElementById(panelId);
-					if (!(panel instanceof HTMLElement)) {
+					return panel instanceof HTMLElement ? panel : null;
+				};
+
+				const openFloatPanel = (panelId, exceptIds = []) => {
+					FLOAT_PANELS.filter((id) => id !== panelId && !exceptIds.includes(id)).forEach(
+						(id) => {
+							const node = getFloatPanel(id);
+							node?.classList.add("float-panel-closed");
+							if (node) {
+								node.style.opacity = "";
+								node.style.transform = "";
+								node.style.pointerEvents = "";
+							}
+						},
+					);
+					const panel = getFloatPanel(panelId);
+					if (!panel) {
+						return false;
+					}
+					panel.classList.remove("float-panel-closed");
+					panel.style.opacity = "1";
+					panel.style.transform = "scale(1) translateY(0)";
+					panel.style.pointerEvents = "auto";
+					return true;
+				};
+
+				const closeFloatPanel = (panelId) => {
+					const panel = getFloatPanel(panelId);
+					if (!panel) {
 						return;
 					}
 					panel.classList.add("float-panel-closed");
+					panel.style.opacity = "";
+					panel.style.transform = "";
+					panel.style.pointerEvents = "";
 				};
 
 				const toggleFloatPanel = (panelId, exceptIds = []) => {
-					const panel = document.getElementById(panelId);
-					if (!(panel instanceof HTMLElement)) {
+					const panel = getFloatPanel(panelId);
+					if (!panel) {
 						return false;
 					}
-
 					const shouldOpen = panel.classList.contains("float-panel-closed");
-					["display-setting", "nav-menu-panel", "search-panel", "mobile-toc-panel", "wallpaper-mode-panel"]
-						.filter((id) => id !== panelId && !exceptIds.includes(id))
-						.forEach((id) => closeFloatPanel(id));
-
-					panel.classList.toggle("float-panel-closed", !shouldOpen);
-					if (shouldOpen) {
-						panel.style.opacity = "1";
-						panel.style.transform = "scale(1) translateY(0)";
-						panel.style.pointerEvents = "auto";
-					} else {
-						panel.style.opacity = "";
-						panel.style.transform = "";
-						panel.style.pointerEvents = "";
+					if (!shouldOpen) {
+						closeFloatPanel(panelId);
+						return false;
 					}
-					return shouldOpen;
+					return openFloatPanel(panelId, exceptIds);
 				};
 
 				const setDesktopSearchExpanded = (open) => {
@@ -406,8 +434,10 @@ if (siteConfig.font) {
 					}
 
 					bar.dataset.fallbackExpanded = open ? "true" : "false";
+					bar.classList.toggle("owen-search-expanded", open);
 					bar.style.width = open ? "12rem" : "";
 					input.style.width = open ? "9rem" : "";
+					input.style.pointerEvents = open ? "auto" : "";
 
 					if (open) {
 						navbar?.classList.add("is-searching");
@@ -417,7 +447,6 @@ if (siteConfig.font) {
 
 					if (!input.value) {
 						navbar?.classList.remove("is-searching");
-						input.blur();
 					}
 				};
 
@@ -436,9 +465,44 @@ if (siteConfig.font) {
 					panel.hidden = !open;
 					root.dataset.state = open ? "open" : "closed";
 					toggle.setAttribute("aria-expanded", open ? "true" : "false");
-					if (open && fallback instanceof HTMLTextAreaElement) {
-						window.setTimeout(() => fallback.focus(), 0);
+					if (open) {
+						root.style.zIndex = "70";
+						if (fallback instanceof HTMLTextAreaElement) {
+							window.setTimeout(() => fallback.focus(), 0);
+						}
+						return;
 					}
+					root.style.zIndex = "";
+				};
+
+				const toggleControl = (control) => {
+					switch (control) {
+						case "desktop-search":
+							setDesktopSearchExpanded(true);
+							return;
+						case "python-lab": {
+							const root = document.querySelector("[data-python-lab]");
+							const isOpen =
+								root instanceof HTMLElement && root.dataset.state === "open";
+							setPythonLabOpen(!isOpen);
+							return;
+						}
+						default:
+							toggleFloatPanel(control);
+					}
+				};
+
+				window.__owenToggleFloatPanel = toggleFloatPanel;
+				window.__owenOpenDesktopSearch = () => setDesktopSearchExpanded(true);
+				window.__owenCloseDesktopSearch = () => setDesktopSearchExpanded(false);
+				window.__owenSetPythonLabOpen = setPythonLabOpen;
+				window.__owenTogglePythonLab = () => toggleControl("python-lab");
+				window.__owenUiController = {
+					openFloatPanel,
+					closeFloatPanel,
+					toggleFloatPanel,
+					setDesktopSearchExpanded,
+					setPythonLabOpen,
 				};
 
 				document.addEventListener(
@@ -449,48 +513,25 @@ if (siteConfig.font) {
 							return;
 						}
 
-						if (target.closest("[data-python-lab-toggle]")) {
+						const closeControl = target.closest("[data-ui-control-close]");
+						if (closeControl instanceof HTMLElement) {
 							event.preventDefault();
 							event.stopImmediatePropagation();
-							const root = target.closest("[data-python-lab]");
-							const isOpen =
-								root instanceof HTMLElement && root.dataset.state === "open";
-							setPythonLabOpen(!isOpen);
+							if (closeControl.dataset.uiControlClose === "python-lab") {
+								setPythonLabOpen(false);
+							}
 							return;
 						}
 
-						if (target.closest("[data-python-lab-close]")) {
+						const control = target.closest("[data-ui-control]");
+						if (control instanceof HTMLElement) {
+							const panelId = control.dataset.uiControl;
+							if (!panelId) {
+								return;
+							}
 							event.preventDefault();
 							event.stopImmediatePropagation();
-							setPythonLabOpen(false);
-							return;
-						}
-
-						if (target.closest("#search-switch")) {
-							event.preventDefault();
-							event.stopImmediatePropagation();
-							toggleFloatPanel("search-panel");
-							return;
-						}
-
-						if (target.closest(".owen-search-trigger")) {
-							event.preventDefault();
-							event.stopImmediatePropagation();
-							setDesktopSearchExpanded(true);
-							return;
-						}
-
-						if (target.closest("#display-settings-switch")) {
-							event.preventDefault();
-							event.stopImmediatePropagation();
-							toggleFloatPanel("display-setting");
-							return;
-						}
-
-						if (target.closest("#nav-menu-switch")) {
-							event.preventDefault();
-							event.stopImmediatePropagation();
-							toggleFloatPanel("nav-menu-panel");
+							toggleControl(panelId);
 						}
 					},
 					true,
@@ -504,16 +545,25 @@ if (siteConfig.font) {
 							return;
 						}
 
-						if (!target.closest("#search-bar, #search-panel")) {
+						if (!target.closest("#search-bar, #search-panel, [data-ui-control='desktop-search'], [data-ui-control='search-panel']")) {
 							setDesktopSearchExpanded(false);
+							closeFloatPanel("search-panel");
 						}
 
-						if (!target.closest("#display-setting, #display-settings-switch")) {
+						if (!target.closest("#display-setting, [data-ui-control='display-setting']")) {
 							closeFloatPanel("display-setting");
 						}
 
-						if (!target.closest("#nav-menu-panel, #nav-menu-switch")) {
+						if (!target.closest("#nav-menu-panel, [data-ui-control='nav-menu-panel']")) {
 							closeFloatPanel("nav-menu-panel");
+						}
+
+						if (!target.closest("#mobile-toc-panel, [data-ui-control='mobile-toc-panel']")) {
+							closeFloatPanel("mobile-toc-panel");
+						}
+
+						if (!target.closest("#wallpaper-mode-panel, [data-ui-control='wallpaper-mode-panel']")) {
+							closeFloatPanel("wallpaper-mode-panel");
 						}
 
 						if (!target.closest("[data-python-lab]")) {
@@ -524,13 +574,12 @@ if (siteConfig.font) {
 				);
 
 				document.addEventListener("keydown", (event) => {
-					if (event.key === "Escape") {
-						setDesktopSearchExpanded(false);
-						closeFloatPanel("display-setting");
-						closeFloatPanel("nav-menu-panel");
-						closeFloatPanel("search-panel");
-						setPythonLabOpen(false);
+					if (event.key !== "Escape") {
+						return;
 					}
+					setDesktopSearchExpanded(false);
+					FLOAT_PANELS.forEach((id) => closeFloatPanel(id));
+					setPythonLabOpen(false);
 				});
 			})();
 		</script>

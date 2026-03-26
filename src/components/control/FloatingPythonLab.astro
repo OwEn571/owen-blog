@@ -8,6 +8,7 @@ import { url } from "@/utils/url-utils";
 		type="button"
 		class="python-lab-fab"
 		data-python-lab-toggle
+		data-ui-control="python-lab"
 		aria-expanded="false"
 		aria-controls="python-lab-panel"
 		aria-label="打开 Python Lab"
@@ -22,6 +23,7 @@ import { url } from "@/utils/url-utils";
 		id="python-lab-panel"
 		class="python-lab-panel"
 		data-python-lab-panel
+		data-ui-panel="python-lab"
 		hidden
 		aria-label="Floating Python Lab"
 	>
@@ -35,6 +37,7 @@ import { url } from "@/utils/url-utils";
 				type="button"
 				class="python-lab-panel__close"
 				data-python-lab-close
+				data-ui-control-close="python-lab"
 				aria-label="收起 Python Lab"
 			>
 				<Icon name="mdi:close" />

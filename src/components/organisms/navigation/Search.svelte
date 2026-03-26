@@ -66,6 +66,11 @@ const handleDesktopTriggerClick = (event: MouseEvent) => {
 	event.preventDefault();
 	event.stopPropagation();
 
+	if (typeof window !== "undefined" && typeof (window as any).__owenOpenDesktopSearch === "function") {
+		(window as any).__owenOpenDesktopSearch();
+		return;
+	}
+
 	if (!isDesktopSearchExpanded) {
 		isDesktopSearchExpanded = true;
 		focusDesktopInput();
@@ -109,6 +114,16 @@ const closeSearchPanel = (): void => {
 	keywordDesktop = "";
 	keywordMobile = "";
 	result = [];
+};
+
+const toggleMobileSearchPanel = (event?: MouseEvent): void => {
+	event?.preventDefault();
+	event?.stopPropagation();
+	if (typeof window !== "undefined" && typeof (window as any).__owenToggleFloatPanel === "function") {
+		(window as any).__owenToggleFloatPanel("search-panel");
+		return;
+	}
+	togglePanel();
 };
 
 const handleResultClick = (event: Event, url: string): void => {
@@ -252,6 +267,7 @@ onDestroy(() => {
             type="button"
             class="owen-search-trigger absolute inset-y-0 left-0 z-[1] inline-flex w-11 items-center justify-center rounded-[inherit]"
             aria-label="Search"
+            data-ui-control="desktop-search"
             onclick={handleDesktopTriggerClick}
         >
             <Icon icon="material-symbols:search" class="text-[1.25rem] transition {isDesktopSearchExpanded ? 'text-black/30 dark:text-white/30' : ''}"></Icon>
@@ -270,13 +286,13 @@ onDestroy(() => {
 </div>
 
 <!-- toggle btn for phone/tablet view -->
-<button onclick={togglePanel} aria-label="Search Panel" id="search-switch"
+<button onclick={toggleMobileSearchPanel} aria-label="Search Panel" id="search-switch" data-ui-control="search-panel"
         class="btn-plain scale-animation lg:!hidden rounded-lg w-11 h-11 active:scale-90">
     <Icon icon="material-symbols:search" class="text-[1.25rem]"></Icon>
 </button>
 
 <!-- search panel -->
-<div id="search-panel" class="float-panel float-panel-closed absolute md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-50 search-panel shadow-2xl rounded-2xl p-2">
+<div id="search-panel" data-ui-panel="search-panel" class="float-panel float-panel-closed absolute md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-50 search-panel shadow-2xl rounded-2xl p-2">
     <!-- search bar inside panel for phone/tablet -->
     <div id="search-bar-inside" class="owen-search-inside flex relative lg:hidden transition-all items-center h-11 rounded-xl
       bg-black/[0.04] hover:bg-black/[0.06] focus-within:bg-black/[0.06]
