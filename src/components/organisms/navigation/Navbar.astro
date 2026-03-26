@@ -77,7 +77,7 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
             {/* 只在 sidebar 模式下显示移动端 TOC 按钮 */}
             {siteConfig.toc.enable && siteConfig.toc.mode === "sidebar" && <MobileTOC client:load></MobileTOC>}
             {!siteConfig.themeColor.fixed && (
-                    <button aria-label="Display Settings" class="btn-plain scale-animation relative z-[96] rounded-lg h-11 w-11 active:scale-90 hidden md:inline-flex" id="display-settings-switch" data-ui-control="display-setting" onclick="if(window.__owenToggleFloatPanel){window.__owenToggleFloatPanel('display-setting');}else{const p=document.getElementById('display-setting');if(p){const open=p.classList.contains('float-panel-closed');p.classList.toggle('float-panel-closed',!open);p.style.opacity=open?'1':'';p.style.transform=open?'scale(1) translateY(0)':'';p.style.pointerEvents=open?'auto':'';}} return false;">
+                    <button aria-label="Display Settings" class="btn-plain scale-animation relative z-[96] rounded-lg h-11 w-11 active:scale-90 hidden md:inline-flex" id="display-settings-switch" data-ui-control="display-setting">
                         <Icon name="material-symbols:palette-outline" class="text-[1.25rem]"></Icon>
                     </button>
             )}
@@ -94,7 +94,7 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
                 <WallpaperSwitch client:load></WallpaperSwitch>
             </div>
             <ThemeSwitch client:load></ThemeSwitch>
-            <button aria-label="Menu" name="Nav Menu" class="btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90 md:!hidden" id="nav-menu-switch" data-ui-control="nav-menu-panel" onclick="if(window.__owenToggleFloatPanel){window.__owenToggleFloatPanel('nav-menu-panel');}else{const p=document.getElementById('nav-menu-panel');if(p){const open=p.classList.contains('float-panel-closed');p.classList.toggle('float-panel-closed',!open);p.style.opacity=open?'1':'';p.style.transform=open?'scale(1) translateY(0)':'';p.style.pointerEvents=open?'auto':'';}} return false;">
+            <button aria-label="Menu" name="Nav Menu" class="btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90 md:!hidden" id="nav-menu-switch" data-ui-control="nav-menu-panel">
                 <Icon name="material-symbols:unfold-more" class="text-[1.25rem]"></Icon>
             </button>
         </div>
@@ -147,6 +147,42 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 			});
 			observer.observe(navbar, { attributes: true });
 		}
+	}
+
+	const togglePanel = (panelId) => {
+		const runtimeToggle = window["__owenToggleFloatPanel"];
+		if (typeof runtimeToggle === "function") {
+			runtimeToggle(panelId);
+			return;
+		}
+
+		const panel = document.getElementById(panelId);
+		if (!panel) return;
+		const shouldOpen = panel.classList.contains("float-panel-closed");
+		panel.classList.toggle("float-panel-closed", !shouldOpen);
+		panel.style.opacity = shouldOpen ? "1" : "";
+		panel.style.transform = shouldOpen ? "scale(1) translateY(0)" : "";
+		panel.style.pointerEvents = shouldOpen ? "auto" : "";
+	};
+
+	const displaySettingsSwitch = document.getElementById("display-settings-switch");
+	if (displaySettingsSwitch && !displaySettingsSwitch.dataset.owenBound) {
+		displaySettingsSwitch.dataset.owenBound = "true";
+		displaySettingsSwitch.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			togglePanel("display-setting");
+		});
+	}
+
+	const navMenuSwitch = document.getElementById("nav-menu-switch");
+	if (navMenuSwitch && !navMenuSwitch.dataset.owenBound) {
+		navMenuSwitch.dataset.owenBound = "true";
+		navMenuSwitch.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			togglePanel("nav-menu-panel");
+		});
 	}
 
 // 为semifull模式添加滚动检测逻辑

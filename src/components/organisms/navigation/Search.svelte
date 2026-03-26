@@ -48,6 +48,25 @@ const toggleDesktopSearch = () => {
 	}
 };
 
+const toggleMobileSearchPanel = () => {
+	const panel = document.getElementById("search-panel");
+	if (!(panel instanceof HTMLElement)) {
+		return;
+	}
+
+	const shouldOpen = panel.classList.contains("float-panel-closed");
+	panel.classList.toggle("float-panel-closed", !shouldOpen);
+
+	if (shouldOpen) {
+		setTimeout(() => {
+			const input = panel.querySelector("input");
+			if (input instanceof HTMLInputElement) {
+				input.focus();
+			}
+		}, 0);
+	}
+};
+
 const focusDesktopInput = () => {
 	setTimeout(() => {
 		const input = document.getElementById(
@@ -235,6 +254,15 @@ onDestroy(() => {
             class="owen-search-trigger absolute inset-y-0 left-0 z-[1] inline-flex w-11 items-center justify-center rounded-[inherit]"
             aria-label="Search"
             data-ui-control="desktop-search"
+            onclick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!isDesktopSearchExpanded) {
+                    toggleDesktopSearch();
+                } else {
+                    focusDesktopInput();
+                }
+            }}
         >
             <Icon icon="material-symbols:search" class="text-[1.25rem] transition {isDesktopSearchExpanded ? 'text-black/30 dark:text-white/30' : ''}"></Icon>
         </button>
@@ -253,6 +281,11 @@ onDestroy(() => {
 
 <!-- toggle btn for phone/tablet view -->
 <button aria-label="Search Panel" id="search-switch" data-ui-control="search-panel"
+        onclick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleMobileSearchPanel();
+        }}
         class="btn-plain scale-animation lg:!hidden rounded-lg w-11 h-11 active:scale-90">
     <Icon icon="material-symbols:search" class="text-[1.25rem]"></Icon>
 </button>
