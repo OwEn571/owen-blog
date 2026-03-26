@@ -218,6 +218,22 @@ if (siteConfig.font) {
 		{shouldShowTopHighlight && <div class="top-gradient-highlight" />}
 
 		<ConfigCarrier />
+		<div
+			id="theme-transition-overlay"
+			class="theme-transition-overlay"
+			data-state="idle"
+			data-theme="dark"
+			aria-hidden="true"
+		>
+			<div class="theme-transition-overlay__panel">
+				<div class="theme-transition-overlay__orb" aria-hidden="true">
+					<span class="theme-transition-overlay__sun">◐</span>
+					<span class="theme-transition-overlay__moon">◓</span>
+				</div>
+				<p class="theme-transition-overlay__eyebrow">Theme Shift</p>
+				<p class="theme-transition-overlay__title">正在切换昼夜氛围</p>
+			</div>
+		</div>
 		<slot />
 		<script
 			is:inline
@@ -283,6 +299,42 @@ if (siteConfig.font) {
 				}
 
 				window.addEventListener("pageshow", scheduleCleanup);
+			})();
+		</script>
+		<script is:inline>
+			(() => {
+				const overlay = document.getElementById("theme-transition-overlay");
+				if (!(overlay instanceof HTMLElement)) {
+					return;
+				}
+
+				let hideTimer = 0;
+				const setTheme = (dark) => {
+					overlay.dataset.theme = dark ? "dark" : "light";
+				};
+
+				setTheme(document.documentElement.classList.contains("dark"));
+
+				window.addEventListener("owen:theme-transition", (event) => {
+					const detail = event.detail || {};
+					window.clearTimeout(hideTimer);
+					setTheme(Boolean(detail.dark));
+
+					if (detail.phase === "start") {
+						overlay.dataset.state = "enter";
+						return;
+					}
+
+					overlay.dataset.state = "leave";
+					hideTimer = window.setTimeout(() => {
+						overlay.dataset.state = "idle";
+					}, 260);
+				});
+
+				window.addEventListener("owen:theme-applied", (event) => {
+					const detail = event.detail || {};
+					setTheme(Boolean(detail.dark));
+				});
 			})();
 		</script>
 
@@ -375,4 +427,3 @@ if (siteConfig.font) {
 		void loadCodeCollapse();
 	}
 </script>
-

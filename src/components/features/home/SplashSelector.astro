@@ -35,12 +35,25 @@ const splashTitle = profileConfig.name || siteConfig.title;
 				<span></span>
 				<span></span>
 			</div>
-			<span class="splash-status">Select Module</span>
+			<button
+				type="button"
+				class="splash-theme-toggle"
+				data-splash-theme-toggle
+				aria-label="切换日间与夜间主题"
+			>
+				<span class="splash-theme-toggle__icon splash-theme-toggle__icon--sun">
+					<Icon name="material-symbols:light-mode-rounded" class="text-[1rem]" />
+				</span>
+				<span class="splash-theme-toggle__label">Theme Shift</span>
+				<span class="splash-theme-toggle__icon splash-theme-toggle__icon--moon">
+					<Icon name="material-symbols:dark-mode-outline-rounded" class="text-[1rem]" />
+				</span>
+			</button>
 		</div>
 
 		<div class="splash-copy">
 			<p class="splash-kicker">Opening Screen</p>
-			<h1 class="splash-title"><TypewriterText text={`${splashTitle} 的内容入口`} speed={32} deleteSpeed={20} pauseTime={2600} showCaret={true} class="splash-title__typed" /></h1>
+			<h1 class="splash-title"><TypewriterText text={`${splashTitle} 的内容入口`} speed={72} deleteSpeed={32} pauseTime={3200} showCaret={true} class="splash-title__typed" /></h1>
 			<p class="splash-description">
 				先从这里选择你想进入的界面。四个分区保持同一套引擎，但拥有不同的内容节奏和观看方式。
 			</p>
@@ -85,6 +98,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 
 		const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 		const optionLinks = root.querySelectorAll("[data-splash-target]");
+		const themeToggle = root.querySelector("[data-splash-theme-toggle]");
 		const video = root.querySelector("[data-splash-video]");
 		const videoSource = video?.querySelector("source");
 		const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -94,6 +108,7 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			/(?:^|slow-)?2g/i.test(connection?.effectiveType || "");
 		let isNavigating = false;
 		let isVideoActivated = false;
+		let isThemeSwitching = false;
 		let themeObserver;
 
 		const resolveTheme = () =>
@@ -198,6 +213,45 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			window.location.assign(href);
 		};
 
+		const toggleTheme = () => {
+			if (isThemeSwitching) {
+				return;
+			}
+
+			isThemeSwitching = true;
+			const nextTheme = resolveTheme() === "dark" ? "light" : "dark";
+			const dark = nextTheme === "dark";
+
+			window.dispatchEvent(
+				new CustomEvent("owen:theme-transition", {
+					detail: { phase: "start", theme: nextTheme, dark },
+				}),
+			);
+
+			window.setTimeout(() => {
+				document.documentElement.classList.toggle("dark", dark);
+				document.documentElement.setAttribute(
+					"data-theme",
+					dark ? "github-dark" : "github-light",
+				);
+				localStorage.setItem("theme", nextTheme);
+				window.dispatchEvent(
+					new CustomEvent("owen:theme-applied", {
+						detail: { theme: nextTheme, dark },
+					}),
+				);
+			}, prefersReducedMotion ? 0 : 170);
+
+			window.setTimeout(() => {
+				window.dispatchEvent(
+					new CustomEvent("owen:theme-transition", {
+						detail: { phase: "end", theme: nextTheme, dark },
+					}),
+				);
+				isThemeSwitching = false;
+			}, prefersReducedMotion ? 0 : 620);
+		};
+
 		applyThemeAssets(false);
 		themeObserver = new MutationObserver(() => {
 			applyThemeAssets(isVideoActivated);
@@ -238,6 +292,12 @@ const splashTitle = profileConfig.name || siteConfig.title;
 				navigateTo(href);
 			});
 		});
+
+		if (themeToggle instanceof HTMLButtonElement) {
+			themeToggle.addEventListener("click", () => {
+				toggleTheme();
+			});
+		}
 
 		window.addEventListener("pagehide", () => {
 			themeObserver?.disconnect?.();
@@ -346,7 +406,8 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		gap: 0.45rem;
 	}
 
-	.splash-status {
+	.splash-status,
+	.splash-theme-toggle {
 		display: inline-flex;
 		align-items: center;
 		min-height: 2.4rem;
@@ -360,6 +421,40 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		text-transform: uppercase;
 		backdrop-filter: blur(18px);
 		-webkit-backdrop-filter: blur(18px);
+	}
+
+	.splash-theme-toggle {
+		gap: 0.55rem;
+		cursor: pointer;
+		transition:
+			transform 220ms ease,
+			border-color 220ms ease,
+			box-shadow 220ms ease,
+			background-color 220ms ease;
+	}
+
+	.splash-theme-toggle:hover,
+	.splash-theme-toggle:focus-visible {
+		transform: translateY(-1px) scale(1.01);
+		border-color: rgba(255, 255, 255, 0.2);
+		box-shadow:
+			0 0 18px rgba(118, 156, 255, 0.12),
+			0 14px 34px rgba(2, 4, 10, 0.16);
+	}
+
+	.splash-theme-toggle__icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.45rem;
+		height: 1.45rem;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.08);
+	}
+
+	.splash-theme-toggle__label {
+		font-size: 0.78rem;
+		letter-spacing: 0.16em;
 	}
 
 	.splash-dots span {
@@ -616,10 +711,16 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			radial-gradient(circle at top left, rgba(255, 255, 255, 0.44), transparent 20rem);
 	}
 
-	.splash-shell[data-theme="light"] .splash-status {
+	.splash-shell[data-theme="light"] .splash-status,
+	.splash-shell[data-theme="light"] .splash-theme-toggle {
 		background: rgba(255, 255, 255, 0.62);
 		border-color: rgba(255, 180, 204, 0.22);
 		color: rgba(136, 72, 101, 0.7);
+	}
+
+	.splash-shell[data-theme="light"] .splash-theme-toggle__icon {
+		background: rgba(255, 216, 230, 0.48);
+		color: rgba(143, 74, 105, 0.86);
 	}
 
 	.splash-shell[data-theme="light"] .splash-kicker,

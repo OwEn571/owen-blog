@@ -22,10 +22,10 @@ function switchScheme(newMode: LIGHT_DARK_MODE) {
 	mode = newMode;
 	setTheme(newMode);
 
-	// 50ms 后重置状态，防止过快切换
+	// 等过场动画结束后再允许下一次切换，避免状态打架
 	setTimeout(() => {
 		isChanging = false;
-	}, 50);
+	}, 650);
 }
 
 function toggleScheme() {

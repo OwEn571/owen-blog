@@ -79,6 +79,20 @@ body.immersive-page .immersive-video-shell {
   isolation: isolate;
 }
 
+:root:not(.dark) body.immersive-page .immersive-video-shell {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(255, 188, 210, 0.26), transparent 24rem),
+    radial-gradient(circle at 84% 20%, rgba(229, 198, 255, 0.22), transparent 20rem),
+    linear-gradient(180deg, rgba(255, 251, 252, 0.96), rgba(255, 241, 247, 0.94));
+}
+
+:root.dark body.immersive-page .immersive-video-shell {
+  background:
+    radial-gradient(circle at 14% 18%, rgba(86, 126, 255, 0.18), transparent 24rem),
+    radial-gradient(circle at 84% 20%, rgba(164, 132, 255, 0.14), transparent 20rem),
+    linear-gradient(180deg, rgba(4, 7, 12, 0.94), rgba(7, 10, 16, 0.96));
+}
+
 .immersive-video,
 body.immersive-page .immersive-video {
   position: absolute;
@@ -518,6 +532,170 @@ html.splash-active #banner-credit {
   pointer-events: none;
   z-index: 20;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 240ms ease,
+    visibility 0ms linear 240ms;
+}
+
+.theme-transition-overlay[data-state="enter"],
+.theme-transition-overlay[data-state="leave"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 240ms ease,
+    visibility 0ms linear 0ms;
+}
+
+.theme-transition-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 253, 0.26), rgba(255, 244, 248, 0.42)),
+    radial-gradient(circle at top, rgba(255, 188, 210, 0.24), transparent 22rem);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+}
+
+.theme-transition-overlay[data-theme="dark"]::before {
+  background:
+    linear-gradient(180deg, rgba(4, 7, 12, 0.28), rgba(6, 9, 16, 0.52)),
+    radial-gradient(circle at top, rgba(118, 156, 255, 0.18), transparent 22rem);
+}
+
+.theme-transition-overlay__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: min(18rem, calc(100vw - 3rem));
+  padding: 1.45rem 1.65rem;
+  border-radius: 1.6rem;
+  border: 1px solid rgba(236, 174, 198, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 243, 248, 0.7)),
+    radial-gradient(circle at top right, rgba(255, 188, 210, 0.18), transparent 12rem);
+  box-shadow:
+    0 28px 80px rgba(120, 82, 101, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  transform: translateY(14px) scale(0.965);
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-transition-overlay[data-state="enter"] .theme-transition-overlay__panel {
+  transform: translateY(0) scale(1);
+}
+
+.theme-transition-overlay[data-state="leave"] .theme-transition-overlay__panel {
+  transform: translateY(-8px) scale(0.985);
+}
+
+.theme-transition-overlay[data-theme="dark"] .theme-transition-overlay__panel {
+  border-color: rgba(118, 156, 255, 0.2);
+  background:
+    linear-gradient(180deg, rgba(12, 16, 25, 0.92), rgba(7, 11, 18, 0.76)),
+    radial-gradient(circle at top right, rgba(118, 156, 255, 0.18), transparent 12rem);
+  box-shadow:
+    0 32px 88px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.theme-transition-overlay__orb {
+  position: relative;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.88), rgba(255, 228, 238, 0.74) 42%, rgba(255, 188, 210, 0.34) 68%, transparent 72%),
+    linear-gradient(135deg, rgba(255, 220, 233, 0.96), rgba(255, 189, 218, 0.66));
+  box-shadow:
+    0 0 0 1px rgba(255, 188, 210, 0.18),
+    0 0 28px rgba(255, 188, 210, 0.2),
+    0 18px 44px rgba(120, 82, 101, 0.16);
+  overflow: hidden;
+}
+
+.theme-transition-overlay[data-theme="dark"] .theme-transition-overlay__orb {
+  background:
+    radial-gradient(circle at 34% 28%, rgba(205, 221, 255, 0.9), rgba(118, 156, 255, 0.38) 42%, rgba(118, 156, 255, 0.16) 68%, transparent 72%),
+    linear-gradient(135deg, rgba(32, 44, 76, 0.96), rgba(14, 20, 34, 0.76));
+  box-shadow:
+    0 0 0 1px rgba(118, 156, 255, 0.18),
+    0 0 30px rgba(118, 156, 255, 0.22),
+    0 18px 48px rgba(0, 0, 0, 0.26);
+}
+
+.theme-transition-overlay__sun,
+.theme-transition-overlay__moon {
+  position: absolute;
+  font-size: 1.6rem;
+  line-height: 1;
+  transition:
+    opacity 260ms ease,
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-transition-overlay__sun {
+  color: rgba(160, 78, 115, 0.9);
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.theme-transition-overlay__moon {
+  color: rgba(225, 234, 255, 0.92);
+  opacity: 0;
+  transform: translateY(10px) scale(0.82);
+}
+
+.theme-transition-overlay[data-theme="dark"] .theme-transition-overlay__sun {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.82);
+}
+
+.theme-transition-overlay[data-theme="dark"] .theme-transition-overlay__moon {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.theme-transition-overlay__eyebrow {
+  font-family: var(--owen-font-ui);
+  font-size: 0.76rem;
+  font-weight: 620;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(143, 74, 105, 0.68);
+}
+
+.theme-transition-overlay__title {
+  font-family: var(--owen-font-display);
+  font-size: 1.1rem;
+  font-weight: 690;
+  letter-spacing: -0.03em;
+  color: rgba(82, 45, 61, 0.92);
+}
+
+.theme-transition-overlay[data-theme="dark"] .theme-transition-overlay__eyebrow {
+  color: rgba(190, 206, 244, 0.66);
+}
+
+.theme-transition-overlay[data-theme="dark"] .theme-transition-overlay__title {
+  color: rgba(241, 245, 255, 0.94);
 }
 
 /* 暗色主题下的渐变高光效果 */
@@ -2316,6 +2494,67 @@ html.splash-active #banner-credit {
   body.immersive-page .post-markdown-flow .python-code-card__surface {
     border-radius: 0.95rem;
     overflow: auto;
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__badge,
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__meta,
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__summary-toggle,
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__copy {
+    border-color: rgba(236, 174, 198, 0.18);
+    background: rgba(255, 224, 236, 0.5);
+    color: rgba(160, 78, 115, 0.9);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__summary-label,
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__title {
+    color: rgba(91, 50, 68, 0.92);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__summary-note,
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__eyebrow {
+    color: rgba(143, 74, 105, 0.66);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__details {
+    border-color: rgba(236, 174, 198, 0.18);
+    background: rgba(255, 250, 252, 0.76);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__summary {
+    border-top-color: rgba(236, 174, 198, 0.16);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__surface {
+    border-color: rgba(236, 174, 198, 0.18);
+    background:
+      linear-gradient(180deg, rgba(255, 253, 254, 0.98), rgba(255, 246, 250, 0.96)),
+      radial-gradient(circle at top, rgba(255, 188, 210, 0.12), transparent 60%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 18px 42px rgba(120, 82, 101, 0.1);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__surface-bar {
+    border-bottom-color: rgba(236, 174, 198, 0.16);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 243, 248, 0.74)),
+      rgba(255, 247, 250, 0.9);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__surface-name {
+    color: rgba(151, 86, 117, 0.82);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__surface-state {
+    color: rgba(171, 105, 135, 0.62);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__code {
+    color: rgba(56, 39, 47, 0.92);
+  }
+
+  :root:not(.dark) body.immersive-page .post-markdown-flow .python-code-card__line-no {
+    color: rgba(176, 109, 140, 0.52);
   }
 
   body.immersive-page .post-markdown-flow .python-code-card__line {

@@ -181,6 +181,9 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					loop
 					playsinline
 					preload="metadata"
+					poster="/assets/opening/qidian-splash-poster.jpg"
+					data-poster-dark="/assets/opening/qidian-splash-poster.jpg"
+					data-poster-light="/assets/opening/sakura-field-day-poster.svg"
 					disableRemotePlayback
 				>
 					<source data-src-dark="/assets/opening/qidian-splash.mp4" data-src-light="/assets/opening/sakura-field-day.mp4" type="video/mp4" />
@@ -212,6 +215,11 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 
 						const theme = resolveTheme();
 						shell.dataset.theme = theme;
+						const nextPoster =
+							theme === "dark" ? video.dataset.posterDark : video.dataset.posterLight;
+						if (nextPoster) {
+							video.poster = nextPoster;
+						}
 						const nextSrc =
 							theme === "dark" ? videoSource.dataset.srcDark : videoSource.dataset.srcLight;
 						if (!nextSrc) {
@@ -273,6 +281,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						attributes: true,
 						attributeFilter: ["class"],
 					});
+					window.addEventListener("owen:theme-applied", applyThemeVideo);
 					mediaQuery.addEventListener?.("change", syncMotionPreference);
 					mobileRenderQuery.addEventListener?.("change", syncMotionPreference);
 
@@ -288,6 +297,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						"pagehide",
 						() => {
 							themeObserver?.disconnect?.();
+							window.removeEventListener("owen:theme-applied", applyThemeVideo);
 							window.clearTimeout(resumeTimer);
 							video.pause();
 						},
