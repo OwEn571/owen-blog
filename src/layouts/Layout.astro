@@ -424,88 +424,7 @@ if (siteConfig.font) {
 					return openFloatPanel(panelId, exceptIds);
 				};
 
-				const setDesktopSearchExpanded = (open) => {
-					const bar = document.getElementById("search-bar");
-					const input = document.getElementById("search-input-desktop");
-					const navbar = document.getElementById("navbar");
-					if (!(bar instanceof HTMLElement) || !(input instanceof HTMLInputElement)) {
-						return;
-					}
-
-					bar.dataset.fallbackExpanded = open ? "true" : "false";
-					bar.classList.toggle("owen-search-expanded", open);
-					bar.style.width = open ? "12rem" : "";
-					input.style.width = open ? "9rem" : "";
-					input.style.pointerEvents = open ? "auto" : "";
-
-					if (open) {
-						navbar?.classList.add("is-searching");
-						window.setTimeout(() => input.focus(), 0);
-						return;
-					}
-
-					if (!input.value) {
-						navbar?.classList.remove("is-searching");
-					}
-				};
-
-				const setPythonLabOpen = (open) => {
-					const root = document.querySelector("[data-python-lab]");
-					if (!(root instanceof HTMLElement)) {
-						return;
-					}
-					const panel = root.querySelector("[data-python-lab-panel]");
-					const toggle = root.querySelector("[data-python-lab-toggle]");
-					const fallback = root.querySelector("[data-python-lab-fallback]");
-					if (!(panel instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) {
-						return;
-					}
-
-					if (open && typeof window.__owenEnsurePythonLabRuntime === "function") {
-						window.__owenEnsurePythonLabRuntime();
-					}
-
-					panel.hidden = !open;
-					root.dataset.state = open ? "open" : "closed";
-					toggle.setAttribute("aria-expanded", open ? "true" : "false");
-					if (open) {
-						root.style.zIndex = "70";
-						if (fallback instanceof HTMLTextAreaElement) {
-							window.setTimeout(() => fallback.focus(), 0);
-						}
-						if (typeof window.__owenBootstrapPythonLabFallback === "function") {
-							window.__owenBootstrapPythonLabFallback(true);
-						}
-						return;
-					}
-					if (typeof window.__owenBootstrapPythonLabFallback === "function") {
-						window.__owenBootstrapPythonLabFallback(false);
-					}
-					root.style.zIndex = "";
-				};
-
-				const toggleControl = (control) => {
-					switch (control) {
-						case "desktop-search":
-							setDesktopSearchExpanded(true);
-							return;
-						case "python-lab": {
-							const root = document.querySelector("[data-python-lab]");
-							const isOpen =
-								root instanceof HTMLElement && root.dataset.state === "open";
-							setPythonLabOpen(!isOpen);
-							return;
-						}
-						default:
-							toggleFloatPanel(control);
-					}
-				};
-
 				window.__owenToggleFloatPanel = toggleFloatPanel;
-				window.__owenOpenDesktopSearch = () => setDesktopSearchExpanded(true);
-				window.__owenCloseDesktopSearch = () => setDesktopSearchExpanded(false);
-				window.__owenSetPythonLabOpen = setPythonLabOpen;
-				window.__owenTogglePythonLab = () => toggleControl("python-lab");
 				window.__owenApplyTheme = (theme) => {
 					localStorage.setItem("theme", theme);
 					const dark = theme === "dark";
@@ -542,8 +461,6 @@ if (siteConfig.font) {
 					openFloatPanel,
 					closeFloatPanel,
 					toggleFloatPanel,
-					setDesktopSearchExpanded,
-					setPythonLabOpen,
 					applyTheme: window.__owenApplyTheme,
 				};
 
@@ -553,11 +470,6 @@ if (siteConfig.font) {
 						const target = event.target;
 						if (!(target instanceof Element)) {
 							return;
-						}
-
-						if (!target.closest("#search-bar, #search-panel, [data-ui-control='desktop-search'], [data-ui-control='search-panel']")) {
-							setDesktopSearchExpanded(false);
-							closeFloatPanel("search-panel");
 						}
 
 						if (!target.closest("#display-setting, [data-ui-control='display-setting']")) {
@@ -576,9 +488,6 @@ if (siteConfig.font) {
 							closeFloatPanel("wallpaper-mode-panel");
 						}
 
-						if (!target.closest("[data-python-lab]")) {
-							setPythonLabOpen(false);
-						}
 					},
 					true,
 				);
@@ -587,9 +496,7 @@ if (siteConfig.font) {
 					if (event.key !== "Escape") {
 						return;
 					}
-					setDesktopSearchExpanded(false);
 					FLOAT_PANELS.forEach((id) => closeFloatPanel(id));
-					setPythonLabOpen(false);
 				});
 			})();
 		</script>

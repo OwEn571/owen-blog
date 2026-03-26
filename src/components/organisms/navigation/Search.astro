@@ -1,0 +1,374 @@
+---
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import { Icon } from "astro-icon/components";
+import { url } from "@/utils/url-utils";
+---
+
+<div class="hidden lg:block relative z-[96] w-11 h-11 shrink-0 pointer-events-auto" id="desktop-search-host">
+	<div id="search-bar" class="owen-search-shell btn-plain active:scale-90" role="search" aria-label="Desktop Search" data-open="false">
+		<button
+			type="button"
+			class="owen-search-trigger"
+			aria-label="Search"
+			onclick="window.__owenToggleDesktopSearch && window.__owenToggleDesktopSearch(event)"
+		>
+			<Icon name="material-symbols:search" class="text-[1.25rem]" />
+		</button>
+		<input
+			id="search-input-desktop"
+			class="owen-search-input"
+			type="search"
+			placeholder={i18n(I18nKey.search)}
+			autocomplete="off"
+		/>
+	</div>
+</div>
+
+<button
+	aria-label="Search Panel"
+	id="search-switch"
+	onclick="window.__owenToggleMobileSearch && window.__owenToggleMobileSearch(event)"
+	class="btn-plain scale-animation lg:!hidden rounded-lg w-11 h-11 active:scale-90"
+>
+	<Icon name="material-symbols:search" class="text-[1.25rem]" />
+</button>
+
+<div
+	id="search-panel"
+	data-ui-panel="search-panel"
+	class="float-panel float-panel-closed fixed md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-[320] search-panel shadow-2xl rounded-2xl p-2"
+>
+	<div id="search-bar-inside" class="owen-search-inside lg:hidden">
+		<Icon name="material-symbols:search" class="owen-search-inside__icon text-[1.25rem]" />
+		<input
+			id="search-input-mobile"
+			placeholder={i18n(I18nKey.search)}
+			class="owen-search-inside__input"
+			type="search"
+			autocomplete="off"
+		/>
+	</div>
+	<div id="search-results" class="owen-search-results"></div>
+</div>
+
+<style>
+	#search-bar {
+		position: absolute;
+		right: 0;
+		top: 0;
+		display: flex;
+		align-items: center;
+		height: 2.75rem;
+		width: 2.75rem;
+		border-radius: 0.9rem;
+		overflow: hidden;
+		transition:
+			width 0.22s ease,
+			background-color 0.22s ease,
+			box-shadow 0.22s ease,
+			border-color 0.22s ease;
+	}
+
+	#search-bar[data-open="true"] {
+		width: 12rem;
+		background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+	}
+
+	.owen-search-trigger {
+		position: absolute;
+		inset: 0 auto 0 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border: none;
+		background: transparent;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	.owen-search-input {
+		width: 0;
+		height: 100%;
+		margin-left: 2.75rem;
+		border: none;
+		outline: none;
+		background: transparent;
+		color: var(--text-normal);
+		opacity: 0;
+		transition: width 0.18s ease, opacity 0.18s ease;
+	}
+
+	#search-bar[data-open="true"] .owen-search-input {
+		width: 8.4rem;
+		opacity: 1;
+	}
+
+	.owen-search-inside {
+		position: relative;
+		display: flex;
+		align-items: center;
+		height: 2.75rem;
+		border-radius: 0.9rem;
+		background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+	}
+
+	.owen-search-inside__icon {
+		position: absolute;
+		left: 0.9rem;
+		color: var(--text-secondary);
+		pointer-events: none;
+	}
+
+	.owen-search-inside__input {
+		width: 100%;
+		height: 100%;
+		padding: 0 0.95rem 0 2.6rem;
+		border: none;
+		outline: none;
+		background: transparent;
+		color: var(--text-normal);
+	}
+
+	.owen-search-results {
+		display: grid;
+		gap: 0.55rem;
+		margin-top: 0.55rem;
+	}
+
+	.owen-search-result {
+		display: block;
+		padding: 0.82rem 0.9rem;
+		border-radius: 1rem;
+		border: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 92%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--card-bg) 82%, transparent)),
+			radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 10%, transparent), transparent 68%);
+		text-decoration: none;
+		transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+	}
+
+	.owen-search-result:hover,
+	.owen-search-result:focus-visible {
+		transform: translateY(-1px);
+		border-color: color-mix(in srgb, var(--primary) 18%, transparent);
+		box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+	}
+
+	.owen-search-result__title {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-weight: 700;
+		color: var(--text-normal);
+	}
+
+	.owen-search-result__excerpt {
+		margin-top: 0.32rem;
+		font-size: 0.9rem;
+		line-height: 1.65;
+		color: var(--text-secondary);
+	}
+
+	.owen-search-empty {
+		padding: 0.95rem;
+		border-radius: 1rem;
+		color: var(--text-secondary);
+		background: color-mix(in srgb, var(--card-bg) 84%, transparent);
+		text-align: center;
+		font-size: 0.9rem;
+	}
+</style>
+
+<script is:inline define:vars={{ rootUrl: url("/") }}>
+	(() => {
+		const desktopBar = document.getElementById("search-bar");
+		const desktopInput = document.getElementById("search-input-desktop");
+		const mobileInput = document.getElementById("search-input-mobile");
+		const panel = document.getElementById("search-panel");
+		const results = document.getElementById("search-results");
+
+		if (
+			!(desktopBar instanceof HTMLElement) ||
+			!(desktopInput instanceof HTMLInputElement) ||
+			!(mobileInput instanceof HTMLInputElement) ||
+			!(panel instanceof HTMLElement) ||
+			!(results instanceof HTMLElement)
+		) {
+			return;
+		}
+
+		let keyword = "";
+		let debounceTimer = 0;
+		let desktopOpen = false;
+
+		const fakeResults = [
+			{
+				url: rootUrl,
+				title: "Search preview is only available after build",
+				excerpt: "开发模式下这里会显示模拟结果，线上会使用 Pagefind。",
+			},
+		];
+
+		const escapeHtml = (value) =>
+			value
+				.replaceAll("&", "&amp;")
+				.replaceAll("<", "&lt;")
+				.replaceAll(">", "&gt;")
+				.replaceAll('"', "&quot;")
+				.replaceAll("'", "&#39;");
+
+		const showPanel = () => {
+			panel.classList.remove("float-panel-closed");
+		};
+
+		const hidePanel = () => {
+			panel.classList.add("float-panel-closed");
+		};
+
+		const setDesktopOpen = (open) => {
+			desktopOpen = open;
+			desktopBar.dataset.open = open ? "true" : "false";
+			if (open) {
+				window.setTimeout(() => desktopInput.focus(), 0);
+			}
+		};
+
+		const renderResults = (items) => {
+			if (!items.length) {
+				results.innerHTML = '<div class="owen-search-empty">没有找到匹配内容</div>';
+				showPanel();
+				return;
+			}
+
+			results.innerHTML = items
+				.map(
+					(item) => `
+						<a class="owen-search-result" href="${item.url}">
+							<div class="owen-search-result__title">
+								<span>${escapeHtml(item.title)}</span>
+								<span aria-hidden="true">›</span>
+							</div>
+							<div class="owen-search-result__excerpt">${item.excerpt}</div>
+						</a>
+					`,
+				)
+				.join("");
+			showPanel();
+		};
+
+		const performSearch = async (nextKeyword) => {
+			keyword = nextKeyword.trim();
+			desktopInput.value = keyword;
+			mobileInput.value = keyword;
+
+			if (!keyword) {
+				results.innerHTML = "";
+				hidePanel();
+				return;
+			}
+
+			if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+				renderResults(fakeResults);
+				return;
+			}
+
+			const pagefind = window.pagefind;
+			if (!pagefind || typeof pagefind.search !== "function") {
+				renderResults([]);
+				return;
+			}
+
+			try {
+				const response = await pagefind.search(keyword);
+				const entries = await Promise.all(response.results.map((item) => item.data()));
+				renderResults(
+					entries.map((entry) => ({
+						url: entry.url,
+						title: entry.meta.title || "Untitled",
+						excerpt: entry.excerpt || "",
+					})),
+				);
+			} catch (error) {
+				console.error("Search error:", error);
+				renderResults([]);
+			}
+		};
+
+		const scheduleSearch = (value) => {
+			window.clearTimeout(debounceTimer);
+			debounceTimer = window.setTimeout(() => {
+				performSearch(value);
+			}, 220);
+		};
+
+		window.__owenToggleDesktopSearch = (event) => {
+			event?.preventDefault?.();
+			event?.stopPropagation?.();
+			setDesktopOpen(!desktopOpen);
+			if (!desktopOpen && keyword) {
+				showPanel();
+			}
+		};
+
+		window.__owenToggleMobileSearch = (event) => {
+			event?.preventDefault?.();
+			event?.stopPropagation?.();
+			const shouldOpen = panel.classList.contains("float-panel-closed");
+			if (shouldOpen) {
+				showPanel();
+				window.setTimeout(() => mobileInput.focus(), 0);
+				if (keyword) {
+					scheduleSearch(keyword);
+				}
+			} else {
+				hidePanel();
+			}
+		};
+
+		desktopInput.addEventListener("input", (event) => {
+			scheduleSearch(event.currentTarget.value);
+		});
+
+		mobileInput.addEventListener("input", (event) => {
+			scheduleSearch(event.currentTarget.value);
+		});
+
+		desktopInput.addEventListener("focus", () => {
+			setDesktopOpen(true);
+			if (keyword) {
+				showPanel();
+			}
+		});
+
+		desktopInput.addEventListener("keydown", (event) => {
+			if (event.key === "Escape") {
+				setDesktopOpen(false);
+				hidePanel();
+			}
+		});
+
+		document.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof Node)) {
+				return;
+			}
+
+			if (
+				desktopBar.contains(target) ||
+				panel.contains(target) ||
+				(target instanceof Element && target.closest("#search-switch"))
+			) {
+				return;
+			}
+
+			if (!keyword) {
+				setDesktopOpen(false);
+			}
+			hidePanel();
+		});
+	})();
+</script>

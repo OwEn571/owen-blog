@@ -9,6 +9,7 @@ import { url } from "@/utils/url-utils";
 		class="python-lab-fab"
 		data-python-lab-toggle
 		data-ui-control="python-lab"
+		onclick="window.__owenTogglePythonLab && window.__owenTogglePythonLab(event)"
 		aria-expanded="false"
 		aria-controls="python-lab-panel"
 		aria-label="打开 Python Lab"
@@ -38,6 +39,7 @@ import { url } from "@/utils/url-utils";
 				class="python-lab-panel__close"
 				data-python-lab-close
 				data-ui-control-close="python-lab"
+				onclick="window.__owenClosePythonLab && window.__owenClosePythonLab(event)"
 				aria-label="收起 Python Lab"
 			>
 				<Icon name="mdi:close" />
@@ -129,10 +131,7 @@ print([sqrt(n) for n in nums])
 
 <script is:inline define:vars={{ PYTHON_PLAYGROUND_URL: url("/scripts/python-playground.js") }}>
 	(() => {
-		const current = document.currentScript;
-		const root =
-			current?.parentElement?.querySelector("[data-python-lab]") ??
-			current?.previousElementSibling;
+		const root = document.querySelector("[data-python-lab]");
 		if (!(root instanceof HTMLElement) || root.dataset.pythonLabBootstrap === "true") {
 			return;
 		}
@@ -181,27 +180,33 @@ print([sqrt(n) for n in nums])
 		window.__owenEnsurePythonLabRuntime = ensureRuntimeScript;
 		window.__owenBootstrapPythonLabFallback = setOpen;
 
-		if (toggle.dataset.owenBound !== "true") {
-			toggle.dataset.owenBound = "true";
-			toggle.addEventListener("click", (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				const open = root.dataset.state === "open";
-				if (!open) {
-					ensureRuntimeScript();
-				}
-				setOpen(!open);
-			});
-		}
+		window.__owenTogglePythonLab = (event) => {
+			event?.preventDefault?.();
+			event?.stopPropagation?.();
+			const open = root.dataset.state === "open";
+			if (!open) {
+				ensureRuntimeScript();
+			}
+			setOpen(!open);
+		};
 
-		if (close.dataset.owenBound !== "true") {
-			close.dataset.owenBound = "true";
-			close.addEventListener("click", (event) => {
-				event.preventDefault();
-				event.stopPropagation();
+		window.__owenClosePythonLab = (event) => {
+			event?.preventDefault?.();
+			event?.stopPropagation?.();
+			setOpen(false);
+		};
+
+		document.addEventListener(
+			"mousedown",
+			(event) => {
+				const target = event.target;
+				if (!(target instanceof Element) || root.contains(target)) {
+					return;
+				}
 				setOpen(false);
-			});
-		}
+			},
+			true,
+		);
 	})();
 </script>
 
