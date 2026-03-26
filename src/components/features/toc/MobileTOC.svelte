@@ -5,7 +5,7 @@
 	import I18nKey from "../../../i18n/i18nKey";
 	import { i18n } from "../../../i18n/translation";
 	import { navigateToPage } from "../../../utils/navigation-utils";
-	import { panelManager } from "../../../utils/panel-manager.js";
+	import { panelManager } from "../../../utils/panel-manager";
 	import { findTOCGroupParentId, groupTOCItems } from "./utils/toc-groups";
 	import {
 		checkIsHomePage,

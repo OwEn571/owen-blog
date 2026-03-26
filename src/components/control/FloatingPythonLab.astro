@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import { url } from "@/utils/url-utils";
 ---
 
 <div class="python-lab-fab-shell" data-python-lab data-state="closed">
@@ -123,10 +124,12 @@ print([sqrt(n) for n in nums])
     box-shadow 0 38px 104px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255,255,255,.08)
 </style>
 
-<script is:inline>
+<script is:inline define:vars={{ PYTHON_PLAYGROUND_URL: url("/scripts/python-playground.js") }}>
 	(() => {
 		const current = document.currentScript;
-		const root = current?.previousElementSibling;
+		const root =
+			current?.parentElement?.querySelector("[data-python-lab]") ??
+			current?.previousElementSibling;
 		if (!(root instanceof HTMLElement) || root.dataset.pythonLabBootstrap === "true") {
 			return;
 		}
@@ -156,10 +159,26 @@ print([sqrt(n) for n in nums])
 			}
 		};
 
+		const ensureRuntimeScript = () => {
+			if (root.dataset.pythonLabBound === "true") {
+				return;
+			}
+
+			if (document.querySelector('script[data-python-lab-runtime="true"]')) {
+				return;
+			}
+
+			const script = document.createElement("script");
+			script.src = PYTHON_PLAYGROUND_URL;
+			script.dataset.pythonLabRuntime = "true";
+			document.body.appendChild(script);
+		};
+
 		toggle.addEventListener("click", () => {
 			if (root.dataset.pythonLabBound === "true") {
 				return;
 			}
+			ensureRuntimeScript();
 			setOpen(panel.hidden);
 		});
 

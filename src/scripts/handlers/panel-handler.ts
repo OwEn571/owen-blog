@@ -11,6 +11,8 @@ interface PanelConfig {
 	ignoreElements: string[];
 }
 
+import { panelManager } from "../../utils/panel-manager";
+
 /**
  * 面板处理器类
  * 负责初始化面板的点击外部关闭功能
@@ -48,9 +50,7 @@ export class PanelHandler {
 	 */
 	async init(): Promise<void> {
 		try {
-			// 动态导入面板管理器
-			const module = await import("../../utils/panel-manager.js");
-			this.panelManager = module.panelManager;
+			this.panelManager = panelManager;
 
 			// 设置所有面板的点击外部关闭功能
 			this.panels.forEach((panel) => {

@@ -1620,7 +1620,6 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			return;
 		}
 
-		root.dataset.pythonLabBound = "true";
 		pythonLabStateMap.set(root, {
 			toggle,
 			panel,
@@ -1767,6 +1766,8 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 				window.addEventListener("pointercancel", onUp, { once: true });
 			});
 		});
+
+		root.dataset.pythonLabBound = "true";
 	}
 
 	function upgradeLegacyPlayground(root) {

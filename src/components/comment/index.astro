@@ -23,9 +23,69 @@ if (commentConfig?.enable && commentConfig?.twikoo) {
 
 const commentEnabled = data.comment ?? true;
 ---
-{commentConfig?.enable && commentEnabled && (
-  <div class="post-support-card post-comment-card card-base p-6 mb-4">
-    {commentService === 'twikoo' && <Twikoo path={path} />}
-    {commentService === '' && null}
-  </div>
+{commentEnabled && (
+	<div class="post-support-card post-comment-card card-base p-6 mb-4">
+		{
+			commentConfig?.enable && commentService === "twikoo" ? (
+				<Twikoo path={path} />
+			) : (
+				<div class="comment-placeholder">
+					<p class="comment-placeholder__eyebrow">Comments</p>
+					<h3 class="comment-placeholder__title">评论区待接入</h3>
+					<p class="comment-placeholder__copy">
+						配置 <code>PUBLIC_TWIKOO_ENV_ID</code> 后，这里会自动启用评论区。
+					</p>
+				</div>
+			)
+		}
+	</div>
 )}
+
+<style>
+	.comment-placeholder {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		border-radius: 1.3rem;
+		border: 1px dashed rgba(255, 194, 214, 0.36);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 246, 250, 0.38)),
+			radial-gradient(circle at top right, rgba(255, 194, 214, 0.14), transparent 10rem);
+		padding: 1.15rem 1.2rem;
+		color: rgba(15, 23, 42, 0.72);
+	}
+
+	:global(.dark) .comment-placeholder {
+		border-color: rgba(118, 156, 255, 0.18);
+		background:
+			linear-gradient(180deg, rgba(14, 18, 28, 0.62), rgba(8, 11, 18, 0.34)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.14), transparent 10rem);
+		color: rgba(228, 236, 248, 0.72);
+	}
+
+	.comment-placeholder__eyebrow {
+		margin: 0;
+		font-size: 0.74rem;
+		font-weight: 650;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(190, 92, 132, 0.74);
+	}
+
+	:global(.dark) .comment-placeholder__eyebrow {
+		color: rgba(166, 196, 255, 0.7);
+	}
+
+	.comment-placeholder__title {
+		margin: 0;
+		font-family: var(--owen-font-display);
+		font-size: 1.08rem;
+		font-weight: 680;
+		letter-spacing: -0.03em;
+	}
+
+	.comment-placeholder__copy {
+		margin: 0;
+		line-height: 1.8;
+	}
+</style>

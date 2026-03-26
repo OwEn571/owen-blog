@@ -104,6 +104,8 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 </div>
 
 <script>
+	import { panelManager } from "../../../utils/panel-manager";
+
 	const searchContainer = document.getElementById("search-container");
 	const navbarLinksContainer = document.getElementById("navbar-links-container");
 
@@ -149,49 +151,50 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 		}
 	}
 
-async function loadButtonScript() {
-    try {
-        const { panelManager } = await import('../../../utils/panel-manager.js');
-        
-        const settingBtn = document.getElementById("display-settings-switch");
-        if (settingBtn) {
-            settingBtn.onclick = async function () {
-                await panelManager.togglePanel('display-setting');
-            };
-        }
+function togglePanelFallback(panelId: "display-setting" | "nav-menu-panel") {
+	const panel = document.getElementById(panelId);
+	if (!panel) {
+		return;
+	}
 
-        const menuBtn = document.getElementById("nav-menu-switch");
-        if (menuBtn) {
-            menuBtn.onclick = async function () {
-                await panelManager.togglePanel('nav-menu-panel');
-            };
-        }
-    } catch (error) {
-        console.error('Failed to load panel manager:', error);
-        // 备用逻辑
-        const settingBtn = document.getElementById("display-settings-switch");
-        if (settingBtn) {
-            settingBtn.onclick = function () {
-                const settingPanel = document.getElementById("display-setting");
-                if (settingPanel) {
-                    settingPanel.classList.toggle("float-panel-closed");
-                }
-            };
-        }
+	const shouldOpen = panel.classList.contains("float-panel-closed");
 
-        const menuBtn = document.getElementById("nav-menu-switch");
-        if (menuBtn) {
-            menuBtn.onclick = function () {
-                const menuPanel = document.getElementById("nav-menu-panel");
-                if (menuPanel) {
-                    menuPanel.classList.toggle("float-panel-closed");
-                }
-            };
-        }
-    }
+	["display-setting", "nav-menu-panel"].forEach((id) => {
+		if (id !== panelId) {
+			document.getElementById(id)?.classList.add("float-panel-closed");
+		}
+	});
+
+	panel.classList.toggle("float-panel-closed", !shouldOpen);
 }
 
-loadButtonScript();
+function bindNavbarButtons() {
+	const settingBtn = document.getElementById("display-settings-switch");
+	if (settingBtn instanceof HTMLButtonElement) {
+		settingBtn.onclick = async () => {
+			try {
+				await panelManager.togglePanel("display-setting");
+			} catch (error) {
+				console.error("Failed to toggle display-setting:", error);
+				togglePanelFallback("display-setting");
+			}
+		};
+	}
+
+	const menuBtn = document.getElementById("nav-menu-switch");
+	if (menuBtn instanceof HTMLButtonElement) {
+		menuBtn.onclick = async () => {
+			try {
+				await panelManager.togglePanel("nav-menu-panel");
+			} catch (error) {
+				console.error("Failed to toggle nav-menu-panel:", error);
+				togglePanelFallback("nav-menu-panel");
+			}
+		};
+	}
+}
+
+bindNavbarButtons();
 
 // 为semifull模式添加滚动检测逻辑
 function initSemifullScrollDetection() {

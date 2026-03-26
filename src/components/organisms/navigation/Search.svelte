@@ -62,6 +62,19 @@ const focusDesktopInput = () => {
 	}, 0);
 };
 
+const handleDesktopTriggerClick = (event: MouseEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
+
+	if (!isDesktopSearchExpanded) {
+		isDesktopSearchExpanded = true;
+		focusDesktopInput();
+		return;
+	}
+
+	focusDesktopInput();
+};
+
 const collapseDesktopSearch = () => {
 	if (!keywordDesktop) {
 		isDesktopSearchExpanded = false;
@@ -239,7 +252,7 @@ onDestroy(() => {
             type="button"
             class="owen-search-trigger absolute inset-y-0 left-0 z-[1] inline-flex w-11 items-center justify-center rounded-[inherit]"
             aria-label="Search"
-            onclick={focusDesktopInput}
+            onclick={handleDesktopTriggerClick}
         >
             <Icon icon="material-symbols:search" class="text-[1.25rem] transition {isDesktopSearchExpanded ? 'text-black/30 dark:text-white/30' : ''}"></Icon>
         </button>
