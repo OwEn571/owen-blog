@@ -105,7 +105,7 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 
 	window.setTimeout(() => {
 		performThemeChange();
-	}, 170);
+	}, 210);
 
 	window.setTimeout(() => {
 		document.documentElement.classList.remove("is-theme-transitioning");
@@ -114,7 +114,7 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 				detail: { phase: "end", theme, dark: targetIsDark },
 			}),
 		);
-	}, 620);
+	}, 760);
 }
 
 export function setTheme(theme: LIGHT_DARK_MODE): void {

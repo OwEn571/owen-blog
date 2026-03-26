@@ -25,7 +25,7 @@ function switchScheme(newMode: LIGHT_DARK_MODE) {
 	// 等过场动画结束后再允许下一次切换，避免状态打架
 	setTimeout(() => {
 		isChanging = false;
-	}, 650);
+	}, 860);
 }
 
 function toggleScheme() {

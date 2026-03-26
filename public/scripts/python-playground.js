@@ -1302,6 +1302,8 @@ except SyntaxError as exc:
 				language: "python",
 				theme: getMonacoThemeName(),
 				automaticLayout: false,
+				fixedOverflowWidgets: true,
+				overflowWidgetsDomNode: document.body,
 				minimap: { enabled: false },
 				scrollBeyondLastLine: false,
 				fontFamily:
@@ -1950,6 +1952,8 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 					language: "python",
 					theme: getMonacoThemeName(),
 					automaticLayout: false,
+					fixedOverflowWidgets: true,
+					overflowWidgetsDomNode: document.body,
 					minimap: { enabled: false },
 					scrollBeyondLastLine: false,
 					wordWrap: "off",

@@ -275,7 +275,8 @@ print([sqrt(n) for n in nums])
     box-shadow 0 32px 88px rgba(15, 23, 42, .22), inset 0 1px 0 rgba(255,255,255,.72)
     backdrop-filter blur(22px) saturate(1.06)
     -webkit-backdrop-filter blur(22px) saturate(1.06)
-    overflow auto
+    overflow visible
+    overflow-y auto
     overscroll-behavior contain
     isolation isolate
     transition transform .24s ease, box-shadow .24s ease, border-color .24s ease
@@ -346,10 +347,11 @@ print([sqrt(n) for n in nums])
     border-radius 1.2rem
     border 1px solid rgba(118, 156, 255, .14)
     background rgba(9, 12, 19, .94)
-    overflow hidden
+    overflow visible
     display grid
     align-items stretch
     position relative
+    z-index 1
 
   .python-lab-panel__loading
     position absolute
@@ -398,6 +400,9 @@ print([sqrt(n) for n in nums])
     min-height 16rem
     height min(21rem, 40vh)
     grid-area 1 / 1
+    position relative
+    z-index 1
+    overflow visible
 
   .python-lab-panel__fallback
     width 100%
@@ -464,6 +469,21 @@ print([sqrt(n) for n in nums])
     font-family "SF Mono", "JetBrains Mono Variable", Menlo, Monaco, ui-monospace, monospace
     white-space pre-wrap
     word-break break-word
+
+  :global(.monaco-editor),
+  :global(.monaco-editor .overflow-guard),
+  :global(.monaco-editor .monaco-scrollable-element)
+    overflow visible !important
+
+  :global(.suggest-widget),
+  :global(.monaco-editor-hover),
+  :global(.parameter-hints-widget)
+    z-index 520 !important
+
+  :global(.suggest-widget)
+    border-radius 1rem !important
+    overflow hidden !important
+    box-shadow 0 24px 54px rgba(15, 23, 42, .18), 0 0 18px rgba(118, 156, 255, .12) !important
 
   :root:not(.dark) .python-lab-fab
     border-color rgba(236, 174, 198, .2)
