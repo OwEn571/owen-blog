@@ -358,6 +358,182 @@ if (siteConfig.font) {
 				});
 			})();
 		</script>
+		<script is:inline>
+			(() => {
+				if ((window).__owenControlFallbackBound) {
+					return;
+				}
+				(window).__owenControlFallbackBound = true;
+
+				const closeFloatPanel = (panelId) => {
+					const panel = document.getElementById(panelId);
+					if (!(panel instanceof HTMLElement)) {
+						return;
+					}
+					panel.classList.add("float-panel-closed");
+				};
+
+				const toggleFloatPanel = (panelId, exceptIds = []) => {
+					const panel = document.getElementById(panelId);
+					if (!(panel instanceof HTMLElement)) {
+						return false;
+					}
+
+					const shouldOpen = panel.classList.contains("float-panel-closed");
+					["display-setting", "nav-menu-panel", "search-panel", "mobile-toc-panel", "wallpaper-mode-panel"]
+						.filter((id) => id !== panelId && !exceptIds.includes(id))
+						.forEach((id) => closeFloatPanel(id));
+
+					panel.classList.toggle("float-panel-closed", !shouldOpen);
+					if (shouldOpen) {
+						panel.style.opacity = "1";
+						panel.style.transform = "scale(1) translateY(0)";
+						panel.style.pointerEvents = "auto";
+					} else {
+						panel.style.opacity = "";
+						panel.style.transform = "";
+						panel.style.pointerEvents = "";
+					}
+					return shouldOpen;
+				};
+
+				const setDesktopSearchExpanded = (open) => {
+					const bar = document.getElementById("search-bar");
+					const input = document.getElementById("search-input-desktop");
+					const navbar = document.getElementById("navbar");
+					if (!(bar instanceof HTMLElement) || !(input instanceof HTMLInputElement)) {
+						return;
+					}
+
+					bar.dataset.fallbackExpanded = open ? "true" : "false";
+					bar.style.width = open ? "12rem" : "";
+					input.style.width = open ? "9rem" : "";
+
+					if (open) {
+						navbar?.classList.add("is-searching");
+						window.setTimeout(() => input.focus(), 0);
+						return;
+					}
+
+					if (!input.value) {
+						navbar?.classList.remove("is-searching");
+						input.blur();
+					}
+				};
+
+				const setPythonLabOpen = (open) => {
+					const root = document.querySelector("[data-python-lab]");
+					if (!(root instanceof HTMLElement)) {
+						return;
+					}
+					const panel = root.querySelector("[data-python-lab-panel]");
+					const toggle = root.querySelector("[data-python-lab-toggle]");
+					const fallback = root.querySelector("[data-python-lab-fallback]");
+					if (!(panel instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) {
+						return;
+					}
+
+					panel.hidden = !open;
+					root.dataset.state = open ? "open" : "closed";
+					toggle.setAttribute("aria-expanded", open ? "true" : "false");
+					if (open && fallback instanceof HTMLTextAreaElement) {
+						window.setTimeout(() => fallback.focus(), 0);
+					}
+				};
+
+				document.addEventListener(
+					"click",
+					(event) => {
+						const target = event.target;
+						if (!(target instanceof Element)) {
+							return;
+						}
+
+						if (target.closest("[data-python-lab-toggle]")) {
+							event.preventDefault();
+							event.stopImmediatePropagation();
+							const root = target.closest("[data-python-lab]");
+							const isOpen =
+								root instanceof HTMLElement && root.dataset.state === "open";
+							setPythonLabOpen(!isOpen);
+							return;
+						}
+
+						if (target.closest("[data-python-lab-close]")) {
+							event.preventDefault();
+							event.stopImmediatePropagation();
+							setPythonLabOpen(false);
+							return;
+						}
+
+						if (target.closest("#search-switch")) {
+							event.preventDefault();
+							event.stopImmediatePropagation();
+							toggleFloatPanel("search-panel");
+							return;
+						}
+
+						if (target.closest(".owen-search-trigger")) {
+							event.preventDefault();
+							event.stopImmediatePropagation();
+							setDesktopSearchExpanded(true);
+							return;
+						}
+
+						if (target.closest("#display-settings-switch")) {
+							event.preventDefault();
+							event.stopImmediatePropagation();
+							toggleFloatPanel("display-setting");
+							return;
+						}
+
+						if (target.closest("#nav-menu-switch")) {
+							event.preventDefault();
+							event.stopImmediatePropagation();
+							toggleFloatPanel("nav-menu-panel");
+						}
+					},
+					true,
+				);
+
+				document.addEventListener(
+					"mousedown",
+					(event) => {
+						const target = event.target;
+						if (!(target instanceof Element)) {
+							return;
+						}
+
+						if (!target.closest("#search-bar, #search-panel")) {
+							setDesktopSearchExpanded(false);
+						}
+
+						if (!target.closest("#display-setting, #display-settings-switch")) {
+							closeFloatPanel("display-setting");
+						}
+
+						if (!target.closest("#nav-menu-panel, #nav-menu-switch")) {
+							closeFloatPanel("nav-menu-panel");
+						}
+
+						if (!target.closest("[data-python-lab]")) {
+							setPythonLabOpen(false);
+						}
+					},
+					true,
+				);
+
+				document.addEventListener("keydown", (event) => {
+					if (event.key === "Escape") {
+						setDesktopSearchExpanded(false);
+						closeFloatPanel("display-setting");
+						closeFloatPanel("nav-menu-panel");
+						closeFloatPanel("search-panel");
+						setPythonLabOpen(false);
+					}
+				});
+			})();
+		</script>
 
 
 		<!-- increase the page height during page transition to prevent the scrolling animation from jumping -->
