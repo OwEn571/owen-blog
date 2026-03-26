@@ -39,7 +39,7 @@ export const siteConfig: SiteConfig = {
 
 	themeColor: {
 		hue: 226, // 主题色的默认色相，范围从 0 到 360。例如：红色：0，青色：200，蓝绿色：250，粉色：345
-		fixed: false, // 允许访问者打开主题色面板
+		fixed: true, // 固定主题色，隐藏已弃用的调色盘面板
 	},
 
 	// 历史特色页兼容开关：当前博客实际启用的是 Study / Lab / Lounge / Archive 四个主分区

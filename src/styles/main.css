@@ -2756,7 +2756,7 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
   position: fixed;
   right: var(--utility-rail-right);
   bottom: var(--utility-rail-bottom);
-  z-index: 360;
+  z-index: 920;
     isolation: isolate;
     display: flex;
     flex-direction: column;
@@ -2766,6 +2766,8 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
   }
 
   .floating-utility-rail > * {
+    position: relative;
+    z-index: 1;
     pointer-events: auto;
   }
 
@@ -4586,12 +4588,10 @@ body.immersive-page .immersive-navbar-shell {
 }
 
 #navbar .nav-links {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  position: relative;
   z-index: 20;
-  max-width: min(48rem, calc(100% - 24rem));
+  width: max-content;
+  max-width: 100%;
   gap: 0.35rem;
   padding: 0.3rem;
   border-radius: 1.25rem;
@@ -4606,9 +4606,23 @@ body.immersive-page .immersive-navbar-shell {
   -webkit-backdrop-filter: blur(16px) saturate(1.03);
 }
 
+#navbar .nav-links-shell {
+  position: relative;
+  z-index: 30;
+  pointer-events: none;
+}
+
+#navbar .nav-links {
+  pointer-events: none;
+}
+
+#navbar .nav-links > * {
+  pointer-events: auto;
+}
+
 #navbar .nav-action-group {
   position: relative;
-  z-index: 220;
+  z-index: 320;
   flex-shrink: 0;
   overflow: visible;
   padding: 0.25rem;
@@ -4628,11 +4642,10 @@ body.immersive-page .immersive-navbar-shell {
 #navbar #search-container,
 #navbar #search-bar,
 #navbar #search-switch,
-#navbar #display-settings-switch,
 #navbar #scheme-switch,
 #navbar #wallpaper-mode-switch {
   position: relative;
-  z-index: 221;
+  z-index: 321;
   pointer-events: auto;
 }
 
@@ -5080,7 +5093,7 @@ body.immersive-page .post-neighbor-card::after {
 #nav-menu-panel,
 #mobile-toc-panel,
 #wallpaper-mode-panel {
-  z-index: 420 !important;
+  z-index: 960 !important;
 }
 
 :root.dark .floating-utility-rail::before {

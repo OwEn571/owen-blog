@@ -554,11 +554,11 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						<div class="relative max-w-[var(--page-width)] mx-auto px-2 md:px-4">
 							<div
 								id="toc-wrapper"
-								class="hidden lg:block absolute top-0 w-[var(--toc-width)] -right-[var(--toc-width)] pointer-events-auto"
+								class="hidden lg:block absolute top-0 w-[var(--toc-width)] -right-[var(--toc-width)] pointer-events-none"
 							>
 								<div
 									id="toc-inner-wrapper"
-									class="fixed top-24 w-[var(--toc-width)] max-h-[calc(100vh_-_12rem)] overflow-hidden"
+									class="fixed top-24 w-[var(--toc-width)] max-h-[calc(100vh_-_12rem)] overflow-hidden pointer-events-auto"
 								>
 									<div id="toc-container" class="w-full transition-swup-fade">
 										<SidebarTOC headings={headings}></SidebarTOC>
@@ -644,7 +644,7 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 							"-right-[var(--toc-width)]",
 							{"toc-hide": siteConfig.wallpaperMode.defaultMode === "banner"}]}
 						>
-							<div id="toc-inner-wrapper" class="fixed top-14 w-[var(--toc-width)] max-h-[calc(100vh_-_10rem)] overflow-hidden">
+							<div id="toc-inner-wrapper" class="fixed top-14 w-[var(--toc-width)] max-h-[calc(100vh_-_10rem)] overflow-hidden pointer-events-auto">
 								<div id="toc-container" class="w-full transition-swup-fade">
 									<SidebarTOC headings={headings}></SidebarTOC>
 								</div>

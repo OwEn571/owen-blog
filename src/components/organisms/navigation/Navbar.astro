@@ -7,7 +7,6 @@ import { LinkPreset, type NavBarLink } from "../../../types/config"
 import { url } from "../../../utils/url-utils"
 import LayoutSwitch from "../../control/LayoutSwitch.svelte"
 import ThemeSwitch from "../../control/ThemeSwitch.svelte"
-import DisplaySettings from "../../features/settings/DisplaySettings.svelte"
 import WallpaperSwitch from "../../features/settings/WallpaperSwitch.svelte"
 import MobileTOC from "../../features/toc/MobileTOC.svelte"
 import DropdownMenu from "./DropdownMenu.astro"
@@ -44,7 +43,7 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 ---
 <div id="navbar" class="z-50 onload-animation group" data-transparent-mode={navbarTransparentMode} data-is-home={isHomePage}>
     <div class="absolute h-8 left-0 right-0 -top-8 bg-[var(--card-bg)] transition"></div> <!-- used for onload animation -->
-    <div class:list={[className, "relative !overflow-visible max-w-[var(--page-width)] h-[4.5rem] mx-auto flex items-center justify-between px-4"]}>
+    <div class:list={[className, "relative !overflow-visible max-w-[var(--page-width)] h-[4.5rem] mx-auto flex items-center gap-3 px-4"]}>
         <a href={url('/')} data-no-swup class="nav-brand btn-plain scale-animation rounded-lg h-[2.5rem] md:h-[3.25rem] md:[.enable-banner_&]:h-[2.5rem] md:[.enable-banner_&]:group-[.scrolled]:h-[3.25rem] px-5 font-bold active:scale-95 shrink-0 transition-all duration-300">
             <div class="nav-brand-inner flex flex-row items-center text-md">
 				{/* 使用navbarTitle配置或默认配置 */}
@@ -65,22 +64,19 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
                 )}
             </div>
         </a>
-        <div id="navbar-links-container" class="nav-links hidden md:flex items-center space-x-1 transition-opacity duration-300 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            {links.map((l) => {
-                return <DropdownMenu link={l} />;
-            })}
+        <div class="nav-links-shell hidden md:flex min-w-0 flex-1 items-center justify-center px-2 xl:px-4">
+            <div id="navbar-links-container" class="nav-links flex items-center space-x-1 transition-opacity duration-300">
+                {links.map((l) => {
+                    return <DropdownMenu link={l} />;
+                })}
+            </div>
         </div>
-        <div class="nav-action-group relative z-[95] ml-auto shrink-0 flex items-center gap-1">
+        <div class="nav-action-group relative z-[95] shrink-0 flex items-center gap-1">
             <div id="search-container" class="nav-search-shell relative z-[96] pointer-events-auto">
                 <Search></Search>
             </div>
             {/* 只在 sidebar 模式下显示移动端 TOC 按钮 */}
             {siteConfig.toc.enable && siteConfig.toc.mode === "sidebar" && <MobileTOC client:load></MobileTOC>}
-            {!siteConfig.themeColor.fixed && (
-                    <button aria-label="Display Settings" class="btn-plain scale-animation relative z-[96] rounded-lg h-11 w-11 active:scale-90 hidden md:inline-flex" id="display-settings-switch" data-ui-control="display-setting">
-                        <Icon name="material-symbols:palette-outline" class="text-[1.25rem]"></Icon>
-                    </button>
-            )}
             {siteConfig.postListLayout?.allowSwitch && (
                 <LayoutSwitch client:load currentLayout={siteConfig.postListLayout.defaultMode}></LayoutSwitch>
             )}
@@ -99,7 +95,6 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
             </button>
         </div>
         <NavMenuPanel links={links}></NavMenuPanel>
-        <DisplaySettings client:load></DisplaySettings>
     </div>
 </div>
 
@@ -164,16 +159,6 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 		panel.style.transform = shouldOpen ? "scale(1) translateY(0)" : "";
 		panel.style.pointerEvents = shouldOpen ? "auto" : "";
 	};
-
-	const displaySettingsSwitch = document.getElementById("display-settings-switch");
-	if (displaySettingsSwitch && !displaySettingsSwitch.dataset.owenBound) {
-		displaySettingsSwitch.dataset.owenBound = "true";
-		displaySettingsSwitch.addEventListener("click", (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			togglePanel("display-setting");
-		});
-	}
 
 	const navMenuSwitch = document.getElementById("nav-menu-switch");
 	if (navMenuSwitch && !navMenuSwitch.dataset.owenBound) {
