@@ -9,7 +9,6 @@ import { url } from "@/utils/url-utils";
 		class="python-lab-fab"
 		data-python-lab-toggle
 		data-ui-control="python-lab"
-		onclick="window.__owenTogglePythonLab && window.__owenTogglePythonLab(event)"
 		aria-expanded="false"
 		aria-controls="python-lab-panel"
 		aria-label="打开 Python Lab"
@@ -39,7 +38,6 @@ import { url } from "@/utils/url-utils";
 				class="python-lab-panel__close"
 				data-python-lab-close
 				data-ui-control-close="python-lab"
-				onclick="window.__owenClosePythonLab && window.__owenClosePythonLab(event)"
 				aria-label="收起 Python Lab"
 			>
 				<Icon name="mdi:close" />
@@ -180,21 +178,27 @@ print([sqrt(n) for n in nums])
 		window.__owenEnsurePythonLabRuntime = ensureRuntimeScript;
 		window.__owenBootstrapPythonLabFallback = setOpen;
 
-		window.__owenTogglePythonLab = (event) => {
-			event?.preventDefault?.();
-			event?.stopPropagation?.();
-			const open = root.dataset.state === "open";
-			if (!open) {
-				ensureRuntimeScript();
-			}
-			setOpen(!open);
-		};
+		if (toggle.dataset.owenBound !== "true") {
+			toggle.dataset.owenBound = "true";
+			toggle.addEventListener("click", (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				const open = root.dataset.state === "open";
+				if (!open) {
+					ensureRuntimeScript();
+				}
+				setOpen(!open);
+			});
+		}
 
-		window.__owenClosePythonLab = (event) => {
-			event?.preventDefault?.();
-			event?.stopPropagation?.();
-			setOpen(false);
-		};
+		if (close.dataset.owenBound !== "true") {
+			close.dataset.owenBound = "true";
+			close.addEventListener("click", (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				setOpen(false);
+			});
+		}
 
 		document.addEventListener(
 			"mousedown",
