@@ -309,11 +309,23 @@ if (siteConfig.font) {
 				}
 
 				let hideTimer = 0;
+				let safetyTimer = 0;
 				const setTheme = (dark) => {
 					overlay.dataset.theme = dark ? "dark" : "light";
 				};
+				const resetTransitionState = () => {
+					document.documentElement.classList.remove("is-theme-transitioning");
+					overlay.dataset.state = "idle";
+				};
+				const scheduleSafetyReset = () => {
+					window.clearTimeout(safetyTimer);
+					safetyTimer = window.setTimeout(() => {
+						resetTransitionState();
+					}, 980);
+				};
 
 				setTheme(document.documentElement.classList.contains("dark"));
+				resetTransitionState();
 
 				window.addEventListener("owen:theme-transition", (event) => {
 					const detail = event.detail || {};
@@ -322,6 +334,7 @@ if (siteConfig.font) {
 
 					if (detail.phase === "start") {
 						overlay.dataset.state = "enter";
+						scheduleSafetyReset();
 						return;
 					}
 
@@ -334,6 +347,14 @@ if (siteConfig.font) {
 				window.addEventListener("owen:theme-applied", (event) => {
 					const detail = event.detail || {};
 					setTheme(Boolean(detail.dark));
+				});
+
+				window.addEventListener("pageshow", resetTransitionState);
+				window.addEventListener("load", resetTransitionState, { once: true });
+				document.addEventListener("visibilitychange", () => {
+					if (document.visibilityState === "visible") {
+						resetTransitionState();
+					}
 				});
 			})();
 		</script>

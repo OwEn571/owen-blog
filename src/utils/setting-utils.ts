@@ -33,6 +33,13 @@ export function setHue(hue: number): void {
 }
 
 export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
+	type ThemeTransitionWindow = Window & {
+		__owenThemeChangeTimer?: number;
+		__owenThemeEndTimer?: number;
+		__owenThemeSafetyTimer?: number;
+	};
+
+	const themedWindow = window as ThemeTransitionWindow;
 	const currentIsDark = document.documentElement.classList.contains("dark");
 	const currentTheme = document.documentElement.getAttribute("data-theme");
 	let targetIsDark = false;
@@ -83,6 +90,18 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 		"(prefers-reduced-motion: reduce)",
 	).matches;
 
+	const finishThemeTransition = () => {
+		document.documentElement.classList.remove("is-theme-transitioning");
+		window.dispatchEvent(
+			new CustomEvent("owen:theme-transition", {
+				detail: { phase: "end", theme, dark: targetIsDark },
+			}),
+		);
+	};
+
+	window.clearTimeout(themedWindow.__owenThemeChangeTimer);
+	window.clearTimeout(themedWindow.__owenThemeEndTimer);
+	window.clearTimeout(themedWindow.__owenThemeSafetyTimer);
 	document.documentElement.classList.add("is-theme-transitioning");
 	window.dispatchEvent(
 		new CustomEvent("owen:theme-transition", {
@@ -93,28 +112,22 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 	if (prefersReducedMotion || !needsThemeChange) {
 		performThemeChange();
 		requestAnimationFrame(() => {
-			document.documentElement.classList.remove("is-theme-transitioning");
-			window.dispatchEvent(
-				new CustomEvent("owen:theme-transition", {
-					detail: { phase: "end", theme, dark: targetIsDark },
-				}),
-			);
+			finishThemeTransition();
 		});
 		return;
 	}
 
-	window.setTimeout(() => {
+	themedWindow.__owenThemeChangeTimer = window.setTimeout(() => {
 		performThemeChange();
 	}, 210);
 
-	window.setTimeout(() => {
-		document.documentElement.classList.remove("is-theme-transitioning");
-		window.dispatchEvent(
-			new CustomEvent("owen:theme-transition", {
-				detail: { phase: "end", theme, dark: targetIsDark },
-			}),
-		);
+	themedWindow.__owenThemeEndTimer = window.setTimeout(() => {
+		finishThemeTransition();
 	}, 760);
+
+	themedWindow.__owenThemeSafetyTimer = window.setTimeout(() => {
+		finishThemeTransition();
+	}, 1250);
 }
 
 export function setTheme(theme: LIGHT_DARK_MODE): void {
