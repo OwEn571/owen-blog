@@ -85,15 +85,14 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 					window.clearTimeout(hideTimer);
 					setTheme(Boolean(detail.dark));
 					if (detail.phase === "start") {
-						overlay.dataset.state = "enter";
+						overlay.dataset.state = "active";
 						scheduleSafetyReset();
 						return;
 					}
 
-					overlay.dataset.state = "leave";
 					hideTimer = window.setTimeout(() => {
 						overlay.dataset.state = "idle";
-					}, 340);
+					}, 420);
 				});
 
 				window.addEventListener("owen:theme-applied", (event) => {
@@ -122,7 +121,7 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 								detail: { theme, dark },
 							}),
 						);
-					}, 210);
+					}, 240);
 
 					window.setTimeout(() => {
 						document.documentElement.classList.remove("is-theme-transitioning");
@@ -131,7 +130,7 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 								detail: { phase: "end", theme, dark },
 							}),
 						);
-					}, 760);
+					}, 1040);
 				};
 
 				window.addEventListener("pageshow", resetTransitionState);

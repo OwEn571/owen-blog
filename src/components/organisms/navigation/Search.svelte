@@ -219,7 +219,7 @@ onDestroy(() => {
 </script>
 
 <!-- search bar for desktop view (collapsed by default) -->
-<div class="hidden lg:block relative w-11 h-11 shrink-0">
+<div class="hidden lg:block relative z-[96] w-11 h-11 shrink-0 pointer-events-auto">
     <div
         id="search-bar"
         class="owen-search-shell flex transition-all items-center h-11 rounded-xl absolute right-0 top-0 shrink-0
@@ -258,7 +258,7 @@ onDestroy(() => {
 </button>
 
 <!-- search panel -->
-<div id="search-panel" data-ui-panel="search-panel" class="float-panel float-panel-closed absolute md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-50 search-panel shadow-2xl rounded-2xl p-2">
+<div id="search-panel" data-ui-panel="search-panel" class="float-panel float-panel-closed fixed md:w-[30rem] top-20 left-4 md:left-[unset] right-4 z-[260] search-panel shadow-2xl rounded-2xl p-2">
     <!-- search bar inside panel for phone/tablet -->
     <div id="search-bar-inside" class="owen-search-inside flex relative lg:hidden transition-all items-center h-11 rounded-xl
       bg-black/[0.04] hover:bg-black/[0.06] focus-within:bg-black/[0.06]

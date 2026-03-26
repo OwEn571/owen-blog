@@ -550,12 +550,11 @@ html.splash-active #banner-credit {
     visibility 0ms linear 320ms;
 }
 
-.theme-transition-overlay[data-state="enter"],
-.theme-transition-overlay[data-state="leave"] {
+.theme-transition-overlay[data-state="active"] {
   opacity: 1;
   visibility: visible;
   transition:
-    opacity 320ms ease,
+    opacity 420ms ease,
     visibility 0ms linear 0ms;
 }
 
@@ -597,12 +596,8 @@ html.splash-active #banner-credit {
   transition: transform 440ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.theme-transition-overlay[data-state="enter"] .theme-transition-overlay__panel {
+.theme-transition-overlay[data-state="active"] .theme-transition-overlay__panel {
   transform: translateY(0) scale(1);
-}
-
-.theme-transition-overlay[data-state="leave"] .theme-transition-overlay__panel {
-  transform: translateY(-10px) scale(0.982);
 }
 
 .theme-transition-overlay[data-theme="dark"] .theme-transition-overlay__panel {
@@ -705,8 +700,13 @@ html.is-theme-transitioning body {
 }
 
 html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):not(style) {
-  opacity: 0;
-  transition: opacity 140ms ease;
+  opacity: 0.16;
+  filter: blur(5px);
+  transform: scale(0.992);
+  transition:
+    opacity 220ms ease,
+    filter 220ms ease,
+    transform 220ms ease;
 }
 
 /* 暗色主题下的渐变高光效果 */
@@ -2752,11 +2752,11 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
     --utility-rail-bottom: 3.75rem;
   }
 
-  .floating-utility-rail {
-    position: fixed;
-    right: var(--utility-rail-right);
-    bottom: var(--utility-rail-bottom);
-    z-index: 120;
+.floating-utility-rail {
+  position: fixed;
+  right: var(--utility-rail-right);
+  bottom: var(--utility-rail-bottom);
+  z-index: 260;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -4600,6 +4600,9 @@ body.immersive-page .immersive-navbar-shell {
 }
 
 #navbar .nav-action-group {
+  position: relative;
+  z-index: 95;
+  overflow: visible;
   padding: 0.25rem;
   border-radius: 1.25rem;
   border: 1px solid rgba(118, 156, 255, 0.1);
@@ -4611,6 +4614,18 @@ body.immersive-page .immersive-navbar-shell {
     inset 0 1px 0 rgba(255, 255, 255, 0.58);
   backdrop-filter: blur(16px) saturate(1.03);
   -webkit-backdrop-filter: blur(16px) saturate(1.03);
+}
+
+#navbar .nav-action-group > *,
+#navbar #search-container,
+#navbar #search-bar,
+#navbar #search-switch,
+#navbar #display-settings-switch,
+#navbar #scheme-switch,
+#navbar #wallpaper-mode-switch {
+  position: relative;
+  z-index: 96;
+  pointer-events: auto;
 }
 
 :root:not(.dark) #navbar .nav-links,

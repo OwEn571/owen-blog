@@ -340,7 +340,7 @@ if (siteConfig.font) {
 
 					hideTimer = window.setTimeout(() => {
 						overlay.dataset.state = "idle";
-					}, 220);
+					}, 420);
 				});
 
 				window.addEventListener("owen:theme-applied", (event) => {
@@ -527,7 +527,7 @@ if (siteConfig.font) {
 								detail: { theme, dark },
 							}),
 						);
-					}, 210);
+					}, 240);
 
 					window.setTimeout(() => {
 						document.documentElement.classList.remove("is-theme-transitioning");
@@ -536,7 +536,7 @@ if (siteConfig.font) {
 								detail: { phase: "end", theme, dark },
 							}),
 						);
-					}, 760);
+					}, 1040);
 				};
 				window.__owenUiController = {
 					openFloatPanel,
@@ -571,6 +571,61 @@ if (siteConfig.font) {
 				bindDirectControls();
 				window.setTimeout(bindDirectControls, 120);
 				window.addEventListener("pageshow", bindDirectControls);
+
+				document.addEventListener(
+					"click",
+					(event) => {
+						const target = event.target;
+						if (!(target instanceof Element)) {
+							return;
+						}
+
+						const closeTrigger = target.closest("[data-ui-control-close]");
+						if (closeTrigger instanceof HTMLElement) {
+							event.preventDefault();
+							event.stopPropagation();
+
+							const control = closeTrigger.dataset.uiControlClose;
+							if (control === "python-lab") {
+								setPythonLabOpen(false);
+								return;
+							}
+							if (control) {
+								closeFloatPanel(control);
+							}
+							return;
+						}
+
+						const trigger = target.closest("[data-ui-control]");
+						if (!(trigger instanceof HTMLElement)) {
+							return;
+						}
+
+						const control = trigger.dataset.uiControl;
+						if (!control) {
+							return;
+						}
+
+						event.preventDefault();
+						event.stopPropagation();
+
+						if (control === "desktop-search") {
+							setDesktopSearchExpanded(true);
+							return;
+						}
+
+						if (control === "python-lab") {
+							const root = document.querySelector("[data-python-lab]");
+							const isOpen =
+								root instanceof HTMLElement && root.dataset.state === "open";
+							setPythonLabOpen(!isOpen);
+							return;
+						}
+
+						toggleFloatPanel(control);
+					},
+					true,
+				);
 
 				document.addEventListener(
 					"mousedown",

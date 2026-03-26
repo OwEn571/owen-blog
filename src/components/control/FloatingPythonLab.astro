@@ -187,7 +187,7 @@ print([sqrt(n) for n in nums])
 <style lang="stylus">
   .python-lab-fab-shell
     position relative
-    z-index 2
+    z-index 12
     width 3.5rem
     height 3.5rem
     overflow visible
@@ -195,7 +195,7 @@ print([sqrt(n) for n in nums])
     --python-lab-panel-bottom calc(var(--utility-rail-bottom, 3.75rem) - .15rem)
 
   .python-lab-fab-shell[data-state="open"]
-    z-index 4
+    z-index 18
 
   .python-lab-fab,
   .python-lab-panel
@@ -256,6 +256,7 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel
     position fixed
+    z-index 1
     left var(--python-lab-panel-left, auto)
     top var(--python-lab-panel-top, auto)
     right var(--python-lab-panel-right)

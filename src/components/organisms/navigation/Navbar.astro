@@ -70,14 +70,14 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
                 return <DropdownMenu link={l} />;
             })}
         </div>
-        <div class="nav-action-group flex items-center gap-1">
-            <div id="search-container" class="nav-search-shell">
+        <div class="nav-action-group relative z-[95] flex items-center gap-1">
+            <div id="search-container" class="nav-search-shell relative z-[96] pointer-events-auto">
                 <Search client:load></Search>
             </div>
             {/* 只在 sidebar 模式下显示移动端 TOC 按钮 */}
             {siteConfig.toc.enable && siteConfig.toc.mode === "sidebar" && <MobileTOC client:load></MobileTOC>}
             {!siteConfig.themeColor.fixed && (
-                    <button aria-label="Display Settings" class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90 hidden md:inline-flex" id="display-settings-switch" data-ui-control="display-setting" onclick="if(window.__owenToggleFloatPanel){window.__owenToggleFloatPanel('display-setting');}else{const p=document.getElementById('display-setting');if(p){const open=p.classList.contains('float-panel-closed');p.classList.toggle('float-panel-closed',!open);p.style.opacity=open?'1':'';p.style.transform=open?'scale(1) translateY(0)':'';p.style.pointerEvents=open?'auto':'';}} return false;">
+                    <button aria-label="Display Settings" class="btn-plain scale-animation relative z-[96] rounded-lg h-11 w-11 active:scale-90 hidden md:inline-flex" id="display-settings-switch" data-ui-control="display-setting" onclick="if(window.__owenToggleFloatPanel){window.__owenToggleFloatPanel('display-setting');}else{const p=document.getElementById('display-setting');if(p){const open=p.classList.contains('float-panel-closed');p.classList.toggle('float-panel-closed',!open);p.style.opacity=open?'1':'';p.style.transform=open?'scale(1) translateY(0)':'';p.style.pointerEvents=open?'auto':'';}} return false;">
                         <Icon name="material-symbols:palette-outline" class="text-[1.25rem]"></Icon>
                     </button>
             )}
