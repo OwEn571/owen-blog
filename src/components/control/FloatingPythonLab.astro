@@ -134,6 +134,10 @@ print([sqrt(n) for n in nums])
 			return;
 		}
 
+		if (root.parentElement !== document.body) {
+			document.body.appendChild(root);
+		}
+
 		root.dataset.pythonLabBootstrap = "true";
 
 		const toggle = root.querySelector("[data-python-lab-toggle]");
@@ -227,14 +231,14 @@ print([sqrt(n) for n in nums])
 <style lang="stylus">
   .python-lab-fab-shell
     position fixed
-    right unquote("max(1rem, calc((100vw - var(--page-width)) / 2 - 5.25rem))")
-    bottom unquote("calc(var(--utility-rail-bottom, 3.75rem) + var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, 0.9rem) + .45rem)")
+    right var(--utility-rail-right, 1.5rem)
+    bottom unquote("calc(var(--utility-rail-bottom, 3.75rem) + (var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, 0.9rem)) * 2 + .2rem)")
     z-index 1200
     width 3.5rem
     height 3.5rem
     overflow visible
-    --python-lab-anchor-right unquote("max(1rem, calc((100vw - var(--page-width)) / 2 - 5.25rem))")
-    --python-lab-anchor-bottom unquote("calc(var(--utility-rail-bottom, 3.75rem) + var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, 0.9rem) + .45rem)")
+    --python-lab-anchor-right var(--utility-rail-right, 1.5rem)
+    --python-lab-anchor-bottom unquote("calc(var(--utility-rail-bottom, 3.75rem) + (var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, 0.9rem)) * 2 + .2rem)")
     --python-lab-panel-right unquote("calc(var(--python-lab-anchor-right) + var(--utility-rail-size, 3.5rem) + 1rem)")
     --python-lab-panel-bottom unquote("calc(var(--python-lab-anchor-bottom) - .15rem)")
 
@@ -682,9 +686,9 @@ print([sqrt(n) for n in nums])
   @media (max-width: 820px)
     .python-lab-fab-shell
       right 1rem
-      bottom unquote("calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, .9rem) + .3rem)")
+      bottom unquote("calc(var(--utility-rail-bottom, 5.75rem) + (var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, .9rem)) * 2 + .2rem)")
       --python-lab-anchor-right 1rem
-      --python-lab-anchor-bottom unquote("calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, .9rem) + .3rem)")
+      --python-lab-anchor-bottom unquote("calc(var(--utility-rail-bottom, 5.75rem) + (var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, .9rem)) * 2 + .2rem)")
       width 3.5rem
       height 3.5rem
 
@@ -701,8 +705,3 @@ print([sqrt(n) for n in nums])
       top var(--python-lab-panel-top, auto)
       right var(--python-lab-panel-right, var(--python-lab-anchor-right, 1rem))
       bottom var(--python-lab-panel-bottom, calc(var(--python-lab-anchor-bottom, 5.75rem) - .15rem))
-
-  @media (min-width: 1536px)
-    :global(body.immersive-page) .python-lab-fab-shell
-      right unquote("calc(max(1rem, calc((100vw - var(--page-width)) / 2 - 5.25rem)) + var(--toc-width, 0px) + 1rem)")
-      --python-lab-anchor-right unquote("calc(max(1rem, calc((100vw - var(--page-width)) / 2 - 5.25rem)) + var(--toc-width, 0px) + 1rem)")

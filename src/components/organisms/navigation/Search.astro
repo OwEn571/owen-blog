@@ -102,6 +102,16 @@ import { url } from "@/utils/url-utils";
 		color: var(--text-normal);
 	}
 
+	.owen-search-result__meta {
+		margin-top: 0.22rem;
+		font-size: 0.74rem;
+		font-weight: 620;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--text-secondary);
+		opacity: 0.76;
+	}
+
 	.owen-search-result__excerpt {
 		margin-top: 0.32rem;
 		font-size: 0.9rem;
@@ -189,6 +199,7 @@ import { url } from "@/utils/url-utils";
 								<span>${escapeHtml(item.title)}</span>
 								<span aria-hidden="true">›</span>
 							</div>
+							${item.parentTitle ? `<div class="owen-search-result__meta">${escapeHtml(item.parentTitle)}</div>` : ""}
 							<div class="owen-search-result__excerpt">${item.excerpt}</div>
 						</a>
 					`,
@@ -196,6 +207,41 @@ import { url } from "@/utils/url-utils";
 				.join("");
 			showPanel();
 		};
+
+		const buildSearchItems = (entries) =>
+			entries.flatMap((entry) => {
+				const parentTitle = entry.meta?.title || "Untitled";
+				const subResults = Array.isArray(entry.sub_results) ? entry.sub_results : [];
+				const anchoredItems = subResults
+					.filter((item) => typeof item?.url === "string" && item.url)
+					.slice(0, 4)
+					.map((item) => {
+						const sectionTitle =
+							typeof item.title === "string" && item.title.trim()
+								? item.title.trim()
+								: parentTitle;
+						const isNested = sectionTitle !== parentTitle;
+						return {
+							url: item.url,
+							title: sectionTitle,
+							parentTitle: isNested ? parentTitle : "",
+							excerpt: item.excerpt || entry.excerpt || "",
+						};
+					});
+
+				if (anchoredItems.length) {
+					return anchoredItems;
+				}
+
+				return [
+					{
+						url: entry.url,
+						title: parentTitle,
+						parentTitle: "",
+						excerpt: entry.excerpt || "",
+					},
+				];
+			});
 
 		const performSearch = async (nextKeyword) => {
 			keyword = nextKeyword.trim();
@@ -221,13 +267,7 @@ import { url } from "@/utils/url-utils";
 			try {
 				const response = await pagefind.search(keyword);
 				const entries = await Promise.all(response.results.map((item) => item.data()));
-				renderResults(
-					entries.map((entry) => ({
-						url: entry.url,
-						title: entry.meta.title || "Untitled",
-						excerpt: entry.excerpt || "",
-					})),
-				);
+				renderResults(buildSearchItems(entries));
 			} catch (error) {
 				console.error("Search error:", error);
 				renderResults([]);
