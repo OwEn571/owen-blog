@@ -259,13 +259,33 @@
 
 		const existing = document.getElementById(SCRIPT_ID);
 		if (existing) {
+			if (
+				existing.dataset.loaded === "true" ||
+				typeof window.loadPyodide === "function"
+			) {
+				return Promise.resolve();
+			}
+
 			return new Promise((resolve, reject) => {
+				const timeout = window.setTimeout(() => {
+					reject(new Error("Pyodide runtime load timed out"));
+				}, 12000);
 				existing.addEventListener("load", () => resolve(), {
 					once: true,
 				});
 				existing.addEventListener(
 					"error",
 					() => reject(new Error("Pyodide runtime load failed")),
+					{ once: true },
+				);
+				existing.addEventListener(
+					"load",
+					() => window.clearTimeout(timeout),
+					{ once: true },
+				);
+				existing.addEventListener(
+					"error",
+					() => window.clearTimeout(timeout),
 					{ once: true },
 				);
 			});
@@ -276,9 +296,19 @@
 			script.id = SCRIPT_ID;
 			script.src = `${PYODIDE_BASE_URL}pyodide.js`;
 			script.async = true;
-			script.onload = () => resolve();
-			script.onerror = () =>
+			const timeout = window.setTimeout(() => {
+				reject(new Error("Pyodide runtime load timed out"));
+			}, 12000);
+			script.onload = () => {
+				script.dataset.loaded = "true";
+				window.clearTimeout(timeout);
+				resolve();
+			};
+			script.onerror = () => {
+				script.dataset.failed = "true";
+				window.clearTimeout(timeout);
 				reject(new Error("Pyodide runtime load failed"));
+			};
 			document.head.appendChild(script);
 		});
 	}
@@ -290,13 +320,33 @@
 
 		const existing = document.getElementById(MONACO_LOADER_ID);
 		if (existing) {
+			if (
+				existing.dataset.loaded === "true" ||
+				typeof window.require === "function"
+			) {
+				return Promise.resolve();
+			}
+
 			return new Promise((resolve, reject) => {
+				const timeout = window.setTimeout(() => {
+					reject(new Error("Monaco loader timed out"));
+				}, 12000);
 				existing.addEventListener("load", () => resolve(), {
 					once: true,
 				});
 				existing.addEventListener(
 					"error",
 					() => reject(new Error("Monaco loader failed to load")),
+					{ once: true },
+				);
+				existing.addEventListener(
+					"load",
+					() => window.clearTimeout(timeout),
+					{ once: true },
+				);
+				existing.addEventListener(
+					"error",
+					() => window.clearTimeout(timeout),
 					{ once: true },
 				);
 			});
@@ -307,9 +357,19 @@
 			script.id = MONACO_LOADER_ID;
 			script.src = `${MONACO_BASE_URL}/vs/loader.js`;
 			script.async = true;
-			script.onload = () => resolve();
-			script.onerror = () =>
+			const timeout = window.setTimeout(() => {
+				reject(new Error("Monaco loader timed out"));
+			}, 12000);
+			script.onload = () => {
+				script.dataset.loaded = "true";
+				window.clearTimeout(timeout);
+				resolve();
+			};
+			script.onerror = () => {
+				script.dataset.failed = "true";
+				window.clearTimeout(timeout);
 				reject(new Error("Monaco loader failed to load"));
+			};
 			document.head.appendChild(script);
 		});
 	}
@@ -1382,9 +1442,9 @@ except SyntaxError as exc:
 		}
 
 		labState.editorPromise = (async () => {
-			setPythonLabLoading(root, true, "正在准备 Monaco 编辑器…");
+			setPythonLabLoading(root, false, "轻量编辑器已就绪，Monaco 正在后台准备…");
 			labState.host.hidden = true;
-			labState.fallback.hidden = true;
+			labState.fallback.hidden = false;
 			labState.fallback.value = labState.source.value;
 
 			try {
@@ -1505,14 +1565,12 @@ except SyntaxError as exc:
 			return;
 		}
 
-		if (!state.fallback.hidden) {
-			setPythonLabLoading(root, false, "轻量编辑器已就绪，可以继续写。");
-			state.viewportSyncHandler?.();
-			state.fallback.focus();
-			return;
-		}
+		state.host.hidden = true;
+		state.fallback.hidden = false;
+		setPythonLabLoading(root, false, "轻量编辑器已就绪，编辑器核心正在后台准备。");
+		state.viewportSyncHandler?.();
+		state.fallback.focus();
 
-		setPythonLabLoading(root, true, "正在准备编辑器…");
 		void ensurePythonLabEditor(root).then((editor) => {
 			if (root.dataset.state !== "open") {
 				return;
@@ -1520,8 +1578,6 @@ except SyntaxError as exc:
 			if (!editor) {
 				state.status.textContent =
 					"轻量编辑器已就绪。若 Monaco 稍后可用，会自动切换。";
-				state.viewportSyncHandler?.();
-				state.fallback.focus();
 				return;
 			}
 			state.viewportSyncHandler?.();
@@ -1684,6 +1740,11 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		if (storedPosition) {
 			applyPythonLabPosition(root, storedPosition);
 		}
+
+		panel.dataset.state = "closed";
+		host.hidden = true;
+		fallback.hidden = false;
+		setPythonLabLoading(root, false, "轻量编辑器待命，点击即可开始编写。");
 
 		const syncPanelWithinViewport = () => {
 			if (panel.hidden) {

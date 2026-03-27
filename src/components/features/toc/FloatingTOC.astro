@@ -893,6 +893,13 @@ const mountFloatingTOC = () => {
 	floatingWindow.__owenBlogFloatingTOC = new FloatingTOC();
 };
 
-document.addEventListener("DOMContentLoaded", mountFloatingTOC);
+if (document.readyState === "loading") {
+	document.addEventListener("DOMContentLoaded", mountFloatingTOC, {
+		once: true,
+	});
+} else {
+	mountFloatingTOC();
+}
 document.addEventListener("swup:page:view", mountFloatingTOC);
+window.addEventListener("pageshow", mountFloatingTOC);
 </script>

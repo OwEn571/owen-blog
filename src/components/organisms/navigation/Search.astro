@@ -75,6 +75,37 @@ import { url } from "@/utils/url-utils";
 		margin-top: 0.55rem;
 	}
 
+	.owen-search-results__header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.1rem 0.15rem 0.35rem;
+	}
+
+	.owen-search-results__summary {
+		font-size: 0.75rem;
+		font-weight: 630;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--text-secondary) 82%, transparent);
+	}
+
+	.owen-search-results__count {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.8rem;
+		height: 1.8rem;
+		padding: 0 0.55rem;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--primary) 14%, transparent);
+		background: color-mix(in srgb, var(--primary) 9%, transparent);
+		color: var(--primary);
+		font-size: 0.78rem;
+		font-weight: 680;
+	}
+
 	.owen-search-result {
 		display: block;
 		padding: 0.82rem 0.9rem;
@@ -104,7 +135,10 @@ import { url } from "@/utils/url-utils";
 
 	.owen-search-result__meta {
 		margin-top: 0.22rem;
-		font-size: 0.74rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.72rem;
 		font-weight: 620;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
@@ -112,11 +146,32 @@ import { url } from "@/utils/url-utils";
 		opacity: 0.76;
 	}
 
+	.owen-search-result__meta::before {
+		content: "";
+		width: 0.42rem;
+		height: 0.42rem;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--primary) 28%, transparent);
+	}
+
 	.owen-search-result__excerpt {
 		margin-top: 0.32rem;
 		font-size: 0.9rem;
 		line-height: 1.65;
 		color: var(--text-secondary);
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.owen-search-highlight {
+		padding: 0 0.22rem;
+		border-radius: 0.35rem;
+		background: color-mix(in srgb, var(--primary) 18%, transparent);
+		color: var(--text-normal);
+		box-decoration-break: clone;
+		-webkit-box-decoration-break: clone;
 	}
 
 	.owen-search-empty {
@@ -159,6 +214,7 @@ import { url } from "@/utils/url-utils";
 				url: rootUrl,
 				title: "Search preview is only available after build",
 				excerpt: "开发模式下这里会显示模拟结果，线上会使用 Pagefind。",
+				parentTitle: "",
 			},
 		];
 
@@ -169,6 +225,54 @@ import { url } from "@/utils/url-utils";
 				.replaceAll(">", "&gt;")
 				.replaceAll('"', "&quot;")
 				.replaceAll("'", "&#39;");
+
+		const stripHtml = (value) =>
+			String(value || "")
+				.replace(/<mark[^>]*>/gi, "")
+				.replace(/<\/mark>/gi, "")
+				.replace(/<[^>]+>/g, " ")
+				.replace(/\s+/g, " ")
+				.trim();
+
+		const escapeRegExp = (value) =>
+			value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+		const getQueryTokens = (value) => {
+			const normalized = String(value || "").trim();
+			if (!normalized) {
+				return [];
+			}
+
+			const parts = normalized
+				.split(/\s+/)
+				.map((item) => item.trim())
+				.filter(Boolean);
+			const tokens = normalized.length > 1 ? [normalized, ...parts] : parts;
+			return Array.from(new Set(tokens)).sort((left, right) => right.length - left.length);
+		};
+
+		const highlightQuery = (value, query) => {
+			const plain = stripHtml(value);
+			if (!plain) {
+				return "";
+			}
+
+			let html = escapeHtml(plain);
+			for (const token of getQueryTokens(query)) {
+				if (!token) {
+					continue;
+				}
+				const pattern = new RegExp(escapeRegExp(escapeHtml(token)), "gi");
+				html = html.replace(
+					pattern,
+					(match) => `<mark class="owen-search-highlight">${match}</mark>`,
+				);
+			}
+			return html;
+		};
+
+		const containsPhrase = (value, query) =>
+			stripHtml(value).toLocaleLowerCase().includes(String(query || "").trim().toLocaleLowerCase());
 
 		const showPanel = () => {
 			panel.classList.remove("float-panel-closed");
@@ -191,25 +295,31 @@ import { url } from "@/utils/url-utils";
 				return;
 			}
 
-			results.innerHTML = items
-				.map(
-					(item) => `
-						<a class="owen-search-result" href="${item.url}">
+			results.innerHTML = `
+				<div class="owen-search-results__header">
+					<div class="owen-search-results__summary">Search Results</div>
+					<div class="owen-search-results__count">${items.length}</div>
+				</div>
+				${items
+					.map(
+						(item) => `
+						<a class="owen-search-result" href="${item.url}" data-no-swup>
 							<div class="owen-search-result__title">
-								<span>${escapeHtml(item.title)}</span>
+								<span>${highlightQuery(item.title, keyword)}</span>
 								<span aria-hidden="true">›</span>
 							</div>
-							${item.parentTitle ? `<div class="owen-search-result__meta">${escapeHtml(item.parentTitle)}</div>` : ""}
-							<div class="owen-search-result__excerpt">${item.excerpt}</div>
+							${item.parentTitle ? `<div class="owen-search-result__meta">${highlightQuery(item.parentTitle, keyword)}</div>` : ""}
+							<div class="owen-search-result__excerpt">${highlightQuery(item.excerpt, keyword)}</div>
 						</a>
 					`,
-				)
-				.join("");
+					)
+					.join("")}
+			`;
 			showPanel();
 		};
 
-		const buildSearchItems = (entries) =>
-			entries.flatMap((entry) => {
+		const buildSearchItems = (entries, query) => {
+			const rawItems = entries.flatMap((entry) => {
 				const parentTitle = entry.meta?.title || "Untitled";
 				const subResults = Array.isArray(entry.sub_results) ? entry.sub_results : [];
 				const anchoredItems = subResults
@@ -225,7 +335,7 @@ import { url } from "@/utils/url-utils";
 							url: item.url,
 							title: sectionTitle,
 							parentTitle: isNested ? parentTitle : "",
-							excerpt: item.excerpt || entry.excerpt || "",
+							excerpt: stripHtml(item.excerpt || entry.excerpt || ""),
 						};
 					});
 
@@ -238,10 +348,40 @@ import { url } from "@/utils/url-utils";
 						url: entry.url,
 						title: parentTitle,
 						parentTitle: "",
-						excerpt: entry.excerpt || "",
+						excerpt: stripHtml(entry.excerpt || ""),
 					},
 				];
 			});
+
+			const deduped = [];
+			const seen = new Set();
+			for (const item of rawItems) {
+				const key = `${item.url}::${item.title}`;
+				if (seen.has(key)) {
+					continue;
+				}
+				seen.add(key);
+				const phraseInTitle = containsPhrase(item.title, query);
+				const phraseInExcerpt = containsPhrase(item.excerpt, query);
+				const phraseInParent = containsPhrase(item.parentTitle, query);
+				deduped.push({
+					...item,
+					relevance:
+						(phraseInTitle ? 0 : 10) +
+						(phraseInExcerpt ? 1 : 10) +
+						(phraseInParent ? 2 : 10),
+				});
+			}
+
+			const exactMatches = deduped.filter(
+				(item) =>
+					containsPhrase(item.title, query) ||
+					containsPhrase(item.excerpt, query) ||
+					containsPhrase(item.parentTitle, query),
+			);
+			const finalItems = exactMatches.length ? exactMatches : deduped;
+			return finalItems.sort((left, right) => left.relevance - right.relevance).slice(0, 8);
+		};
 
 		const performSearch = async (nextKeyword) => {
 			keyword = nextKeyword.trim();
@@ -267,7 +407,7 @@ import { url } from "@/utils/url-utils";
 			try {
 				const response = await pagefind.search(keyword);
 				const entries = await Promise.all(response.results.map((item) => item.data()));
-				renderResults(buildSearchItems(entries));
+				renderResults(buildSearchItems(entries, keyword));
 			} catch (error) {
 				console.error("Search error:", error);
 				renderResults([]);

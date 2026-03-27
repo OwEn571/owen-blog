@@ -141,7 +141,7 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 		}
 	}
 
-	const togglePanel = (panelId) => {
+	const togglePanel = (panelId: string) => {
 		const runtimeToggle = window["__owenToggleFloatPanel"];
 		if (typeof runtimeToggle === "function") {
 			runtimeToggle(panelId);
