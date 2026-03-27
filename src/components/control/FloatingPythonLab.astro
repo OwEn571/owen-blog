@@ -32,11 +32,11 @@ const pythonLabButtonId = `${pythonLabUid}-button`;
 		hidden
 		aria-label="Floating Python Lab"
 	>
-		<div class="python-lab-panel__header" data-python-lab-drag-handle>
+		<div class="python-lab-panel__header">
 			<div class="python-lab-panel__copy">
 				<p class="python-lab-panel__eyebrow">Floating Workspace</p>
 				<h3 class="python-lab-panel__title">Python Lab</h3>
-				<p class="python-lab-panel__note">随时呼出、编写、运行，再收回。</p>
+				<p class="python-lab-panel__note">默认轻量编辑器，随时呼出、编写、运行；需要时再升级增强模式。</p>
 			</div>
 			<button
 				type="button"
@@ -49,12 +49,17 @@ const pythonLabButtonId = `${pythonLabUid}-button`;
 			</button>
 		</div>
 
-		<div
-			class="python-lab-panel__status"
-			data-python-lab-status
-			data-python-lab-drag-handle
-		>
+		<div class="python-lab-panel__status" data-python-lab-status>
 			点击运行时会加载 Monaco 与浏览器内 Python 运行时。
+		</div>
+
+		<div
+			class="python-lab-panel__dragbar"
+			data-python-lab-drag-handle
+			role="presentation"
+			aria-hidden="true"
+		>
+			<span class="python-lab-panel__dragbar-grip"></span>
 		</div>
 
 		<div class="python-lab-panel__editor-frame">
@@ -77,6 +82,9 @@ const pythonLabButtonId = `${pythonLabUid}-button`;
 		<div class="python-lab-panel__actions">
 			<button type="button" class="python-lab-panel__run" data-python-lab-run>
 				运行代码
+			</button>
+			<button type="button" class="python-lab-panel__ghost" data-python-lab-upgrade>
+				增强编辑器
 			</button>
 			<button type="button" class="python-lab-panel__ghost" data-python-lab-clear>
 				清空输出
@@ -266,6 +274,9 @@ print([sqrt(n) for n in nums])
 
 		if (close.dataset.owenBound !== "true") {
 			close.dataset.owenBound = "true";
+			close.addEventListener("pointerdown", (event) => {
+				event.stopPropagation();
+			});
 			close.addEventListener("click", (event) => {
 				event.preventDefault();
 				event.stopPropagation();
@@ -397,8 +408,9 @@ print([sqrt(n) for n in nums])
     overflow hidden
     overscroll-behavior none
     isolation isolate
-    transition transform .24s ease, box-shadow .24s ease, border-color .24s ease, left .18s ease, top .18s ease, right .18s ease, bottom .18s ease
+    transition transform .24s ease, box-shadow .24s ease, border-color .24s ease, opacity .24s ease
     transform-origin bottom right
+    will-change transform, left, top
 
   .python-lab-panel::after
     content ""
@@ -414,7 +426,7 @@ print([sqrt(n) for n in nums])
     border-color rgba(118, 156, 255, .24)
     box-shadow 0 0 34px rgba(118, 156, 255, .14), 0 36px 96px rgba(15, 23, 42, .24), inset 0 1px 0 rgba(255,255,255,.72)
 
-  .python-lab-panel[data-dragging="true"]
+  .python-lab-panel[data-dragging]
     transition none
 
   .python-lab-panel[hidden]
@@ -425,12 +437,7 @@ print([sqrt(n) for n in nums])
     align-items flex-start
     justify-content space-between
     gap 1rem
-    cursor grab
     user-select none
-    touch-action none
-
-  .python-lab-panel[data-dragging="true"] .python-lab-panel__header
-    cursor grabbing
 
   .python-lab-panel__eyebrow
     font-size .72rem
@@ -468,12 +475,26 @@ print([sqrt(n) for n in nums])
     background rgba(15, 23, 42, .04)
     font-size .83rem
     color rgba(15, 23, 42, .62)
+
+  .python-lab-panel__dragbar
+    display flex
+    align-items center
+    justify-content center
+    min-height 1.25rem
+    margin-top -.25rem
     cursor grab
     user-select none
     touch-action none
 
-  .python-lab-panel[data-dragging="true"] .python-lab-panel__status
+  .python-lab-panel[data-dragging] .python-lab-panel__dragbar
     cursor grabbing
+
+  .python-lab-panel__dragbar-grip
+    width 4.2rem
+    height .36rem
+    border-radius 999px
+    background linear-gradient(90deg, rgba(118, 156, 255, .2), rgba(132, 115, 255, .12))
+    box-shadow inset 0 1px 0 rgba(255,255,255,.52), 0 0 0 1px rgba(118, 156, 255, .08)
 
   .python-lab-panel__editor-frame
     min-height 0
@@ -611,7 +632,8 @@ print([sqrt(n) for n in nums])
   :global(.suggest-widget),
   :global(.monaco-editor-hover),
   :global(.parameter-hints-widget)
-    z-index 520 !important
+    z-index 1720 !important
+    position fixed !important
 
   :global(.suggest-widget)
     border-radius 1rem !important
@@ -674,6 +696,10 @@ print([sqrt(n) for n in nums])
   :root:not(.dark) .python-lab-panel__status
     border-color rgba(236, 174, 198, .18)
     background rgba(255, 245, 249, .82)
+
+  :root:not(.dark) .python-lab-panel__dragbar-grip
+    background linear-gradient(90deg, rgba(232, 146, 182, .34), rgba(244, 164, 196, .24))
+    box-shadow inset 0 1px 0 rgba(255,255,255,.86), 0 0 0 1px rgba(236, 174, 198, .16)
 
   :root:not(.dark) .python-lab-panel__close
     border-color rgba(236, 174, 198, .16)
@@ -745,6 +771,10 @@ print([sqrt(n) for n in nums])
 
   :root.dark .python-lab-panel__status
     background rgba(255, 255, 255, .04)
+
+  :root.dark .python-lab-panel__dragbar-grip
+    background linear-gradient(90deg, rgba(118, 156, 255, .28), rgba(132, 115, 255, .18))
+    box-shadow inset 0 1px 0 rgba(255,255,255,.12), 0 0 0 1px rgba(118, 156, 255, .12)
 
   :root.dark .python-lab-panel__ghost
     background rgba(118, 156, 255, .12)

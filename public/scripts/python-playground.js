@@ -1433,6 +1433,11 @@ except SyntaxError as exc:
 			return null;
 		}
 
+		if (root.dataset.pythonLabPreferMonaco !== "true") {
+			setPythonLabLoading(root, false);
+			return null;
+		}
+
 		if (labState.editor) {
 			return labState.editor;
 		}
@@ -1442,7 +1447,7 @@ except SyntaxError as exc:
 		}
 
 		labState.editorPromise = (async () => {
-			setPythonLabLoading(root, false, "轻量编辑器已就绪，Monaco 正在后台准备…");
+			setPythonLabLoading(root, true, "正在加载增强编辑器…");
 			labState.host.hidden = true;
 			labState.fallback.hidden = false;
 			labState.fallback.value = labState.source.value;
@@ -1514,6 +1519,9 @@ except SyntaxError as exc:
 
 				labState.fallback.hidden = true;
 				setPythonLabLoading(root, false, "Monaco 编辑器已就绪。");
+				if (labState.upgradeButton instanceof HTMLButtonElement) {
+					labState.upgradeButton.hidden = true;
+				}
 				labState.editor.onDidChangeModelContent(() => {
 					labState.source.value = labState.editor.getValue();
 					labState.fallback.value = labState.source.value;
@@ -1527,6 +1535,10 @@ except SyntaxError as exc:
 				setPythonLabLoading(root, false, "Monaco 加载失败，已切换到轻量编辑器。");
 				labState.status.textContent =
 					"Monaco 加载失败，已切换到轻量编辑器。";
+				root.dataset.pythonLabPreferMonaco = "false";
+				if (labState.upgradeButton instanceof HTMLButtonElement) {
+					labState.upgradeButton.hidden = false;
+				}
 				return null;
 			} finally {
 				labState.editorPromise = null;
@@ -1567,24 +1579,25 @@ except SyntaxError as exc:
 
 		state.host.hidden = true;
 		state.fallback.hidden = false;
-		setPythonLabLoading(root, false, "轻量编辑器已就绪，编辑器核心正在后台准备。");
+		setPythonLabLoading(root, false, "轻量编辑器已就绪，首次运行时再加载 Python 运行时。");
 		state.viewportSyncHandler?.();
 		state.fallback.focus();
 
-		void ensurePythonLabEditor(root).then((editor) => {
-			if (root.dataset.state !== "open") {
-				return;
-			}
-			if (!editor) {
-				state.status.textContent =
-					"轻量编辑器已就绪。若 Monaco 稍后可用，会自动切换。";
-				return;
-			}
-			state.viewportSyncHandler?.();
-			editor.layout();
-			editor.focus();
-			schedulePythonLabWarmup(root);
-		});
+		if (root.dataset.pythonLabPreferMonaco === "true") {
+			void ensurePythonLabEditor(root).then((editor) => {
+				if (root.dataset.state !== "open") {
+					return;
+				}
+				if (!editor) {
+					state.status.textContent =
+						"轻量编辑器已就绪。增强模式暂不可用。";
+					return;
+				}
+				state.viewportSyncHandler?.();
+				editor.layout();
+				editor.focus();
+			});
+		}
 	}
 
 	async function runPythonLab(root) {
@@ -1680,6 +1693,9 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		const clearButton =
 			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-clear]")) ||
 			root.querySelector("[data-python-lab-clear]");
+		const upgradeButton =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-upgrade]")) ||
+			root.querySelector("[data-python-lab-upgrade]");
 		const output =
 			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-output]")) ||
 			root.querySelector("[data-python-lab-output]");
@@ -1708,6 +1724,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			!(close instanceof HTMLButtonElement) ||
 			!(runButton instanceof HTMLButtonElement) ||
 			!(clearButton instanceof HTMLButtonElement) ||
+			(upgradeButton !== null && !(upgradeButton instanceof HTMLButtonElement)) ||
 			!(output instanceof HTMLElement) ||
 			!(host instanceof HTMLElement) ||
 			!(fallback instanceof HTMLTextAreaElement) ||
@@ -1724,6 +1741,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			panel,
 			runButton,
 			clearButton,
+			upgradeButton,
 			output,
 			host,
 			fallback,
@@ -1738,6 +1756,8 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			runtimeWarmHandle: 0,
 			isDragging: false,
 			viewportSyncHandler: null,
+			dragFrame: 0,
+			pendingDragPosition: null,
 		});
 
 		const storedPosition = getStoredPythonLabPosition();
@@ -1755,8 +1775,8 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			root,
 			false,
 			isInitiallyOpen
-				? "轻量编辑器已就绪，编辑器核心正在后台准备。"
-				: "轻量编辑器待命，点击即可开始编写。",
+				? "轻量编辑器已就绪，首次运行时再加载 Python 运行时。"
+				: "轻量编辑器待命，点开即可开始编写。",
 		);
 
 		const syncPanelWithinViewport = () => {
@@ -1783,6 +1803,9 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		close.addEventListener("click", () => {
 			togglePythonLab(root, false);
 		});
+		close.addEventListener("pointerdown", (event) => {
+			event.stopPropagation();
+		});
 
 		runButton.addEventListener("click", () => {
 			void runPythonLab(root);
@@ -1792,6 +1815,23 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			setOutput(output, "等待运行…", "idle");
 			status.textContent = "输出已清空。";
 		});
+
+		if (upgradeButton instanceof HTMLButtonElement) {
+			upgradeButton.hidden = !!getPythonLabState(root)?.editor;
+			upgradeButton.addEventListener("click", () => {
+				root.dataset.pythonLabPreferMonaco = "true";
+				status.textContent = "正在加载增强编辑器…";
+				void ensurePythonLabEditor(root).then((editor) => {
+					if (!editor || root.dataset.state !== "open") {
+						return;
+					}
+					const activeState = getPythonLabState(root);
+					activeState?.viewportSyncHandler?.();
+					editor.layout();
+					editor.focus();
+				});
+			});
+		}
 
 		fallback.value = source.value;
 		fallback.addEventListener("input", () => {
@@ -1840,6 +1880,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 				}
 
 				event.preventDefault();
+				event.stopPropagation();
 				handle.setPointerCapture?.(event.pointerId);
 
 				const rect = panel.getBoundingClientRect();
@@ -1848,7 +1889,22 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 				const startX = event.clientX;
 				const startY = event.clientY;
 				let draggingStarted = false;
-				const dragThreshold = 6;
+				const dragThreshold = 4;
+				panel.dataset.dragging = "armed";
+				root.dataset.dragging = "armed";
+
+				const flushDragPosition = () => {
+					const activeState = getPythonLabState(root);
+					if (!activeState) {
+						return;
+					}
+					activeState.dragFrame = 0;
+					if (!activeState.pendingDragPosition) {
+						return;
+					}
+					applyPythonLabPosition(root, activeState.pendingDragPosition);
+					activeState.pendingDragPosition = null;
+				};
 
 				const onMove = (moveEvent) => {
 					const deltaX = moveEvent.clientX - startX;
@@ -1865,15 +1921,25 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 						root.dataset.dragging = "true";
 						panel.dataset.dragging = "true";
 					}
-					const next = clampPythonLabPosition(
+					currentState.pendingDragPosition = clampPythonLabPosition(
 						panel,
 						startLeft + deltaX,
 						startTop + deltaY,
 					);
-					applyPythonLabPosition(root, next);
+					if (!currentState.dragFrame) {
+						currentState.dragFrame = window.requestAnimationFrame(flushDragPosition);
+					}
 				};
 
 				const onUp = () => {
+					if (currentState.dragFrame) {
+						window.cancelAnimationFrame(currentState.dragFrame);
+						currentState.dragFrame = 0;
+					}
+					if (currentState.pendingDragPosition) {
+						applyPythonLabPosition(root, currentState.pendingDragPosition);
+						currentState.pendingDragPosition = null;
+					}
 					if (draggingStarted) {
 						const finalRect = panel.getBoundingClientRect();
 						const next = clampPythonLabPosition(
@@ -1885,8 +1951,8 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 						storePythonLabPosition(next);
 					}
 					currentState.isDragging = false;
-					root.dataset.dragging = "false";
-					panel.dataset.dragging = "false";
+					delete root.dataset.dragging;
+					delete panel.dataset.dragging;
 					handle.releasePointerCapture?.(event.pointerId);
 					window.removeEventListener("pointermove", onMove);
 					window.removeEventListener("pointerup", onUp);
@@ -1901,7 +1967,7 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 
 		root.dataset.pythonLabBound = "true";
 
-		if (isInitiallyOpen) {
+		if (isInitiallyOpen && root.dataset.pythonLabPreferMonaco === "true") {
 			void ensurePythonLabEditor(root);
 		}
 	}
