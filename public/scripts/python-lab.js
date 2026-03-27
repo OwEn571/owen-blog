@@ -11,6 +11,109 @@
 		pyodidePromise: null,
 	};
 
+	const PYTHON_KEYWORDS = new Set([
+		"and",
+		"as",
+		"assert",
+		"async",
+		"await",
+		"break",
+		"class",
+		"continue",
+		"def",
+		"del",
+		"elif",
+		"else",
+		"except",
+		"False",
+		"finally",
+		"for",
+		"from",
+		"global",
+		"if",
+		"import",
+		"in",
+		"is",
+		"lambda",
+		"None",
+		"nonlocal",
+		"not",
+		"or",
+		"pass",
+		"raise",
+		"return",
+		"True",
+		"try",
+		"while",
+		"with",
+		"yield",
+	]);
+
+	const PYTHON_BUILTINS = new Set([
+		"abs",
+		"all",
+		"any",
+		"bool",
+		"dict",
+		"enumerate",
+		"filter",
+		"float",
+		"input",
+		"int",
+		"len",
+		"list",
+		"map",
+		"max",
+		"min",
+		"open",
+		"print",
+		"range",
+		"reversed",
+		"round",
+		"set",
+		"sorted",
+		"str",
+		"sum",
+		"tuple",
+		"type",
+		"zip",
+	]);
+
+	const PYTHON_SUGGESTIONS = Array.from(
+		new Set([
+			...PYTHON_KEYWORDS,
+			...PYTHON_BUILTINS,
+			"append",
+			"breakpoint",
+			"clear",
+			"copy",
+			"count",
+			"defaultdict",
+			"deque",
+			"extend",
+			"items",
+			"insert",
+			"join",
+			"keys",
+			"lower",
+			"pop",
+			"read",
+			"readline",
+			"remove",
+			"replace",
+			"reverse",
+			"self",
+			"sort",
+			"split",
+			"strip",
+			"sys",
+			"update",
+			"upper",
+			"values",
+			"write",
+		]),
+	).sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base" }));
+
 	function loadExternalScript(id, src, test) {
 		if (typeof test === "function" && test()) {
 			return Promise.resolve();
@@ -170,6 +273,165 @@
 		});
 	}
 
+	function escapeHtml(value) {
+		return value
+			.replaceAll("&", "&amp;")
+			.replaceAll("<", "&lt;")
+			.replaceAll(">", "&gt;");
+	}
+
+	function wrapToken(value, className) {
+		const content = escapeHtml(value);
+		return className ? `<span class="${className}">${content}</span>` : content;
+	}
+
+	function isIdentifierStart(char) {
+		return /[A-Za-z_]/.test(char || "");
+	}
+
+	function isIdentifierPart(char) {
+		return /[A-Za-z0-9_]/.test(char || "");
+	}
+
+	function getNextNonWhitespace(source, start) {
+		for (let index = start; index < source.length; index += 1) {
+			if (!/\s/.test(source[index])) {
+				return source[index];
+			}
+		}
+		return "";
+	}
+
+	function readStringLiteral(source, start) {
+		const quote = source[start];
+		const triple = source.slice(start, start + 3) === quote.repeat(3);
+		let index = start + (triple ? 3 : 1);
+
+		while (index < source.length) {
+			if (triple) {
+				if (source.slice(index, index + 3) === quote.repeat(3)) {
+					index += 3;
+					break;
+				}
+				index += 1;
+				continue;
+			}
+
+			if (source[index] === "\\") {
+				index += 2;
+				continue;
+			}
+
+			if (source[index] === quote) {
+				index += 1;
+				break;
+			}
+
+			index += 1;
+		}
+
+		return {
+			value: source.slice(start, index),
+			end: index,
+		};
+	}
+
+	function renderHighlightedPython(source) {
+		const code = source || " ";
+		let index = 0;
+		let html = "";
+		let pendingRole = "";
+
+		while (index < code.length) {
+			const char = code[index];
+
+			if (char === "#") {
+				let end = code.indexOf("\n", index);
+				if (end === -1) {
+					end = code.length;
+				}
+				html += wrapToken(code.slice(index, end), "python-lab-token-comment");
+				index = end;
+				pendingRole = "";
+				continue;
+			}
+
+			if (char === "'" || char === '"') {
+				const token = readStringLiteral(code, index);
+				html += wrapToken(token.value, "python-lab-token-string");
+				index = token.end;
+				pendingRole = "";
+				continue;
+			}
+
+			if (char === "@" && isIdentifierStart(code[index + 1])) {
+				let end = index + 1;
+				while (end < code.length && isIdentifierPart(code[end])) {
+					end += 1;
+				}
+				html += wrapToken(code.slice(index, end), "python-lab-token-decorator");
+				index = end;
+				pendingRole = "";
+				continue;
+			}
+
+			if (/\d/.test(char)) {
+				let end = index + 1;
+				while (end < code.length && /[\d._a-fA-Fboxj]/.test(code[end])) {
+					end += 1;
+				}
+				html += wrapToken(code.slice(index, end), "python-lab-token-number");
+				index = end;
+				pendingRole = "";
+				continue;
+			}
+
+			if (isIdentifierStart(char)) {
+				let end = index + 1;
+				while (end < code.length && isIdentifierPart(code[end])) {
+					end += 1;
+				}
+
+				const token = code.slice(index, end);
+				let className = "";
+
+				if (pendingRole === "function") {
+					className = "python-lab-token-function";
+					pendingRole = "";
+				} else if (pendingRole === "class") {
+					className = "python-lab-token-class";
+					pendingRole = "";
+				} else if (PYTHON_KEYWORDS.has(token)) {
+					className = "python-lab-token-keyword";
+					if (token === "def") {
+						pendingRole = "function";
+					} else if (token === "class") {
+						pendingRole = "class";
+					}
+				} else if (token === "True" || token === "False" || token === "None") {
+					className = "python-lab-token-constant";
+				} else if (PYTHON_BUILTINS.has(token)) {
+					className = "python-lab-token-builtin";
+				} else if (getNextNonWhitespace(code, end) === "(") {
+					className = "python-lab-token-call";
+				}
+
+				html += wrapToken(token, className);
+				index = end;
+				continue;
+			}
+
+			if (!/\s/.test(char) && pendingRole) {
+				pendingRole = "";
+			}
+
+			html += escapeHtml(char);
+			index += 1;
+		}
+
+		return html;
+	}
+
 	function renderLineNumbers(state) {
 		const total = Math.max(state.editor.value.split("\n").length, 1);
 		const lines = Array.from({ length: total }, (_, index) => `${index + 1}`);
@@ -177,40 +439,250 @@
 		state.gutter.scrollTop = state.editor.scrollTop;
 	}
 
-	function openPanel(state) {
-		if (!state.panel.hidden) {
+	function syncViewport(state) {
+		state.highlight.scrollTop = state.editor.scrollTop;
+		state.highlight.scrollLeft = state.editor.scrollLeft;
+		state.gutter.scrollTop = state.editor.scrollTop;
+	}
+
+	function renderHighlight(state) {
+		const value = state.editor.value;
+		state.highlight.innerHTML = renderHighlightedPython(value);
+		syncViewport(state);
+	}
+
+	function syncEditorChrome(state) {
+		renderLineNumbers(state);
+		renderHighlight(state);
+	}
+
+	function createAutocompletePortal() {
+		const portal = document.createElement("div");
+		portal.className = "python-lab-autocomplete";
+		portal.hidden = true;
+		portal.setAttribute("role", "listbox");
+		document.body.appendChild(portal);
+		return portal;
+	}
+
+	function hideAutocomplete(state) {
+		state.autocomplete.hidden = true;
+		state.autocomplete.innerHTML = "";
+		state.suggestions = [];
+		state.activeIndex = 0;
+		state.context = null;
+	}
+
+	function getCompletionContext(source, caretIndex) {
+		let start = caretIndex;
+		while (start > 0 && isIdentifierPart(source[start - 1])) {
+			start -= 1;
+		}
+
+		const prefix = source.slice(start, caretIndex);
+		if (!prefix || !isIdentifierStart(prefix[0])) {
+			return null;
+		}
+
+		return {
+			start,
+			end: caretIndex,
+			prefix,
+		};
+	}
+
+	function collectSuggestions(prefix, source) {
+		if (!prefix) {
+			return [];
+		}
+
+		const normalizedPrefix = prefix.toLowerCase();
+		const dynamicIdentifiers = Array.from(new Set(source.match(/[A-Za-z_][A-Za-z0-9_]*/g) || []));
+
+		return Array.from(new Set([...dynamicIdentifiers, ...PYTHON_SUGGESTIONS]))
+			.filter((item) => item.toLowerCase().startsWith(normalizedPrefix) && item !== prefix)
+			.sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base" }))
+			.slice(0, 10);
+	}
+
+	function getSuggestionMeta(suggestion) {
+		if (PYTHON_KEYWORDS.has(suggestion)) {
+			return "keyword";
+		}
+		if (PYTHON_BUILTINS.has(suggestion)) {
+			return "builtin";
+		}
+		return "symbol";
+	}
+
+	function setActiveSuggestion(state, index) {
+		if (state.suggestions.length === 0) {
 			return;
 		}
-		if (state.panel.dataset.positionMode !== "custom") {
-			anchorPanel(state);
-		} else {
-			const stored = getStoredPosition();
-			if (stored) {
-				applyPosition(state, clampPosition(state.panel, stored.left, stored.top));
-			}
+
+		state.activeIndex = (index + state.suggestions.length) % state.suggestions.length;
+		state.autocomplete
+			.querySelectorAll(".python-lab-autocomplete__item")
+			.forEach((item, itemIndex) => {
+				if (!(item instanceof HTMLElement)) {
+					return;
+				}
+				const isActive = itemIndex === state.activeIndex;
+				item.classList.toggle("is-active", isActive);
+				item.setAttribute("aria-selected", isActive ? "true" : "false");
+			});
+	}
+
+	function getTextareaCaretRect(textarea, position) {
+		const rect = textarea.getBoundingClientRect();
+		const style = window.getComputedStyle(textarea);
+		const mirror = document.createElement("div");
+		const marker = document.createElement("span");
+		const properties = [
+			"boxSizing",
+			"width",
+			"height",
+			"fontFamily",
+			"fontSize",
+			"fontWeight",
+			"fontStyle",
+			"letterSpacing",
+			"lineHeight",
+			"textTransform",
+			"textAlign",
+			"textIndent",
+			"paddingTop",
+			"paddingRight",
+			"paddingBottom",
+			"paddingLeft",
+			"borderTopWidth",
+			"borderRightWidth",
+			"borderBottomWidth",
+			"borderLeftWidth",
+			"tabSize",
+		];
+
+		mirror.style.position = "fixed";
+		mirror.style.left = `${rect.left}px`;
+		mirror.style.top = `${rect.top}px`;
+		mirror.style.visibility = "hidden";
+		mirror.style.pointerEvents = "none";
+		mirror.style.whiteSpace = "pre";
+		mirror.style.wordWrap = "normal";
+		mirror.style.overflow = "auto";
+		mirror.style.opacity = "0";
+
+		properties.forEach((property) => {
+			mirror.style[property] = style[property];
+		});
+
+		mirror.textContent = textarea.value.slice(0, position);
+		marker.textContent = textarea.value.slice(position, position + 1) || "\u200b";
+		mirror.appendChild(marker);
+		document.body.appendChild(mirror);
+		mirror.scrollTop = textarea.scrollTop;
+		mirror.scrollLeft = textarea.scrollLeft;
+		const markerRect = marker.getBoundingClientRect();
+		mirror.remove();
+		return markerRect;
+	}
+
+	function positionAutocomplete(state) {
+		if (state.autocomplete.hidden) {
+			return;
 		}
-		state.panel.hidden = false;
-		state.panel.dataset.state = "open";
-		state.root.dataset.state = "open";
-		state.toggle.setAttribute("aria-expanded", "true");
-		state.panel.setAttribute("aria-hidden", "false");
+
+		const caretRect = getTextareaCaretRect(state.editor, state.editor.selectionStart);
+		const autocomplete = state.autocomplete;
+		const margin = 12;
+		autocomplete.style.left = `${Math.max(margin, caretRect.left)}px`;
+		autocomplete.style.top = `${Math.min(window.innerHeight - margin, caretRect.bottom + 10)}px`;
+		const panelRect = autocomplete.getBoundingClientRect();
+		let left = caretRect.left;
+		let top = caretRect.bottom + 10;
+
+		if (left + panelRect.width > window.innerWidth - margin) {
+			left = window.innerWidth - panelRect.width - margin;
+		}
+		if (top + panelRect.height > window.innerHeight - margin) {
+			top = Math.max(margin, caretRect.top - panelRect.height - 10);
+		}
+
+		autocomplete.style.left = `${Math.max(margin, left)}px`;
+		autocomplete.style.top = `${Math.max(margin, top)}px`;
+	}
+
+	function applySuggestion(state, suggestion) {
+		if (!state.context) {
+			return;
+		}
+
+		const { start, end } = state.context;
+		state.editor.setRangeText(suggestion, start, end, "end");
+		saveDraft(state);
+		syncEditorChrome(state);
+		hideAutocomplete(state);
 		focusEditor(state);
 	}
 
-	function closePanel(state) {
-		state.panel.hidden = true;
-		state.panel.dataset.state = "closed";
-		state.root.dataset.state = "closed";
-		state.toggle.setAttribute("aria-expanded", "false");
-		state.panel.setAttribute("aria-hidden", "true");
-	}
-
-	function togglePanel(state) {
+	function updateAutocomplete(state, options = {}) {
+		const { force = false } = options;
 		if (state.panel.hidden) {
-			openPanel(state);
-		} else {
-			closePanel(state);
+			hideAutocomplete(state);
+			return;
 		}
+
+		const start = state.editor.selectionStart;
+		const end = state.editor.selectionEnd;
+		if (start !== end) {
+			hideAutocomplete(state);
+			return;
+		}
+
+		const context = getCompletionContext(state.editor.value, start);
+		if (!context || (!force && context.prefix.length < 1)) {
+			hideAutocomplete(state);
+			return;
+		}
+
+		const suggestions = collectSuggestions(context.prefix, state.editor.value);
+		if (suggestions.length === 0) {
+			hideAutocomplete(state);
+			return;
+		}
+
+		state.context = context;
+		state.suggestions = suggestions;
+		state.activeIndex = 0;
+		state.autocomplete.innerHTML = "";
+
+		suggestions.forEach((suggestion, index) => {
+			const button = document.createElement("button");
+			const label = document.createElement("span");
+			const meta = document.createElement("span");
+			button.type = "button";
+			button.className = "python-lab-autocomplete__item";
+			button.setAttribute("role", "option");
+			button.setAttribute("aria-selected", index === 0 ? "true" : "false");
+			if (index === 0) {
+				button.classList.add("is-active");
+			}
+
+			label.className = "python-lab-autocomplete__label";
+			label.textContent = suggestion;
+			meta.className = "python-lab-autocomplete__meta";
+			meta.textContent = getSuggestionMeta(suggestion);
+
+			button.append(label, meta);
+			button.addEventListener("mousedown", (event) => {
+				event.preventDefault();
+				applySuggestion(state, suggestion);
+			});
+			state.autocomplete.appendChild(button);
+		});
+
+		state.autocomplete.hidden = false;
+		positionAutocomplete(state);
 	}
 
 	function insertAtCursor(textarea, text) {
@@ -248,9 +720,61 @@
 		);
 	}
 
+	function insertPair(state, opening, closing) {
+		const start = state.editor.selectionStart;
+		const end = state.editor.selectionEnd;
+		const selected = state.editor.value.slice(start, end);
+		state.editor.setRangeText(`${opening}${selected}${closing}`, start, end, "end");
+		if (start === end) {
+			state.editor.setSelectionRange(start + 1, start + 1);
+		}
+		saveDraft(state);
+		syncEditorChrome(state);
+	}
+
 	function handleEditorKeydown(state, event) {
+		const hasAutocomplete = !state.autocomplete.hidden && state.suggestions.length > 0;
+
+		if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+			event.preventDefault();
+			void runCode(state);
+			return;
+		}
+
+		if ((event.ctrlKey || event.metaKey) && event.code === "Space") {
+			event.preventDefault();
+			updateAutocomplete(state, { force: true });
+			return;
+		}
+
+		if (event.key === "Escape") {
+			if (hasAutocomplete) {
+				event.preventDefault();
+				hideAutocomplete(state);
+				return;
+			}
+			closePanel(state);
+			return;
+		}
+
+		if (event.key === "ArrowDown" && hasAutocomplete) {
+			event.preventDefault();
+			setActiveSuggestion(state, state.activeIndex + 1);
+			return;
+		}
+
+		if (event.key === "ArrowUp" && hasAutocomplete) {
+			event.preventDefault();
+			setActiveSuggestion(state, state.activeIndex - 1);
+			return;
+		}
+
 		if (event.key === "Tab") {
 			event.preventDefault();
+			if (hasAutocomplete) {
+				applySuggestion(state, state.suggestions[state.activeIndex]);
+				return;
+			}
 			if (event.shiftKey) {
 				indentSelectedLines(state.editor, true);
 			} else if (state.editor.selectionStart !== state.editor.selectionEnd) {
@@ -259,11 +783,18 @@
 				insertAtCursor(state.editor, INDENT);
 			}
 			saveDraft(state);
-			renderLineNumbers(state);
+			syncEditorChrome(state);
+			hideAutocomplete(state);
 			return;
 		}
 
 		if (event.key === "Enter") {
+			if (hasAutocomplete) {
+				event.preventDefault();
+				applySuggestion(state, state.suggestions[state.activeIndex]);
+				return;
+			}
+
 			const start = state.editor.selectionStart;
 			const value = state.editor.value;
 			const lineStart = value.lastIndexOf("\n", start - 1) + 1;
@@ -274,13 +805,31 @@
 			event.preventDefault();
 			insertAtCursor(state.editor, `\n${baseIndent}${extraIndent}`);
 			saveDraft(state);
-			renderLineNumbers(state);
+			syncEditorChrome(state);
+			hideAutocomplete(state);
 			return;
 		}
 
-		if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-			event.preventDefault();
-			void runCode(state);
+		if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.length === 1) {
+			if (event.key === "(") {
+				event.preventDefault();
+				insertPair(state, "(", ")");
+				return;
+			}
+			if (event.key === "[") {
+				event.preventDefault();
+				insertPair(state, "[", "]");
+				return;
+			}
+			if (event.key === "{") {
+				event.preventDefault();
+				insertPair(state, "{", "}");
+				return;
+			}
+			if (event.key === '"' || event.key === "'") {
+				event.preventDefault();
+				insertPair(state, event.key, event.key);
+			}
 		}
 	}
 
@@ -325,9 +874,7 @@ finally:
 			const stdout = stdoutBuffer.getvalue();
 			const stderr = stderrBuffer.getvalue();
 			const tracebackText =
-				typeof tracebackValue === "string"
-					? tracebackValue
-					: tracebackValue?.toString?.() || "";
+				typeof tracebackValue === "string" ? tracebackValue : tracebackValue?.toString?.() || "";
 			stdoutBuffer.destroy?.();
 			stderrBuffer.destroy?.();
 			tracebackValue.destroy?.();
@@ -361,6 +908,7 @@ finally:
 
 			event.preventDefault();
 			event.stopPropagation();
+			hideAutocomplete(state);
 			handle.setPointerCapture?.(event.pointerId);
 
 			const rect = state.panel.getBoundingClientRect();
@@ -428,6 +976,44 @@ finally:
 		});
 	}
 
+	function openPanel(state) {
+		if (!state.panel.hidden) {
+			return;
+		}
+		if (state.panel.dataset.positionMode !== "custom") {
+			anchorPanel(state);
+		} else {
+			const stored = getStoredPosition();
+			if (stored) {
+				applyPosition(state, clampPosition(state.panel, stored.left, stored.top));
+			}
+		}
+		state.panel.hidden = false;
+		state.panel.dataset.state = "open";
+		state.root.dataset.state = "open";
+		state.toggle.setAttribute("aria-expanded", "true");
+		state.panel.setAttribute("aria-hidden", "false");
+		syncEditorChrome(state);
+		focusEditor(state);
+	}
+
+	function closePanel(state) {
+		hideAutocomplete(state);
+		state.panel.hidden = true;
+		state.panel.dataset.state = "closed";
+		state.root.dataset.state = "closed";
+		state.toggle.setAttribute("aria-expanded", "false");
+		state.panel.setAttribute("aria-hidden", "true");
+	}
+
+	function togglePanel(state) {
+		if (state.panel.hidden) {
+			openPanel(state);
+		} else {
+			closePanel(state);
+		}
+	}
+
 	function init(root) {
 		if (!(root instanceof HTMLElement) || root.dataset.pythonLabReady === "true") {
 			return;
@@ -437,6 +1023,7 @@ finally:
 		const panel = root.querySelector("[data-python-lab-panel]");
 		const close = root.querySelector("[data-python-lab-close]");
 		const editor = root.querySelector("[data-python-lab-editor]");
+		const highlight = root.querySelector("[data-python-lab-highlight]");
 		const runButton = root.querySelector("[data-python-lab-run]");
 		const resetButton = root.querySelector("[data-python-lab-reset]");
 		const clearButton = root.querySelector("[data-python-lab-clear]");
@@ -451,6 +1038,7 @@ finally:
 			!(panel instanceof HTMLElement) ||
 			!(close instanceof HTMLButtonElement) ||
 			!(editor instanceof HTMLTextAreaElement) ||
+			!(highlight instanceof HTMLElement) ||
 			!(runButton instanceof HTMLButtonElement) ||
 			!(resetButton instanceof HTMLButtonElement) ||
 			!(clearButton instanceof HTMLButtonElement) ||
@@ -473,6 +1061,7 @@ finally:
 			panel,
 			close,
 			editor,
+			highlight,
 			runButton,
 			resetButton,
 			clearButton,
@@ -481,12 +1070,16 @@ finally:
 			dragHandle,
 			source,
 			gutter,
+			autocomplete: createAutocompletePortal(),
+			suggestions: [],
+			activeIndex: 0,
+			context: null,
 		};
 		labState.set(root, state);
 
 		restoreDraft(state);
-		renderLineNumbers(state);
-		setStatus(state, "轻量编辑器已就绪，首次运行时再加载浏览器内 Python。");
+		syncEditorChrome(state);
+		setStatus(state, "轻量编辑器已就绪，支持高亮与轻量自动补全。");
 		setOutput(state, "等待运行…", "idle");
 
 		const stored = getStoredPosition();
@@ -517,7 +1110,8 @@ finally:
 		resetButton.addEventListener("click", () => {
 			state.editor.value = state.source.value;
 			saveDraft(state);
-			renderLineNumbers(state);
+			syncEditorChrome(state);
+			hideAutocomplete(state);
 			setStatus(state, "示例代码已恢复。");
 			focusEditor(state);
 		});
@@ -529,15 +1123,33 @@ finally:
 
 		editor.addEventListener("input", () => {
 			saveDraft(state);
-			renderLineNumbers(state);
+			syncEditorChrome(state);
+			updateAutocomplete(state);
 		});
 
 		editor.addEventListener("scroll", () => {
-			state.gutter.scrollTop = state.editor.scrollTop;
+			syncViewport(state);
+			if (!state.autocomplete.hidden) {
+				positionAutocomplete(state);
+			}
 		});
 
 		editor.addEventListener("keydown", (event) => {
 			handleEditorKeydown(state, event);
+		});
+
+		editor.addEventListener("keyup", (event) => {
+			if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
+				updateAutocomplete(state);
+			}
+		});
+
+		editor.addEventListener("click", () => {
+			updateAutocomplete(state);
+		});
+
+		editor.addEventListener("focus", () => {
+			syncEditorChrome(state);
 		});
 
 		document.addEventListener(
@@ -547,7 +1159,8 @@ finally:
 					panel.hidden ||
 					!(event.target instanceof Node) ||
 					root.contains(event.target) ||
-					panel.contains(event.target)
+					panel.contains(event.target) ||
+					state.autocomplete.contains(event.target)
 				) {
 					return;
 				}
@@ -555,12 +1168,6 @@ finally:
 			},
 			true,
 		);
-
-		document.addEventListener("keydown", (event) => {
-			if (event.key === "Escape" && !panel.hidden) {
-				closePanel(state);
-			}
-		});
 
 		window.addEventListener(
 			"resize",
@@ -573,6 +1180,19 @@ finally:
 				applyPosition(state, next, panel.dataset.positionMode === "custom" ? "custom" : "anchored");
 				if (panel.dataset.positionMode === "custom") {
 					storePosition(next);
+				}
+				if (!state.autocomplete.hidden) {
+					positionAutocomplete(state);
+				}
+			},
+			{ passive: true },
+		);
+
+		window.addEventListener(
+			"scroll",
+			() => {
+				if (!state.autocomplete.hidden) {
+					positionAutocomplete(state);
 				}
 			},
 			{ passive: true },
