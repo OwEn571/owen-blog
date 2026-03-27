@@ -3688,6 +3688,12 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
   }
 }
 
+@media (min-width: 1536px) {
+  body.immersive-page .floating-utility-rail {
+    right: calc(var(--utility-rail-right) + var(--toc-width, 0px) + 1rem);
+  }
+}
+
 .custom-md img,
 #post-cover img {
   @apply cursor-zoom-in;

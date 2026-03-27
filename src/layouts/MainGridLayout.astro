@@ -525,14 +525,14 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 			</div>
 
 			<div data-immersive-ready-root class="immersive-ready-root" data-ready-state="loading">
-				<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto">
-					<div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">
+				<div id="top-row" class="z-50 relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto">
+					<div id="navbar-wrapper" class="sticky top-0 transition-all">
 						<Navbar class="immersive-navbar-shell"></Navbar>
 					</div>
 				</div>
 
-				<div class="relative z-30 w-full pointer-events-none">
-					<div class="mx-auto max-w-[var(--page-width)] px-2 md:px-4 pointer-events-auto">
+				<div class="relative z-30 w-full">
+					<div class="mx-auto max-w-[var(--page-width)] px-2 md:px-4">
 						<main id="swup-container" class="transition-main w-full">
 							<div id="content-wrapper" class="transition-leaving immersive-content-shell">
 								<slot></slot>
@@ -544,8 +544,8 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 					</div>
 				</div>
 
+				<FloatingPythonLab />
 				<div class="floating-utility-rail">
-					<FloatingPythonLab />
 					{shouldRenderImmersiveFloatTOC && <FloatingTOC fallbackForSidebar={isSidebarTOC} />}
 					<BackToTop></BackToTop>
 				</div>
@@ -575,8 +575,8 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 		</>
 	) : (
 		<>
-			<div id="top-row" class="z-50 pointer-events-none relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto" class:list={[""]}>
-				<div id="navbar-wrapper" class="pointer-events-auto sticky top-0 transition-all">
+			<div id="top-row" class="z-50 relative transition-all duration-700 max-w-[var(--page-width)] px-0 md:px-4 mx-auto" class:list={[""]}>
+				<div id="navbar-wrapper" class="sticky top-0 transition-all">
 					<Navbar></Navbar>
 				</div>
 			</div>
@@ -586,8 +586,8 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 				mobileNonHomeBannerClass={mobileNonHomeBannerClass}
 			/>
 
-			<div class={`absolute w-full z-30 pointer-events-none ${mobileNonHomeBannerClass ? 'mobile-main-no-banner' : ''} ${siteConfig.wallpaperMode.defaultMode === 'none' ? 'no-banner-layout' : ''} ${transparentClass}`} style={`top: ${finalMainPanelTop}`}>
-				<div class="relative max-w-[var(--page-width)] mx-auto pointer-events-auto">
+			<div class={`absolute w-full z-30 ${mobileNonHomeBannerClass ? 'mobile-main-no-banner' : ''} ${siteConfig.wallpaperMode.defaultMode === 'none' ? 'no-banner-layout' : ''} ${transparentClass}`} style={`top: ${finalMainPanelTop}`}>
+				<div class="relative max-w-[var(--page-width)] mx-auto">
 					<div id="main-grid" class={`transition duration-700 w-full left-0 right-0 grid ${effectiveGridCols} grid-rows-none md:grid-rows-[auto] mx-auto gap-4 px-2 md:px-4 ${!mobileShowSidebar || !hasMobileDrawerComponents ? 'mobile-no-sidebar' : ''} ${hasRightSidebarComponents ? 'mobile-both-sidebar' : ''}`}
 						 data-layout-mode={defaultPostListLayout}
 					>
@@ -629,8 +629,8 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 						</div>
 					</div>
 
+					<FloatingPythonLab />
 					<div class="floating-utility-rail">
-						<FloatingPythonLab />
 						{shouldRenderFloatTOC && <FloatingTOC />}
 						<BackToTop></BackToTop>
 					</div>

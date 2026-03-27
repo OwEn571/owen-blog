@@ -6,22 +6,14 @@ import { url } from "@/utils/url-utils";
 ---
 
 <div class="hidden lg:block relative z-[1200] w-11 h-11 shrink-0 overflow-visible pointer-events-auto" id="desktop-search-host">
-	<div id="search-bar" class="owen-search-shell btn-plain active:scale-90" role="search" aria-label="Desktop Search" data-open="false">
-		<button
-			type="button"
-			class="owen-search-trigger"
-			aria-label="Search"
-		>
-			<Icon name="material-symbols:search" class="text-[1.25rem]" />
-		</button>
-		<input
-			id="search-input-desktop"
-			class="owen-search-input"
-			type="search"
-			placeholder={i18n(I18nKey.search)}
-			autocomplete="off"
-		/>
-	</div>
+	<button
+		type="button"
+		id="search-switch-desktop"
+		class="btn-plain scale-animation rounded-lg w-11 h-11 active:scale-90"
+		aria-label="Search"
+	>
+		<Icon name="material-symbols:search" class="text-[1.25rem]" />
+	</button>
 </div>
 
 <button
@@ -51,60 +43,6 @@ import { url } from "@/utils/url-utils";
 </div>
 
 <style>
-	#search-bar {
-		position: absolute;
-		right: 0;
-		top: 0;
-		display: flex;
-		align-items: center;
-		height: 2.75rem;
-		width: 2.75rem;
-		border-radius: 0.9rem;
-		overflow: hidden;
-		transition:
-			width 0.22s ease,
-			background-color 0.22s ease,
-			box-shadow 0.22s ease,
-			border-color 0.22s ease;
-	}
-
-	#search-bar[data-open="true"] {
-		width: 12rem;
-		background: color-mix(in srgb, var(--card-bg) 92%, transparent);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
-	}
-
-	.owen-search-trigger {
-		position: absolute;
-		inset: 0 auto 0 0;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2.75rem;
-		height: 2.75rem;
-		border: none;
-		background: transparent;
-		color: inherit;
-		cursor: pointer;
-	}
-
-	.owen-search-input {
-		width: 0;
-		height: 100%;
-		margin-left: 2.75rem;
-		border: none;
-		outline: none;
-		background: transparent;
-		color: var(--text-normal);
-		opacity: 0;
-		transition: width 0.18s ease, opacity 0.18s ease;
-	}
-
-	#search-bar[data-open="true"] .owen-search-input {
-		width: 8.4rem;
-		opacity: 1;
-	}
-
 	.owen-search-inside {
 		position: relative;
 		display: flex;
@@ -181,20 +119,16 @@ import { url } from "@/utils/url-utils";
 	}
 </style>
 
-<script is:inline define:vars={{ rootUrl: url("/") }}>
+	<script is:inline define:vars={{ rootUrl: url("/") }}>
 	(() => {
-		const desktopBar = document.getElementById("search-bar");
-		const desktopTrigger = desktopBar?.querySelector(".owen-search-trigger");
-		const desktopInput = document.getElementById("search-input-desktop");
+		const desktopTrigger = document.getElementById("search-switch-desktop");
 		const mobileTrigger = document.getElementById("search-switch");
 		const panelInput = document.getElementById("search-input-panel");
 		const panel = document.getElementById("search-panel");
 		const results = document.getElementById("search-results");
 
 		if (
-			!(desktopBar instanceof HTMLElement) ||
 			!(desktopTrigger instanceof HTMLButtonElement) ||
-			!(desktopInput instanceof HTMLInputElement) ||
 			!(mobileTrigger instanceof HTMLButtonElement) ||
 			!(panelInput instanceof HTMLInputElement) ||
 			!(panel instanceof HTMLElement) ||
@@ -203,9 +137,12 @@ import { url } from "@/utils/url-utils";
 			return;
 		}
 
+		if (panel.parentElement !== document.body) {
+			document.body.appendChild(panel);
+		}
+
 		let keyword = "";
 		let debounceTimer = 0;
-		let desktopOpen = false;
 
 		const fakeResults = [
 			{
@@ -237,14 +174,6 @@ import { url } from "@/utils/url-utils";
 			panel.style.pointerEvents = "";
 		};
 
-		const setDesktopOpen = (open) => {
-			desktopOpen = open;
-			desktopBar.dataset.open = open ? "true" : "false";
-			if (open) {
-				window.setTimeout(() => desktopInput.focus(), 0);
-			}
-		};
-
 		const renderResults = (items) => {
 			if (!items.length) {
 				results.innerHTML = '<div class="owen-search-empty">没有找到匹配内容</div>';
@@ -270,7 +199,6 @@ import { url } from "@/utils/url-utils";
 
 		const performSearch = async (nextKeyword) => {
 			keyword = nextKeyword.trim();
-			desktopInput.value = keyword;
 			panelInput.value = keyword;
 
 			if (!keyword) {
@@ -316,12 +244,10 @@ import { url } from "@/utils/url-utils";
 		const toggleDesktopSearch = (event) => {
 			event.preventDefault();
 			event.stopPropagation();
-			if (desktopOpen) {
-				setDesktopOpen(false);
+			if (!panel.classList.contains("float-panel-closed")) {
 				hidePanel();
 				return;
 			}
-			setDesktopOpen(true);
 			showPanel();
 			window.setTimeout(() => {
 				panelInput.focus();
@@ -350,22 +276,12 @@ import { url } from "@/utils/url-utils";
 		desktopTrigger.addEventListener("click", toggleDesktopSearch);
 		mobileTrigger.addEventListener("click", toggleMobileSearch);
 
-		desktopInput.addEventListener("input", (event) => {
-			scheduleSearch(event.currentTarget.value);
-		});
-
 		panelInput.addEventListener("input", (event) => {
 			scheduleSearch(event.currentTarget.value);
 		});
 
-		desktopInput.addEventListener("focus", () => {
-			setDesktopOpen(true);
-			showPanel();
-		});
-
-		desktopInput.addEventListener("keydown", (event) => {
+		panelInput.addEventListener("keydown", (event) => {
 			if (event.key === "Escape") {
-				setDesktopOpen(false);
 				hidePanel();
 			}
 		});
@@ -377,16 +293,13 @@ import { url } from "@/utils/url-utils";
 			}
 
 			if (
-				desktopBar.contains(target) ||
+				desktopTrigger.contains(target) ||
 				panel.contains(target) ||
 				(target instanceof Element && target.closest("#search-switch"))
 			) {
 				return;
 			}
 
-			if (!keyword) {
-				setDesktopOpen(false);
-			}
 			hidePanel();
 		});
 	})();
