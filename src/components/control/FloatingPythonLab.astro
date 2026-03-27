@@ -7,13 +7,12 @@ const pythonLabPanelId = `${pythonLabUid}-panel`;
 const pythonLabButtonId = `${pythonLabUid}-button`;
 ---
 
-<div class="python-lab-fab-shell" data-python-lab data-state="closed" id={pythonLabUid}>
+<div class="python-lab-shell" data-python-lab id={pythonLabUid}>
 	<button
 		id={pythonLabButtonId}
 		type="button"
 		class="python-lab-fab"
 		data-python-lab-toggle
-		data-ui-control="python-lab"
 		aria-expanded="false"
 		aria-controls={pythonLabPanelId}
 		aria-label="打开 Python Lab"
@@ -28,63 +27,51 @@ const pythonLabButtonId = `${pythonLabUid}-button`;
 		id={pythonLabPanelId}
 		class="python-lab-panel"
 		data-python-lab-panel
-		data-ui-panel="python-lab"
 		hidden
-		aria-label="Floating Python Lab"
+		aria-hidden="true"
+		aria-label="Python Lab"
 	>
 		<div class="python-lab-panel__header">
 			<div class="python-lab-panel__copy">
 				<p class="python-lab-panel__eyebrow">Floating Workspace</p>
 				<h3 class="python-lab-panel__title">Python Lab</h3>
-				<p class="python-lab-panel__note">默认轻量编辑器，随时呼出、编写、运行；需要时再升级增强模式。</p>
+				<p class="python-lab-panel__note">默认轻量编辑器，先保证可写、可拖、可运行。</p>
 			</div>
 			<button
 				type="button"
 				class="python-lab-panel__close"
 				data-python-lab-close
-				data-ui-control-close="python-lab"
 				aria-label="收起 Python Lab"
 			>
 				<Icon name="mdi:close" />
 			</button>
 		</div>
 
-		<div class="python-lab-panel__status" data-python-lab-status>
-			点击运行时会加载 Monaco 与浏览器内 Python 运行时。
-		</div>
-
-		<div
-			class="python-lab-panel__dragbar"
-			data-python-lab-drag-handle
-			role="presentation"
-			aria-hidden="true"
-		>
+		<div class="python-lab-panel__dragbar" data-python-lab-drag-handle aria-hidden="true">
 			<span class="python-lab-panel__dragbar-grip"></span>
 		</div>
 
+		<div class="python-lab-panel__status" data-python-lab-status>
+			轻量编辑器已就绪，首次运行时再加载浏览器内 Python。
+		</div>
+
 		<div class="python-lab-panel__editor-frame">
-			<div class="python-lab-panel__loading" data-python-lab-loading hidden>
-				<div class="python-lab-panel__loading-spinner" aria-hidden="true"></div>
-				<p class="python-lab-panel__loading-title">Preparing Python Lab</p>
-				<p class="python-lab-panel__loading-copy">正在加载编辑器核心，稍等片刻。</p>
-			</div>
 			<textarea
-				class="python-lab-panel__fallback"
-				data-python-lab-fallback
+				class="python-lab-panel__editor"
+				data-python-lab-editor
 				aria-label="Python Lab editor"
 				spellcheck="false"
 				autocapitalize="off"
 				autocorrect="off"
 			></textarea>
-			<div class="python-lab-panel__editor" data-python-lab-editor hidden></div>
 		</div>
 
 		<div class="python-lab-panel__actions">
 			<button type="button" class="python-lab-panel__run" data-python-lab-run>
 				运行代码
 			</button>
-			<button type="button" class="python-lab-panel__ghost" data-python-lab-upgrade>
-				增强编辑器
+			<button type="button" class="python-lab-panel__ghost" data-python-lab-reset>
+				恢复示例
 			</button>
 			<button type="button" class="python-lab-panel__ghost" data-python-lab-clear>
 				清空输出
@@ -103,233 +90,11 @@ print([sqrt(n) for n in nums])
 </div>
 
 <style lang="stylus">
-  .python-lab-fab-shell
-    filter drop-shadow(0 0 16px rgba(118, 156, 255, .08))
-
-  .python-lab-fab
-    border-radius 1.22rem
-    background linear-gradient(180deg, rgba(255,255,255,.82), rgba(247,250,255,.62)), radial-gradient(circle at top right, rgba(118,156,255,.14), transparent 8rem)
-    box-shadow 0 20px 48px rgba(15, 23, 42, .14), inset 0 1px 0 rgba(255,255,255,.78)
-
-  .python-lab-panel
-    border-radius 1.72rem
-    background linear-gradient(180deg, rgba(255,255,255,.82), rgba(246,250,255,.64)), radial-gradient(circle at top right, rgba(118,156,255,.14), transparent 16rem)
-    box-shadow 0 34px 92px rgba(15, 23, 42, .22), inset 0 1px 0 rgba(255,255,255,.78)
-
-  .python-lab-panel__eyebrow
-    font-family var(--owen-font-ui)
-    font-weight 600
-    letter-spacing .18em
-
-  .python-lab-panel__title
-    font-family var(--owen-font-display)
-    font-size 1.24rem
-    letter-spacing -.04em
-
-  .python-lab-panel__note,
-  .python-lab-panel__status
-    font-family var(--owen-font-reading)
-    line-height 1.72
-
-  :root.dark .python-lab-fab
-    background linear-gradient(180deg, rgba(15,19,30,.76), rgba(9,13,21,.36)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 8rem)
-    box-shadow 0 22px 58px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255,255,255,.08)
-
-  :root.dark .python-lab-panel
-    background linear-gradient(180deg, rgba(14,18,28,.82), rgba(8,12,20,.42)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 16rem)
-    box-shadow 0 38px 104px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255,255,255,.08)
-</style>
-
-<script
-	is:inline
-	define:vars={{
-		PYTHON_PLAYGROUND_URL: url("/scripts/python-playground.js"),
-		PYTHON_LAB_UID: pythonLabUid,
-		PYTHON_LAB_PANEL_ID: pythonLabPanelId,
-		PYTHON_LAB_BUTTON_ID: pythonLabButtonId,
-	}}
->
-	(() => {
-		const root = document.getElementById(PYTHON_LAB_UID);
-		if (!(root instanceof HTMLElement) || root.dataset.pythonLabBootstrap === "true") {
-			return;
-		}
-
-		root.dataset.pythonLabBootstrap = "true";
-
-		const toggle = document.getElementById(PYTHON_LAB_BUTTON_ID);
-		const panel = document.getElementById(PYTHON_LAB_PANEL_ID);
-		const close = root.querySelector("[data-python-lab-close]");
-		const fallback = root.querySelector("[data-python-lab-fallback]");
-
-		if (
-			!(toggle instanceof HTMLButtonElement) ||
-			!(panel instanceof HTMLElement) ||
-			!(close instanceof HTMLButtonElement)
-		) {
-			return;
-		}
-
-		if (panel.parentElement !== document.body) {
-			document.body.appendChild(panel);
-		}
-
-		const setAnchoredPosition = () => {
-			if (!(toggle instanceof HTMLElement) || !(panel instanceof HTMLElement)) {
-				return;
-			}
-			if (panel.dataset.positionMode === "custom") {
-				return;
-			}
-
-			panel.style.width = "";
-			panel.style.maxWidth = "";
-			panel.style.left = "";
-			panel.style.top = "";
-			panel.style.right = "";
-			panel.style.bottom = "";
-
-			const triggerRect = toggle.getBoundingClientRect();
-			const viewportPadding = 16;
-			const gap = window.matchMedia("(max-width: 820px)").matches ? 10 : 14;
-			const panelWidth = Math.min(
-				window.matchMedia("(max-width: 820px)").matches ? 384 : 448,
-				window.innerWidth - viewportPadding * 2,
-			);
-			const estimatedHeight = Math.min(
-				window.matchMedia("(max-width: 820px)").matches ? 560 : 640,
-				window.innerHeight - viewportPadding * 2,
-			);
-
-			let left = triggerRect.left - panelWidth - gap;
-			if (left < viewportPadding) {
-				left = Math.min(
-					window.innerWidth - panelWidth - viewportPadding,
-					triggerRect.right + gap,
-				);
-			}
-
-			let top = triggerRect.bottom - estimatedHeight + triggerRect.height;
-			top = Math.max(
-				viewportPadding,
-				Math.min(top, window.innerHeight - estimatedHeight - viewportPadding),
-			);
-
-			panel.style.left = `${Math.round(left)}px`;
-			panel.style.top = `${Math.round(top)}px`;
-			panel.style.right = "auto";
-			panel.style.bottom = "auto";
-			panel.dataset.positionMode = "anchored";
-		};
-
-		const setOpen = (open) => {
-			if (open) {
-				setAnchoredPosition();
-			}
-			panel.hidden = !open;
-			panel.dataset.state = open ? "open" : "closed";
-			root.dataset.state = open ? "open" : "closed";
-			toggle.setAttribute("aria-expanded", open ? "true" : "false");
-			root.style.zIndex = "";
-
-			if (open && fallback instanceof HTMLTextAreaElement) {
-				window.setTimeout(() => fallback.focus(), 0);
-			}
-		};
-
-		const ensureRuntimeScript = () => {
-			if (root.dataset.pythonLabBound === "true") {
-				return;
-			}
-
-			if (document.querySelector('script[data-python-lab-runtime="true"]')) {
-				return;
-			}
-
-			const script = document.createElement("script");
-			script.src = PYTHON_PLAYGROUND_URL;
-			script.dataset.pythonLabRuntime = "true";
-			document.body.appendChild(script);
-		};
-
-		window.__owenEnsurePythonLabRuntime = ensureRuntimeScript;
-		window.__owenBootstrapPythonLabFallback = setOpen;
-		window.__owenPositionPythonLabFallback = setAnchoredPosition;
-
-		if (toggle.dataset.owenBound !== "true") {
-			toggle.dataset.owenBound = "true";
-			toggle.addEventListener("click", (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				if (root.dataset.pythonLabBound === "true") {
-					return;
-				}
-				const open = root.dataset.state === "open";
-				if (!open) {
-					ensureRuntimeScript();
-				}
-				setOpen(!open);
-			});
-		}
-
-		if (close.dataset.owenBound !== "true") {
-			close.dataset.owenBound = "true";
-			close.addEventListener("pointerdown", (event) => {
-				event.stopPropagation();
-			});
-			close.addEventListener("click", (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-				if (root.dataset.pythonLabBound === "true") {
-					return;
-				}
-				setOpen(false);
-			});
-		}
-
-		document.addEventListener(
-			"mousedown",
-			(event) => {
-				const target = event.target;
-				if (
-					!(target instanceof Element) ||
-					root.contains(target) ||
-					panel.contains(target)
-				) {
-					return;
-				}
-				setOpen(false);
-			},
-			true,
-		);
-
-		window.addEventListener(
-			"resize",
-			() => {
-				if (root.dataset.state === "open") {
-					setAnchoredPosition();
-				}
-			},
-			{ passive: true },
-		);
-	})();
-</script>
-
-<style lang="stylus">
-  .python-lab-fab-shell
+  .python-lab-shell
     position relative
-    z-index 1
     width 3.5rem
     height 3.5rem
-    overflow visible
-    --python-lab-anchor-right var(--utility-rail-right, 1.5rem)
-    --python-lab-anchor-bottom unquote("calc(var(--utility-rail-bottom, 3.75rem) + (var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, 0.9rem)) * 2 + .2rem)")
-    --python-lab-panel-right unquote("calc(var(--python-lab-anchor-right) + var(--utility-rail-size, 3.5rem) + 1rem)")
-    --python-lab-panel-bottom unquote("calc(var(--python-lab-anchor-bottom) - .15rem)")
-
-  .python-lab-fab,
-  .python-lab-panel
-    pointer-events auto
+    filter drop-shadow(0 0 16px rgba(118, 156, 255, .08))
 
   .python-lab-fab
     display inline-flex
@@ -340,7 +105,7 @@ print([sqrt(n) for n in nums])
     padding 0
     border-radius 1.15rem
     border 1px solid rgba(118, 156, 255, .18)
-    background linear-gradient(180deg, rgba(255,255,255,.72), rgba(247,250,255,.58)), radial-gradient(circle at top right, rgba(118,156,255,.15), transparent 8rem)
+    background linear-gradient(180deg, rgba(255,255,255,.74), rgba(247,250,255,.58)), radial-gradient(circle at top right, rgba(118,156,255,.15), transparent 8rem)
     box-shadow 0 22px 52px rgba(15, 23, 42, .14), inset 0 1px 0 rgba(255,255,255,.72)
     backdrop-filter blur(18px) saturate(1.04)
     -webkit-backdrop-filter blur(18px) saturate(1.04)
@@ -349,26 +114,11 @@ print([sqrt(n) for n in nums])
     position relative
     overflow hidden
 
-  .python-lab-fab::after
-    content ""
-    position absolute
-    inset -1px
-    border-radius inherit
-    pointer-events none
-    opacity 0
-    box-shadow 0 0 0 1px rgba(118, 156, 255, .2), 0 0 26px rgba(118, 156, 255, .18), 0 0 54px rgba(132, 115, 255, .12)
-    transition opacity .22s ease
-
   .python-lab-fab:hover,
   .python-lab-fab:focus-visible
     transform translateY(-2px) scale(1.02)
     border-color rgba(118, 156, 255, .3)
     box-shadow 0 0 26px rgba(118, 156, 255, .16), 0 24px 56px rgba(15, 23, 42, .16)
-
-  .python-lab-fab-shell[data-state="open"] .python-lab-fab::after,
-  .python-lab-fab:hover::after,
-  .python-lab-fab:focus-visible::after
-    opacity 1
 
   .python-lab-fab__icon
     display inline-flex
@@ -386,51 +136,33 @@ print([sqrt(n) for n in nums])
 
   .python-lab-panel
     position fixed
-    z-index 1320
-    left var(--python-lab-panel-left, auto)
-    top var(--python-lab-panel-top, auto)
-    right var(--python-lab-panel-right, auto)
-    bottom var(--python-lab-panel-bottom, auto)
-    width 28rem
-    max-width calc(100vw - 6.75rem)
-    height unquote("min(40rem, calc(100vh - 4rem))")
-    max-height calc(100vh - 4rem)
+    z-index 1400
+    width unquote("min(30rem, calc(100vw - 2rem))")
+    max-width unquote("calc(100vw - 2rem)")
+    height unquote("min(42rem, calc(100vh - 2rem))")
+    max-height unquote("calc(100vh - 2rem)")
     display grid
-    grid-template-rows auto auto minmax(18rem, 1fr) auto minmax(6.25rem, auto)
-    gap .9rem
+    grid-template-rows auto auto auto minmax(18rem, 1fr) auto minmax(6.25rem, auto)
+    gap .85rem
     padding 1rem
     border-radius 1.55rem
     border 1px solid rgba(118, 156, 255, .18)
-    background linear-gradient(180deg, rgba(255,255,255,.74), rgba(246,250,255,.58)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 16rem)
+    background linear-gradient(180deg, rgba(255,255,255,.76), rgba(246,250,255,.6)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 16rem)
     box-shadow 0 32px 88px rgba(15, 23, 42, .22), inset 0 1px 0 rgba(255,255,255,.72)
     backdrop-filter blur(22px) saturate(1.06)
     -webkit-backdrop-filter blur(22px) saturate(1.06)
     overflow hidden
-    overscroll-behavior none
-    isolation isolate
-    transition transform .24s ease, box-shadow .24s ease, border-color .24s ease, opacity .24s ease
     transform-origin bottom right
-    will-change transform, left, top
+    transition transform .22s ease, box-shadow .22s ease, border-color .22s ease, opacity .22s ease
 
-  .python-lab-panel::after
-    content ""
-    position absolute
-    inset -1px
-    border-radius inherit
-    pointer-events none
-    opacity .66
-    box-shadow 0 0 0 1px rgba(118, 156, 255, .16), 0 0 38px rgba(118, 156, 255, .14), 0 0 82px rgba(132, 115, 255, .1)
+  .python-lab-panel[hidden]
+    display none !important
 
   .python-lab-panel[data-state="open"]
-    transform translateY(-2px) scale(1)
-    border-color rgba(118, 156, 255, .24)
     box-shadow 0 0 34px rgba(118, 156, 255, .14), 0 36px 96px rgba(15, 23, 42, .24), inset 0 1px 0 rgba(255,255,255,.72)
 
   .python-lab-panel[data-dragging]
     transition none
-
-  .python-lab-panel[hidden]
-    display none !important
 
   .python-lab-panel__header
     display flex
@@ -440,21 +172,27 @@ print([sqrt(n) for n in nums])
     user-select none
 
   .python-lab-panel__eyebrow
+    font-family var(--owen-font-ui)
     font-size .72rem
+    font-weight 600
     letter-spacing .16em
     text-transform uppercase
     color rgba(70, 97, 186, .78)
 
   .python-lab-panel__title
-    margin-top .18rem
+    margin-top .16rem
+    font-family var(--owen-font-display)
     font-size 1.18rem
     font-weight 700
+    letter-spacing -.04em
     color rgba(15, 23, 42, .92)
 
   .python-lab-panel__note
     margin-top .24rem
+    font-family var(--owen-font-reading)
     font-size .84rem
-    color rgba(15, 23, 42, .56)
+    line-height 1.7
+    color rgba(15, 23, 42, .58)
 
   .python-lab-panel__close
     display inline-flex
@@ -466,22 +204,18 @@ print([sqrt(n) for n in nums])
     border 1px solid rgba(118, 156, 255, .14)
     background rgba(118, 156, 255, .08)
     color rgba(70, 97, 186, .88)
+    transition transform .18s ease, box-shadow .18s ease
 
-  .python-lab-panel__status
-    min-height 2.4rem
-    padding .78rem .9rem
-    border-radius 1rem
-    border 1px solid rgba(118, 156, 255, .12)
-    background rgba(15, 23, 42, .04)
-    font-size .83rem
-    color rgba(15, 23, 42, .62)
+  .python-lab-panel__close:hover
+    transform translateY(-1px) scale(1.015)
+    box-shadow 0 10px 24px rgba(15, 23, 42, .12)
 
   .python-lab-panel__dragbar
     display flex
     align-items center
     justify-content center
-    min-height 1.25rem
-    margin-top -.25rem
+    min-height 1.1rem
+    margin-top -.15rem
     cursor grab
     user-select none
     touch-action none
@@ -490,11 +224,22 @@ print([sqrt(n) for n in nums])
     cursor grabbing
 
   .python-lab-panel__dragbar-grip
-    width 4.2rem
-    height .36rem
+    width 4.4rem
+    height .34rem
     border-radius 999px
-    background linear-gradient(90deg, rgba(118, 156, 255, .2), rgba(132, 115, 255, .12))
-    box-shadow inset 0 1px 0 rgba(255,255,255,.52), 0 0 0 1px rgba(118, 156, 255, .08)
+    background linear-gradient(90deg, rgba(118, 156, 255, .24), rgba(132, 115, 255, .16))
+    box-shadow inset 0 1px 0 rgba(255,255,255,.56), 0 0 0 1px rgba(118, 156, 255, .08)
+
+  .python-lab-panel__status
+    min-height 2.4rem
+    padding .78rem .9rem
+    border-radius 1rem
+    border 1px solid rgba(118, 156, 255, .12)
+    background rgba(15, 23, 42, .04)
+    font-family var(--owen-font-reading)
+    font-size .83rem
+    line-height 1.65
+    color rgba(15, 23, 42, .62)
 
   .python-lab-panel__editor-frame
     min-height 0
@@ -503,86 +248,33 @@ print([sqrt(n) for n in nums])
     border 1px solid rgba(118, 156, 255, .14)
     background rgba(9, 12, 19, .94)
     overflow hidden
-    display grid
-    align-items stretch
     position relative
-    z-index 1
-
-  .python-lab-panel__loading
-    position absolute
-    inset 0
-    z-index 3
-    display flex
-    flex-direction column
-    align-items center
-    justify-content center
-    gap .65rem
-    padding 1.5rem
-    text-align center
-    background linear-gradient(180deg, rgba(9,12,19,.9), rgba(7,10,16,.84)), radial-gradient(circle at top, rgba(118,156,255,.16), transparent 54%)
-    backdrop-filter blur(8px)
-    -webkit-backdrop-filter blur(8px)
-    transition opacity .22s ease, visibility .22s ease
-
-  .python-lab-panel__loading[hidden]
-    opacity 0
-    visibility hidden
-    pointer-events none
-
-  .python-lab-panel__loading-spinner
-    width 2.1rem
-    height 2.1rem
-    border-radius 999px
-    border 2px solid rgba(118, 156, 255, .18)
-    border-top-color rgba(167, 193, 255, .96)
-    animation python-lab-spin .85s linear infinite
-
-  .python-lab-panel__loading-title
-    font-size .86rem
-    font-weight 640
-    letter-spacing .08em
-    text-transform uppercase
-    color rgba(229, 238, 255, .9)
-
-  .python-lab-panel__loading-copy
-    max-width 16rem
-    font-size .8rem
-    line-height 1.6
-    color rgba(204, 216, 241, .68)
 
   .python-lab-panel__editor
     width 100%
-    min-height 0
     height 100%
-    grid-area 1 / 1
-    position relative
-    z-index 1
-    overflow hidden
-
-  .python-lab-panel__fallback
-    width 100%
     min-height 0
-    height 100%
-    grid-area 1 / 1
     resize none
     padding 1rem 1.05rem
     border none
     outline none
     background transparent
-    color rgba(227, 236, 255, .88)
-    font-size .9rem
+    color rgba(227, 236, 255, .9)
+    font-size .92rem
     line-height 1.72
     font-family "SF Mono", "JetBrains Mono Variable", Menlo, Monaco, ui-monospace, monospace
     white-space pre
     overflow auto
     caret-color rgba(214, 226, 255, .94)
+    tab-size 4
 
-  .python-lab-panel__fallback::selection
+  .python-lab-panel__editor::selection
     background rgba(118, 156, 255, .24)
 
   .python-lab-panel__actions
     display flex
-    gap .75rem
+    gap .7rem
+    flex-wrap wrap
 
   .python-lab-panel__run,
   .python-lab-panel__ghost
@@ -592,7 +284,7 @@ print([sqrt(n) for n in nums])
     border 1px solid rgba(118, 156, 255, .16)
     font-size .86rem
     font-weight 640
-    transition transform .22s ease, box-shadow .22s ease, border-color .22s ease
+    transition transform .18s ease, box-shadow .18s ease, border-color .18s ease
 
   .python-lab-panel__run
     background linear-gradient(135deg, rgba(93, 129, 255, .96), rgba(132, 115, 255, .92))
@@ -604,11 +296,14 @@ print([sqrt(n) for n in nums])
     color rgba(70, 97, 186, .9)
 
   .python-lab-panel__run:hover,
-  .python-lab-panel__ghost:hover,
-  .python-lab-panel__close:hover
-    transform translateY(-1px) scale(1.015)
+  .python-lab-panel__ghost:hover
+    transform translateY(-1px) scale(1.01)
     border-color rgba(118, 156, 255, .26)
     box-shadow 0 0 18px rgba(118, 156, 255, .14), 0 12px 30px rgba(15, 23, 42, .12)
+
+  .python-lab-panel__run[disabled]
+    opacity .76
+    cursor wait
 
   .python-lab-panel__output
     min-height 6.25rem
@@ -625,48 +320,26 @@ print([sqrt(n) for n in nums])
     white-space pre-wrap
     word-break break-word
 
-  :global(.monaco-editor),
-  :global(.monaco-editor .overflow-guard)
-    overflow hidden !important
-
-  :global(.suggest-widget),
-  :global(.monaco-editor-hover),
-  :global(.parameter-hints-widget)
-    z-index 1720 !important
-    position fixed !important
-
-  :global(.suggest-widget)
-    border-radius 1rem !important
-    overflow hidden !important
-    box-shadow 0 24px 54px rgba(15, 23, 42, .18), 0 0 18px rgba(118, 156, 255, .12) !important
-
-  .python-lab-panel__fallback,
+  .python-lab-panel__editor,
   .python-lab-panel__output
     scrollbar-width thin
     scrollbar-color rgba(126, 98, 141, .34) transparent
 
-  .python-lab-panel__fallback::-webkit-scrollbar,
+  .python-lab-panel__editor::-webkit-scrollbar,
   .python-lab-panel__output::-webkit-scrollbar
     width .72rem
     height .72rem
 
-  .python-lab-panel__fallback::-webkit-scrollbar-track,
+  .python-lab-panel__editor::-webkit-scrollbar-track,
   .python-lab-panel__output::-webkit-scrollbar-track
     background transparent
 
-  .python-lab-panel__fallback::-webkit-scrollbar-thumb,
+  .python-lab-panel__editor::-webkit-scrollbar-thumb,
   .python-lab-panel__output::-webkit-scrollbar-thumb
     border .18rem solid transparent
     border-radius 999px
     background rgba(126, 98, 141, .28)
     background-clip padding-box
-
-  :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider)
-    border-radius 999px !important
-    background rgba(126, 98, 141, .28) !important
-
-  :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider:hover)
-    background rgba(126, 98, 141, .38) !important
 
   :root:not(.dark) .python-lab-fab
     border-color rgba(236, 174, 198, .2)
@@ -711,20 +384,11 @@ print([sqrt(n) for n in nums])
     background linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,246,250,.88)), radial-gradient(circle at top right, rgba(255,188,210,.14), transparent 12rem)
     box-shadow inset 0 1px 0 rgba(255,255,255,.92), 0 18px 42px rgba(120, 82, 101, .08)
 
-  :root:not(.dark) .python-lab-panel__loading
-    background linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,244,248,.92)), radial-gradient(circle at top, rgba(255,188,210,.18), transparent 54%)
-
-  :root:not(.dark) .python-lab-panel__loading-title
-    color rgba(160, 78, 115, .9)
-
-  :root:not(.dark) .python-lab-panel__loading-copy
-    color rgba(120, 82, 101, .66)
-
-  :root:not(.dark) .python-lab-panel__fallback
+  :root:not(.dark) .python-lab-panel__editor
     color rgba(52, 36, 45, .92)
     caret-color rgba(195, 93, 138, .94)
 
-  :root:not(.dark) .python-lab-panel__fallback::selection
+  :root:not(.dark) .python-lab-panel__editor::selection
     background rgba(255, 188, 210, .28)
 
   :root:not(.dark) .python-lab-panel__run
@@ -742,12 +406,6 @@ print([sqrt(n) for n in nums])
     border-color rgba(236, 174, 198, .16)
     background rgba(255, 249, 251, .9)
     color rgba(67, 42, 53, .88)
-
-  :root:not(.dark) :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider)
-    background rgba(197, 118, 154, .24) !important
-
-  :root:not(.dark) :global(.python-lab-panel .monaco-scrollable-element > .scrollbar > .slider:hover)
-    background rgba(197, 118, 154, .34) !important
 
   :root.dark .python-lab-fab
     background linear-gradient(180deg, rgba(11,14,22,.78), rgba(5,8,14,.58)), radial-gradient(circle at top right, rgba(118,156,255,.16), transparent 8rem)
@@ -780,25 +438,55 @@ print([sqrt(n) for n in nums])
     background rgba(118, 156, 255, .12)
     color rgba(225, 234, 255, .9)
 
-  @keyframes python-lab-spin
-    to
-      transform rotate(360deg)
-
   @media (max-width: 820px)
-    .python-lab-fab-shell
-      --python-lab-anchor-right 1rem
-      --python-lab-anchor-bottom unquote("calc(var(--utility-rail-bottom, 5.75rem) + (var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, .9rem)) * 2 + .2rem)")
-
-    .python-lab-fab
-      width 3.5rem
-      height 3.5rem
-
     .python-lab-panel
       width unquote("min(24rem, calc(100vw - 2rem))")
-      max-width 30rem
-      height unquote("min(36rem, calc(100vh - 7rem))")
-      max-height calc(100vh - 7rem)
-      left var(--python-lab-panel-left, auto)
-      top var(--python-lab-panel-top, auto)
-      right var(--python-lab-panel-right, var(--python-lab-anchor-right, 1rem))
-      bottom var(--python-lab-panel-bottom, calc(var(--python-lab-anchor-bottom, 5.75rem) - .15rem))
+      height unquote("min(36rem, calc(100vh - 5.5rem))")
+      max-height unquote("calc(100vh - 5.5rem)")
+</style>
+
+<script
+	is:inline
+	define:vars={{
+		PYTHON_LAB_SCRIPT_URL: url("/scripts/python-lab.js"),
+		PYTHON_LAB_UID: pythonLabUid,
+	}}
+>
+	(() => {
+		const root = document.getElementById(PYTHON_LAB_UID);
+		if (!(root instanceof HTMLElement) || root.dataset.pythonLabLoader === "true") {
+			return;
+		}
+
+		root.dataset.pythonLabLoader = "true";
+
+		const boot = () => {
+			if (typeof window.__owenInitPythonLab === "function") {
+				window.__owenInitPythonLab(root);
+				return;
+			}
+
+			let script = document.querySelector('script[data-python-lab-script="true"]');
+			if (!(script instanceof HTMLScriptElement)) {
+				script = document.createElement("script");
+				script.src = PYTHON_LAB_SCRIPT_URL;
+				script.dataset.pythonLabScript = "true";
+				document.body.appendChild(script);
+			}
+
+			script.addEventListener(
+				"load",
+				() => {
+					window.__owenInitPythonLab?.(root);
+				},
+				{ once: true },
+			);
+		};
+
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", boot, { once: true });
+		} else {
+			boot();
+		}
+	})();
+</script>

@@ -240,7 +240,7 @@ if (siteConfig.font) {
 			define:vars={{ PYTHON_PLAYGROUND_URL: url("/scripts/python-playground.js") }}
 		>
 			(() => {
-				const selector = "[data-python-playground], [data-python-code-card], [data-python-lab]";
+				const selector = "[data-python-playground], [data-python-code-card]";
 				let loaded = false;
 
 				const loadPlaygroundScript = () => {
