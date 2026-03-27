@@ -1664,9 +1664,13 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		}
 
 		const toggle = root.querySelector("[data-python-lab-toggle]");
+		const panelId =
+			toggle instanceof HTMLElement
+				? toggle.getAttribute("aria-controls") || ""
+				: "";
 		const panel =
 			root.querySelector("[data-python-lab-panel]") ||
-			document.getElementById("python-lab-panel");
+			(panelId ? document.getElementById(panelId) : null);
 		const close =
 			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-close]")) ||
 			root.querySelector("[data-python-lab-close]");
@@ -1803,7 +1807,11 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			}
 		});
 
-		root.querySelectorAll("[data-python-lab-drag-handle]").forEach((handle) => {
+		const dragHandles = panel instanceof HTMLElement
+			? panel.querySelectorAll("[data-python-lab-drag-handle]")
+			: root.querySelectorAll("[data-python-lab-drag-handle]");
+
+		dragHandles.forEach((handle) => {
 			if (!(handle instanceof HTMLElement)) {
 				return;
 			}
