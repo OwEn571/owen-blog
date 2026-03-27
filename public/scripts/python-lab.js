@@ -170,6 +170,13 @@
 		});
 	}
 
+	function renderLineNumbers(state) {
+		const total = Math.max(state.editor.value.split("\n").length, 1);
+		const lines = Array.from({ length: total }, (_, index) => `${index + 1}`);
+		state.gutter.textContent = lines.join("\n");
+		state.gutter.scrollTop = state.editor.scrollTop;
+	}
+
 	function openPanel(state) {
 		if (!state.panel.hidden) {
 			return;
@@ -212,11 +219,47 @@
 		textarea.setRangeText(text, start, end, "end");
 	}
 
+	function indentSelectedLines(textarea, outdent = false) {
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		const value = textarea.value;
+		const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+		const lineEndIndex = value.indexOf("\n", end);
+		const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
+		const selected = value.slice(lineStart, lineEnd);
+		const lines = selected.split("\n");
+		const transformed = lines.map((line) => {
+			if (!outdent) {
+				return `${INDENT}${line}`;
+			}
+			if (line.startsWith(INDENT)) {
+				return line.slice(INDENT.length);
+			}
+			return line.replace(/^\s{1,4}/, "");
+		});
+		const next = transformed.join("\n");
+		textarea.setSelectionRange(lineStart, lineEnd);
+		textarea.setRangeText(next, lineStart, lineEnd, "select");
+		const selectionShift = outdent ? 0 : INDENT.length;
+		const firstLineTrim = outdent ? Math.min(INDENT.length, lines[0].match(/^\s*/)?.[0]?.length || 0) : 0;
+		textarea.setSelectionRange(
+			start + selectionShift - firstLineTrim,
+			end + transformed.length - selected.length,
+		);
+	}
+
 	function handleEditorKeydown(state, event) {
 		if (event.key === "Tab") {
 			event.preventDefault();
-			insertAtCursor(state.editor, INDENT);
+			if (event.shiftKey) {
+				indentSelectedLines(state.editor, true);
+			} else if (state.editor.selectionStart !== state.editor.selectionEnd) {
+				indentSelectedLines(state.editor, false);
+			} else {
+				insertAtCursor(state.editor, INDENT);
+			}
 			saveDraft(state);
+			renderLineNumbers(state);
 			return;
 		}
 
@@ -231,6 +274,13 @@
 			event.preventDefault();
 			insertAtCursor(state.editor, `\n${baseIndent}${extraIndent}`);
 			saveDraft(state);
+			renderLineNumbers(state);
+			return;
+		}
+
+		if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+			event.preventDefault();
+			void runCode(state);
 		}
 	}
 
@@ -394,6 +444,7 @@ finally:
 		const output = root.querySelector("[data-python-lab-output]");
 		const dragHandle = root.querySelector("[data-python-lab-drag-handle]");
 		const source = root.querySelector("[data-python-lab-source]");
+		const gutter = root.querySelector("[data-python-lab-gutter]");
 
 		if (
 			!(toggle instanceof HTMLButtonElement) ||
@@ -406,7 +457,8 @@ finally:
 			!(status instanceof HTMLElement) ||
 			!(output instanceof HTMLElement) ||
 			!(dragHandle instanceof HTMLElement) ||
-			!(source instanceof HTMLTextAreaElement)
+			!(source instanceof HTMLTextAreaElement) ||
+			!(gutter instanceof HTMLElement)
 		) {
 			return;
 		}
@@ -428,10 +480,12 @@ finally:
 			output,
 			dragHandle,
 			source,
+			gutter,
 		};
 		labState.set(root, state);
 
 		restoreDraft(state);
+		renderLineNumbers(state);
 		setStatus(state, "轻量编辑器已就绪，首次运行时再加载浏览器内 Python。");
 		setOutput(state, "等待运行…", "idle");
 
@@ -463,6 +517,7 @@ finally:
 		resetButton.addEventListener("click", () => {
 			state.editor.value = state.source.value;
 			saveDraft(state);
+			renderLineNumbers(state);
 			setStatus(state, "示例代码已恢复。");
 			focusEditor(state);
 		});
@@ -474,6 +529,11 @@ finally:
 
 		editor.addEventListener("input", () => {
 			saveDraft(state);
+			renderLineNumbers(state);
+		});
+
+		editor.addEventListener("scroll", () => {
+			state.gutter.scrollTop = state.editor.scrollTop;
 		});
 
 		editor.addEventListener("keydown", (event) => {

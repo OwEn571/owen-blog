@@ -56,14 +56,21 @@ const pythonLabButtonId = `${pythonLabUid}-button`;
 		</div>
 
 		<div class="python-lab-panel__editor-frame">
-			<textarea
-				class="python-lab-panel__editor"
-				data-python-lab-editor
-				aria-label="Python Lab editor"
-				spellcheck="false"
-				autocapitalize="off"
-				autocorrect="off"
-			></textarea>
+			<div class="python-lab-panel__editor-topbar" aria-hidden="true">
+				<div class="python-lab-panel__editor-badge">Python 3</div>
+				<div class="python-lab-panel__editor-hint">Tab 缩进 · Shift+Tab 退缩进 · Ctrl/Cmd+Enter 运行</div>
+			</div>
+			<div class="python-lab-panel__editor-shell">
+				<div class="python-lab-panel__line-numbers" data-python-lab-gutter aria-hidden="true"></div>
+				<textarea
+					class="python-lab-panel__editor"
+					data-python-lab-editor
+					aria-label="Python Lab editor"
+					spellcheck="false"
+					autocapitalize="off"
+					autocorrect="off"
+				></textarea>
+			</div>
 		</div>
 
 		<div class="python-lab-panel__actions">
@@ -249,6 +256,60 @@ print([sqrt(n) for n in nums])
     background rgba(9, 12, 19, .94)
     overflow hidden
     position relative
+    display grid
+    grid-template-rows auto minmax(0, 1fr)
+
+  .python-lab-panel__editor-topbar
+    display flex
+    align-items center
+    justify-content space-between
+    gap .75rem
+    min-height 2.5rem
+    padding .65rem .9rem
+    border-bottom 1px solid rgba(118, 156, 255, .12)
+    background linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02))
+
+  .python-lab-panel__editor-badge
+    display inline-flex
+    align-items center
+    justify-content center
+    min-height 1.55rem
+    padding 0 .65rem
+    border-radius .7rem
+    border 1px solid rgba(118, 156, 255, .18)
+    background rgba(118, 156, 255, .1)
+    font-family var(--owen-font-ui)
+    font-size .72rem
+    font-weight 650
+    letter-spacing .08em
+    text-transform uppercase
+    color rgba(219, 230, 255, .9)
+
+  .python-lab-panel__editor-hint
+    font-family var(--owen-font-ui)
+    font-size .72rem
+    letter-spacing .04em
+    color rgba(219, 230, 255, .54)
+
+  .python-lab-panel__editor-shell
+    min-height 0
+    display grid
+    grid-template-columns auto minmax(0, 1fr)
+
+  .python-lab-panel__line-numbers
+    min-width 3rem
+    padding 1rem .5rem 1rem .85rem
+    border-right 1px solid rgba(118, 156, 255, .1)
+    background rgba(255,255,255,.03)
+    color rgba(206, 218, 242, .38)
+    font-size .78rem
+    line-height 1.72
+    font-family "SF Mono", "JetBrains Mono Variable", Menlo, Monaco, ui-monospace, monospace
+    text-align right
+    user-select none
+    overflow hidden
+    white-space pre
+    pointer-events none
 
   .python-lab-panel__editor
     width 100%
@@ -267,6 +328,7 @@ print([sqrt(n) for n in nums])
     overflow auto
     caret-color rgba(214, 226, 255, .94)
     tab-size 4
+    scrollbar-gutter stable
 
   .python-lab-panel__editor::selection
     background rgba(118, 156, 255, .24)
@@ -383,6 +445,23 @@ print([sqrt(n) for n in nums])
     border-color rgba(236, 174, 198, .18)
     background linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,246,250,.88)), radial-gradient(circle at top right, rgba(255,188,210,.14), transparent 12rem)
     box-shadow inset 0 1px 0 rgba(255,255,255,.92), 0 18px 42px rgba(120, 82, 101, .08)
+
+  :root:not(.dark) .python-lab-panel__editor-topbar
+    border-bottom-color rgba(236, 174, 198, .16)
+    background linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,246,250,.36))
+
+  :root:not(.dark) .python-lab-panel__editor-badge
+    border-color rgba(236, 174, 198, .18)
+    background rgba(255, 224, 236, .54)
+    color rgba(160, 78, 115, .9)
+
+  :root:not(.dark) .python-lab-panel__editor-hint
+    color rgba(120, 82, 101, .58)
+
+  :root:not(.dark) .python-lab-panel__line-numbers
+    border-right-color rgba(236, 174, 198, .12)
+    background rgba(255,255,255,.36)
+    color rgba(176, 115, 140, .44)
 
   :root:not(.dark) .python-lab-panel__editor
     color rgba(52, 36, 45, .92)
