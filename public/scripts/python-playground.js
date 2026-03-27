@@ -1186,21 +1186,30 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 	}
 
 	function applyPythonLabPosition(root, position) {
+		const panel =
+			root.querySelector("[data-python-lab-panel]") ||
+			document.getElementById(root.querySelector("[data-python-lab-toggle]")?.getAttribute("aria-controls") || "python-lab-panel");
+		const setVar = (name, value) => {
+			if (root instanceof HTMLElement) {
+				root.style.setProperty(name, value);
+			}
+			if (panel instanceof HTMLElement) {
+				panel.style.setProperty(name, value);
+			}
+		};
+
 		if (
 			position &&
 			typeof position.left === "number" &&
 			typeof position.top === "number"
 		) {
-			root.style.setProperty(
-				"--python-lab-panel-left",
-				`${Math.round(position.left)}px`,
-			);
-			root.style.setProperty(
-				"--python-lab-panel-top",
-				`${Math.round(position.top)}px`,
-			);
-			root.style.setProperty("--python-lab-panel-right", "auto");
-			root.style.setProperty("--python-lab-panel-bottom", "auto");
+			setVar("--python-lab-panel-left", `${Math.round(position.left)}px`);
+			setVar("--python-lab-panel-top", `${Math.round(position.top)}px`);
+			setVar("--python-lab-panel-right", "auto");
+			setVar("--python-lab-panel-bottom", "auto");
+			if (panel instanceof HTMLElement) {
+				panel.dataset.positionMode = "custom";
+			}
 			return;
 		}
 
@@ -1209,16 +1218,19 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 			typeof position.right === "number" &&
 			typeof position.bottom === "number"
 		) {
-			root.style.setProperty("--python-lab-panel-left", "auto");
-			root.style.setProperty("--python-lab-panel-top", "auto");
-			root.style.setProperty(
+			setVar("--python-lab-panel-left", "auto");
+			setVar("--python-lab-panel-top", "auto");
+			setVar(
 				"--python-lab-panel-right",
 				`${Math.round(position.right)}px`,
 			);
-			root.style.setProperty(
+			setVar(
 				"--python-lab-panel-bottom",
 				`${Math.round(position.bottom)}px`,
 			);
+			if (panel instanceof HTMLElement) {
+				panel.dataset.positionMode = "custom";
+			}
 		}
 	}
 
@@ -1472,12 +1484,17 @@ except SyntaxError as exc:
 
 		const nextOpen = typeof shouldOpen === "boolean" ? shouldOpen : state.panel.hidden;
 		state.panel.hidden = !nextOpen;
+		state.panel.dataset.state = nextOpen ? "open" : "closed";
 		state.toggle.setAttribute("aria-expanded", nextOpen ? "true" : "false");
 		root.dataset.state = nextOpen ? "open" : "closed";
 
 		if (!nextOpen) {
 			setPythonLabLoading(root, false);
 			return;
+		}
+
+		if (typeof window.__owenPositionPythonLabFallback === "function") {
+			window.__owenPositionPythonLabFallback();
 		}
 
 		if (state.editor) {
@@ -1591,17 +1608,39 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		}
 
 		const toggle = root.querySelector("[data-python-lab-toggle]");
-		const panel = root.querySelector("[data-python-lab-panel]");
-		const close = root.querySelector("[data-python-lab-close]");
-		const runButton = root.querySelector("[data-python-lab-run]");
-		const clearButton = root.querySelector("[data-python-lab-clear]");
-		const output = root.querySelector("[data-python-lab-output]");
-		const host = root.querySelector("[data-python-lab-editor]");
-		const fallback = root.querySelector("[data-python-lab-fallback]");
-		const dragHandle = root.querySelector("[data-python-lab-drag-handle]");
-		const loadingMask = root.querySelector("[data-python-lab-loading]");
-		const status = root.querySelector("[data-python-lab-status]");
-		const source = root.querySelector("[data-python-lab-source]");
+		const panel =
+			root.querySelector("[data-python-lab-panel]") ||
+			document.getElementById("python-lab-panel");
+		const close =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-close]")) ||
+			root.querySelector("[data-python-lab-close]");
+		const runButton =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-run]")) ||
+			root.querySelector("[data-python-lab-run]");
+		const clearButton =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-clear]")) ||
+			root.querySelector("[data-python-lab-clear]");
+		const output =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-output]")) ||
+			root.querySelector("[data-python-lab-output]");
+		const host =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-editor]")) ||
+			root.querySelector("[data-python-lab-editor]");
+		const fallback =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-fallback]")) ||
+			root.querySelector("[data-python-lab-fallback]");
+		const dragHandle =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-drag-handle]")) ||
+			root.querySelector("[data-python-lab-drag-handle]");
+		const loadingMask =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-loading]")) ||
+			root.querySelector("[data-python-lab-loading]");
+		const status =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-status]")) ||
+			root.querySelector("[data-python-lab-status]");
+		const source =
+			(panel instanceof HTMLElement && panel.querySelector("[data-python-lab-source]")) ||
+			root.querySelector("[data-python-lab-source]");
 
 		if (
 			!(toggle instanceof HTMLButtonElement) ||
@@ -1696,7 +1735,8 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 				root.dataset.state === "open" &&
 				!getPythonLabState(root)?.isDragging &&
 				event.target instanceof Node &&
-				!root.contains(event.target)
+				!root.contains(event.target) &&
+				!panel.contains(event.target)
 			) {
 				togglePythonLab(root, false);
 			}

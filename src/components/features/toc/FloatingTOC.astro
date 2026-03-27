@@ -15,16 +15,22 @@ interface Props {
 const tocDepth = siteConfig.toc.depth;
 const useJapaneseBadge = siteConfig.toc.useJapaneseBadge;
 const { fallbackForSidebar = false } = Astro.props;
+const floatingTocUid = `floating-toc-${Math.random().toString(36).slice(2, 10)}`;
+const floatingTocWrapperId = `${floatingTocUid}-wrapper`;
+const floatingTocButtonId = `${floatingTocUid}-btn`;
+const floatingTocPanelId = `${floatingTocUid}-panel`;
+const floatingTocContentId = `${floatingTocUid}-content`;
 ---
 
 <div
+	id={floatingTocWrapperId}
 	class="floating-toc-wrapper"
 	data-depth={tocDepth}
 	data-japanese-badge={useJapaneseBadge}
 	data-sidebar-fallback={fallbackForSidebar ? "true" : "false"}
 >
 	<button
-		id="floating-toc-btn"
+		id={floatingTocButtonId}
 		class="floating-toc-btn btn-card"
 		aria-label="Table of Contents"
 	>
@@ -48,17 +54,15 @@ const { fallbackForSidebar = false } = Astro.props;
 			/>
 		</div>
 	</button>
-	<div id="floating-toc-panel" class="floating-toc-panel">
-		<div class="floating-toc-panel-content" id="floating-toc-content"></div>
+	<div id={floatingTocPanelId} class="floating-toc-panel">
+		<div class="floating-toc-panel-content" id={floatingTocContentId}></div>
 	</div>
 </div>
 
 <style>
 	.floating-toc-wrapper {
-		position: fixed;
-		right: var(--utility-rail-right, 1.5rem);
-		bottom: calc(var(--utility-rail-bottom, 3.75rem) + var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, 0.9rem));
-		z-index: 1200;
+		position: relative;
+		z-index: 1;
 		pointer-events: auto;
 		display: none;
 	}
@@ -115,11 +119,12 @@ const { fallbackForSidebar = false } = Astro.props;
 	}
 
 	.floating-toc-panel {
-		position: absolute;
-		bottom: calc(100% + 0.9rem);
-		right: 0;
+		position: fixed;
+		right: max(1rem, calc((100vw - var(--page-width)) / 2 - 5.25rem));
+		bottom: calc(var(--utility-rail-bottom, 3.75rem) + var(--utility-rail-size, 3.5rem) * 2 + var(--utility-rail-gap, 0.9rem) + 0.9rem);
 		width: 19rem;
 		max-height: 60vh;
+		z-index: 1310;
 		background:
 			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 96%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--card-bg) 86%, transparent)),
 			radial-gradient(circle at top, color-mix(in srgb, var(--primary) 10%, transparent), transparent 68%);
@@ -175,8 +180,6 @@ const { fallbackForSidebar = false } = Astro.props;
 
 	@media (max-width: 768px) {
 		.floating-toc-wrapper {
-			right: var(--utility-rail-right, 1rem);
-			bottom: calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) + var(--utility-rail-gap, 0.9rem));
 			opacity: 0.6;
 		}
 
@@ -188,8 +191,8 @@ const { fallbackForSidebar = false } = Astro.props;
 		.floating-toc-panel {
 			width: 85vw;
 			max-width: 20rem;
-			right: 0;
-			bottom: calc(100% + 0.85rem);
+			right: 1rem;
+			bottom: calc(var(--utility-rail-bottom, 5.75rem) + var(--utility-rail-size, 3.5rem) * 2 + var(--utility-rail-gap, 0.9rem) + 0.85rem);
 		}
 	}
 
@@ -474,14 +477,18 @@ class FloatingTOC {
 	state: FloatingTOCState;
 	navbarOffset = 80;
 	handleScroll = throttle(() => {
-		this.updateProgress();
-		this.updateActiveHeading();
-	}, 50);
-	handleDocumentClick = (e: Event) => {
-		if (this.state.isOpen && !this.state.wrapper?.contains(e.target as Node)) {
-			this.close();
-		}
-	};
+			this.updateProgress();
+			this.updateActiveHeading();
+		}, 50);
+		handleDocumentClick = (e: Event) => {
+			if (
+				this.state.isOpen &&
+				!this.state.wrapper?.contains(e.target as Node) &&
+				!this.state.panel?.contains(e.target as Node)
+			) {
+				this.close();
+			}
+		};
 	handleKeyDown = (e: KeyboardEvent) => {
 		if (e.key === "Escape" && this.state.isOpen) {
 			this.close();
@@ -492,11 +499,16 @@ class FloatingTOC {
 	};
 
 	constructor() {
+		const wrapper = document.querySelector(".floating-toc-wrapper");
+		const button = wrapper?.querySelector(".floating-toc-btn") ?? null;
+		const panel = wrapper?.querySelector(".floating-toc-panel") ?? null;
+		const content = panel?.querySelector(".floating-toc-panel-content") ?? null;
+
 		this.state = {
-			btn: document.getElementById("floating-toc-btn"),
-			panel: document.getElementById("floating-toc-panel"),
-			content: document.getElementById("floating-toc-content"),
-			wrapper: document.querySelector(".floating-toc-wrapper"),
+			btn: button instanceof HTMLElement ? button : null,
+			panel: panel instanceof HTMLElement ? panel : null,
+			content: content instanceof HTMLElement ? content : null,
+			wrapper: wrapper instanceof HTMLElement ? wrapper : null,
 			isOpen: false,
 			observer: null,
 			headings: [],
@@ -506,12 +518,12 @@ class FloatingTOC {
 			autoExpandedGroup: null,
 		};
 
-		if (
-			this.state.wrapper instanceof HTMLElement &&
-			this.state.wrapper.parentElement !== document.body
-		) {
-			document.body.appendChild(this.state.wrapper);
-		}
+			if (
+				this.state.panel instanceof HTMLElement &&
+				this.state.panel.parentElement !== document.body
+			) {
+				document.body.appendChild(this.state.panel);
+			}
 
 		this.init();
 	}
@@ -796,14 +808,51 @@ class FloatingTOC {
 		}
 	}
 
-	toggle() {
-		this.state.isOpen ? this.close() : this.open();
-	}
+		toggle() {
+			this.state.isOpen ? this.close() : this.open();
+		}
 
-	open() {
-		this.state.isOpen = true;
-		this.state.panel?.classList.add("show");
-		this.state.btn?.classList.add("active");
+		positionPanel() {
+			const { btn, panel } = this.state;
+			if (!(btn instanceof HTMLElement) || !(panel instanceof HTMLElement)) {
+				return;
+			}
+
+			const rect = btn.getBoundingClientRect();
+			const isMobile = window.matchMedia("(max-width: 768px)").matches;
+			const viewportPadding = 16;
+			const gap = isMobile ? 10 : 14;
+			const panelWidth = Math.min(isMobile ? 320 : 304, window.innerWidth - viewportPadding * 2);
+			const estimatedHeight = Math.min(
+				isMobile ? window.innerHeight * 0.72 : window.innerHeight * 0.6,
+				window.innerHeight - viewportPadding * 2,
+			);
+
+			let left = rect.left - panelWidth - gap;
+			if (left < viewportPadding) {
+				left = Math.min(
+					window.innerWidth - panelWidth - viewportPadding,
+					rect.right + gap,
+				);
+			}
+
+			let top = rect.bottom - estimatedHeight + rect.height;
+			top = Math.max(
+				viewportPadding,
+				Math.min(top, window.innerHeight - estimatedHeight - viewportPadding),
+			);
+
+			panel.style.left = `${Math.round(left)}px`;
+			panel.style.top = `${Math.round(top)}px`;
+			panel.style.right = "auto";
+			panel.style.bottom = "auto";
+		}
+
+		open() {
+			this.positionPanel();
+			this.state.isOpen = true;
+			this.state.panel?.classList.add("show");
+			this.state.btn?.classList.add("active");
 		this.state.wrapper?.classList.add("active");
 	}
 

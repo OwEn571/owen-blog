@@ -8,7 +8,6 @@ import { url } from "../../../utils/url-utils"
 import LayoutSwitch from "../../control/LayoutSwitch.svelte"
 import ThemeSwitch from "../../control/ThemeSwitch.svelte"
 import WallpaperSwitch from "../../features/settings/WallpaperSwitch.svelte"
-import MobileTOC from "../../features/toc/MobileTOC.svelte"
 import DropdownMenu from "./DropdownMenu.astro"
 import NavMenuPanel from "./NavMenuPanel.astro"
 import Search from "./Search.astro"
@@ -75,8 +74,6 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
             <div id="search-container" class="nav-search-shell relative z-[96] pointer-events-auto">
                 <Search></Search>
             </div>
-            {/* 只在 sidebar 模式下显示移动端 TOC 按钮 */}
-            {siteConfig.toc.enable && siteConfig.toc.mode === "sidebar" && <MobileTOC client:load></MobileTOC>}
             {siteConfig.postListLayout?.allowSwitch && (
                 <LayoutSwitch client:load currentLayout={siteConfig.postListLayout.defaultMode}></LayoutSwitch>
             )}
