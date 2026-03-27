@@ -114,6 +114,128 @@
 		]),
 	).sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base" }));
 
+	const PYTHON_REFERENCE = {
+		print: {
+			detail: "builtin",
+			documentation: "输出一个或多个对象到标准输出。",
+			signatures: [
+				{
+					label: "print(*objects, sep=' ', end='\\n', file=None, flush=False)",
+					parameters: ["*objects", "sep=' '", "end='\\n'", "file=None", "flush=False"],
+				},
+			],
+		},
+		range: {
+			detail: "builtin",
+			documentation: "生成整数序列，常用于 for 循环。",
+			signatures: [
+				{ label: "range(stop)", parameters: ["stop"] },
+				{ label: "range(start, stop[, step])", parameters: ["start", "stop", "step"] },
+			],
+		},
+		input: {
+			detail: "builtin",
+			documentation: "从标准输入读取一行文本并返回字符串。",
+			signatures: [{ label: "input(prompt=None)", parameters: ["prompt=None"] }],
+		},
+		len: {
+			detail: "builtin",
+			documentation: "返回对象长度。",
+			signatures: [{ label: "len(obj)", parameters: ["obj"] }],
+		},
+		list: {
+			detail: "builtin",
+			documentation: "构造列表对象。",
+			signatures: [{ label: "list(iterable=())", parameters: ["iterable=()"] }],
+		},
+		dict: {
+			detail: "builtin",
+			documentation: "构造字典对象。",
+			signatures: [{ label: "dict(**kwargs)", parameters: ["**kwargs"] }],
+		},
+		set: {
+			detail: "builtin",
+			documentation: "构造集合对象。",
+			signatures: [{ label: "set(iterable=())", parameters: ["iterable=()"] }],
+		},
+		tuple: {
+			detail: "builtin",
+			documentation: "构造元组对象。",
+			signatures: [{ label: "tuple(iterable=())", parameters: ["iterable=()"] }],
+		},
+		sum: {
+			detail: "builtin",
+			documentation: "对可迭代对象求和。",
+			signatures: [{ label: "sum(iterable, /, start=0)", parameters: ["iterable", "start=0"] }],
+		},
+		sorted: {
+			detail: "builtin",
+			documentation: "返回新的已排序列表。",
+			signatures: [
+				{
+					label: "sorted(iterable, /, *, key=None, reverse=False)",
+					parameters: ["iterable", "key=None", "reverse=False"],
+				},
+			],
+		},
+		enumerate: {
+			detail: "builtin",
+			documentation: "遍历时同时获得索引和值。",
+			signatures: [{ label: "enumerate(iterable, start=0)", parameters: ["iterable", "start=0"] }],
+		},
+		zip: {
+			detail: "builtin",
+			documentation: "把多个可迭代对象按位置打包。",
+			signatures: [{ label: "zip(*iterables, strict=False)", parameters: ["*iterables", "strict=False"] }],
+		},
+		map: {
+			detail: "builtin",
+			documentation: "把函数映射到一个或多个可迭代对象。",
+			signatures: [{ label: "map(function, iterable, ...)", parameters: ["function", "iterable", "..."] }],
+		},
+		filter: {
+			detail: "builtin",
+			documentation: "按条件过滤可迭代对象。",
+			signatures: [{ label: "filter(function, iterable)", parameters: ["function", "iterable"] }],
+		},
+		defaultdict: {
+			detail: "collections",
+			documentation: "访问不存在的键时，会先用默认工厂函数创建默认值。",
+			signatures: [
+				{
+					label: "defaultdict(default_factory=None, /, [...])",
+					parameters: ["default_factory=None", "[...]"],
+				},
+			],
+		},
+		open: {
+			detail: "builtin",
+			documentation: "打开文件并返回文件对象。",
+			signatures: [
+				{
+					label: "open(file, mode='r', encoding=None, ...)",
+					parameters: ["file", "mode='r'", "encoding=None", "..."],
+				},
+			],
+		},
+		min: {
+			detail: "builtin",
+			documentation: "返回最小值。",
+			signatures: [
+				{ label: "min(iterable, *[, key, default])", parameters: ["iterable", "key", "default"] },
+				{ label: "min(arg1, arg2, *args, key=None)", parameters: ["arg1", "arg2", "*args", "key=None"] },
+			],
+		},
+		max: {
+			detail: "builtin",
+			documentation: "返回最大值。",
+			signatures: [
+				{ label: "max(iterable, *[, key, default])", parameters: ["iterable", "key", "default"] },
+				{ label: "max(arg1, arg2, *args, key=None)", parameters: ["arg1", "arg2", "*args", "key=None"] },
+			],
+		},
+	};
+
 	function loadExternalScript(id, src, test) {
 		if (typeof test === "function" && test()) {
 			return Promise.resolve();
@@ -439,10 +561,22 @@
 		state.gutter.scrollTop = state.editor.scrollTop;
 	}
 
+	function updateCurrentLineHighlight(state) {
+		const style = window.getComputedStyle(state.editor);
+		const lineHeight = Number.parseFloat(style.lineHeight || "24") || 24;
+		const paddingTop = Number.parseFloat(style.paddingTop || "0") || 0;
+		const before = state.editor.value.slice(0, state.editor.selectionStart);
+		const lineIndex = before.split("\n").length - 1;
+		const top = paddingTop + lineIndex * lineHeight - state.editor.scrollTop;
+		state.lineHighlight.style.height = `${lineHeight}px`;
+		state.lineHighlight.style.transform = `translateY(${Math.round(top)}px)`;
+	}
+
 	function syncViewport(state) {
 		state.highlight.scrollTop = state.editor.scrollTop;
 		state.highlight.scrollLeft = state.editor.scrollLeft;
 		state.gutter.scrollTop = state.editor.scrollTop;
+		updateCurrentLineHighlight(state);
 	}
 
 	function renderHighlight(state) {
@@ -454,6 +588,7 @@
 	function syncEditorChrome(state) {
 		renderLineNumbers(state);
 		renderHighlight(state);
+		updateCurrentLineHighlight(state);
 	}
 
 	function createAutocompletePortal() {
@@ -465,12 +600,40 @@
 		return portal;
 	}
 
+	function createSignaturePortal() {
+		const portal = document.createElement("div");
+		portal.className = "python-lab-signature";
+		portal.hidden = true;
+		document.body.appendChild(portal);
+		return portal;
+	}
+
+	function createHoverPortal() {
+		const portal = document.createElement("div");
+		portal.className = "python-lab-hover";
+		portal.hidden = true;
+		document.body.appendChild(portal);
+		return portal;
+	}
+
 	function hideAutocomplete(state) {
 		state.autocomplete.hidden = true;
 		state.autocomplete.innerHTML = "";
 		state.suggestions = [];
 		state.activeIndex = 0;
 		state.context = null;
+	}
+
+	function hideSignatureHelp(state) {
+		state.signature.hidden = true;
+		state.signature.innerHTML = "";
+		state.signatureContext = null;
+	}
+
+	function hideHoverInfo(state) {
+		state.hover.hidden = true;
+		state.hover.innerHTML = "";
+		state.hoverContext = null;
 	}
 
 	function getCompletionContext(source, caretIndex) {
@@ -506,6 +669,10 @@
 	}
 
 	function getSuggestionMeta(suggestion) {
+		const reference = PYTHON_REFERENCE[suggestion];
+		if (reference?.detail) {
+			return reference.detail;
+		}
 		if (PYTHON_KEYWORDS.has(suggestion)) {
 			return "keyword";
 		}
@@ -513,6 +680,42 @@
 			return "builtin";
 		}
 		return "symbol";
+	}
+
+	function findActiveCall(source) {
+		let depth = 0;
+		let argumentIndex = 0;
+
+		for (let index = source.length - 1; index >= 0; index -= 1) {
+			const char = source[index];
+			if (char === ")") {
+				depth += 1;
+				continue;
+			}
+			if (char === "(") {
+				if (depth === 0) {
+					let end = index;
+					let start = end;
+					while (start > 0 && /[A-Za-z0-9_.]/.test(source[start - 1])) {
+						start -= 1;
+					}
+					const name = source.slice(start, end).split(".").pop();
+					return name
+						? {
+								name,
+								argumentIndex,
+						  }
+						: null;
+				}
+				depth -= 1;
+				continue;
+			}
+			if (char === "," && depth === 0) {
+				argumentIndex += 1;
+			}
+		}
+
+		return null;
 	}
 
 	function setActiveSuggestion(state, index) {
@@ -612,6 +815,161 @@
 		autocomplete.style.top = `${Math.max(margin, top)}px`;
 	}
 
+	function renderSignatureMarkup(reference, activeParameter) {
+		const signature = reference.signatures?.[0];
+		if (!signature) {
+			return "";
+		}
+
+		let label = escapeHtml(signature.label);
+		(signature.parameters || []).forEach((parameter, index) => {
+			const escaped = escapeHtml(parameter);
+			if (index === activeParameter) {
+				label = label.replace(escaped, `<span class="is-active">${escaped}</span>`);
+			}
+		});
+
+		return `
+			<span class="python-lab-signature__title">${label}</span>
+			<span class="python-lab-signature__meta">${escapeHtml(reference.detail || "builtin")}</span>
+			<span class="python-lab-signature__doc">${escapeHtml(reference.documentation || "")}</span>
+		`;
+	}
+
+	function positionSignatureHelp(state) {
+		if (state.signature.hidden) {
+			return;
+		}
+
+		const panel = state.signature;
+		const caretRect = getTextareaCaretRect(state.editor, state.editor.selectionStart);
+		const rect = panel.getBoundingClientRect();
+		const margin = 12;
+		let left = caretRect.left;
+		let top = caretRect.top - rect.height - 12;
+
+		if (left + rect.width > window.innerWidth - margin) {
+			left = window.innerWidth - rect.width - margin;
+		}
+
+		if (top < margin) {
+			top = Math.min(window.innerHeight - rect.height - margin, caretRect.bottom + 12);
+		}
+
+		panel.style.left = `${Math.max(margin, left)}px`;
+		panel.style.top = `${Math.max(margin, top)}px`;
+	}
+
+	function getWordAtCursor(source, cursor) {
+		let start = cursor;
+		let end = cursor;
+		while (start > 0 && isIdentifierPart(source[start - 1])) {
+			start -= 1;
+		}
+		while (end < source.length && isIdentifierPart(source[end])) {
+			end += 1;
+		}
+		const word = source.slice(start, end);
+		if (!word || !isIdentifierStart(word[0])) {
+			return null;
+		}
+		return { word, start, end };
+	}
+
+	function renderHoverMarkup(word, reference) {
+		return `
+			<span class="python-lab-hover__title">${escapeHtml(word)}</span>
+			<span class="python-lab-hover__meta">${escapeHtml(reference.detail || "builtin")}</span>
+			<span class="python-lab-hover__doc">${escapeHtml(reference.documentation || "")}</span>
+		`;
+	}
+
+	function positionHoverInfo(state) {
+		if (state.hover.hidden) {
+			return;
+		}
+
+		const panel = state.hover;
+		const caretRect = getTextareaCaretRect(state.editor, state.editor.selectionStart);
+		const rect = panel.getBoundingClientRect();
+		const margin = 12;
+		let left = caretRect.left;
+		let top = caretRect.top - rect.height - 14;
+
+		if (left + rect.width > window.innerWidth - margin) {
+			left = window.innerWidth - rect.width - margin;
+		}
+		if (top < margin) {
+			top = Math.min(window.innerHeight - rect.height - margin, caretRect.bottom + 14);
+		}
+
+		panel.style.left = `${Math.max(margin, left)}px`;
+		panel.style.top = `${Math.max(margin, top)}px`;
+	}
+
+	function updateSignatureHelp(state) {
+		if (state.panel.hidden) {
+			hideSignatureHelp(state);
+			return;
+		}
+
+		const beforeCursor = state.editor.value.slice(0, state.editor.selectionStart);
+		const activeCall = findActiveCall(beforeCursor);
+		if (!activeCall) {
+			hideSignatureHelp(state);
+			return;
+		}
+
+		const reference = PYTHON_REFERENCE[activeCall.name];
+		if (!reference?.signatures?.length) {
+			hideSignatureHelp(state);
+			return;
+		}
+
+		const activeParameter = Math.min(
+			activeCall.argumentIndex,
+			(reference.signatures[0].parameters?.length || 1) - 1,
+		);
+		state.signatureContext = {
+			name: activeCall.name,
+			activeParameter,
+		};
+		state.signature.innerHTML = renderSignatureMarkup(reference, activeParameter);
+		state.signature.hidden = false;
+		positionSignatureHelp(state);
+	}
+
+	function updateHoverInfo(state) {
+		if (state.panel.hidden) {
+			hideHoverInfo(state);
+			return;
+		}
+
+		const selectionStart = state.editor.selectionStart;
+		const selectionEnd = state.editor.selectionEnd;
+		if (selectionStart !== selectionEnd) {
+			hideHoverInfo(state);
+			return;
+		}
+
+		const match = getWordAtCursor(state.editor.value, selectionStart);
+		if (!match) {
+			hideHoverInfo(state);
+			return;
+		}
+
+		const reference = PYTHON_REFERENCE[match.word];
+		if (!reference?.documentation) {
+			hideHoverInfo(state);
+			return;
+		}
+
+		state.hoverContext = match.word;
+		state.hover.innerHTML = renderHoverMarkup(match.word, reference);
+		state.hover.hidden = false;
+		positionHoverInfo(state);
+	}
+
 	function applySuggestion(state, suggestion) {
 		if (!state.context) {
 			return;
@@ -622,6 +980,8 @@
 		saveDraft(state);
 		syncEditorChrome(state);
 		hideAutocomplete(state);
+		updateSignatureHelp(state);
+		updateHoverInfo(state);
 		focusEditor(state);
 	}
 
@@ -658,7 +1018,9 @@
 
 		suggestions.forEach((suggestion, index) => {
 			const button = document.createElement("button");
+			const copy = document.createElement("span");
 			const label = document.createElement("span");
+			const doc = document.createElement("span");
 			const meta = document.createElement("span");
 			button.type = "button";
 			button.className = "python-lab-autocomplete__item";
@@ -668,12 +1030,16 @@
 				button.classList.add("is-active");
 			}
 
+			copy.className = "python-lab-autocomplete__copy";
 			label.className = "python-lab-autocomplete__label";
 			label.textContent = suggestion;
+			doc.className = "python-lab-autocomplete__doc";
+			doc.textContent = PYTHON_REFERENCE[suggestion]?.documentation || "来自当前代码与 Python 内置符号";
 			meta.className = "python-lab-autocomplete__meta";
 			meta.textContent = getSuggestionMeta(suggestion);
 
-			button.append(label, meta);
+			copy.append(label, doc);
+			button.append(copy, meta);
 			button.addEventListener("mousedown", (event) => {
 				event.preventDefault();
 				applySuggestion(state, suggestion);
@@ -730,6 +1096,7 @@
 		}
 		saveDraft(state);
 		syncEditorChrome(state);
+		updateSignatureHelp(state);
 	}
 
 	function handleEditorKeydown(state, event) {
@@ -785,6 +1152,7 @@
 			saveDraft(state);
 			syncEditorChrome(state);
 			hideAutocomplete(state);
+			updateSignatureHelp(state);
 			return;
 		}
 
@@ -807,6 +1175,7 @@
 			saveDraft(state);
 			syncEditorChrome(state);
 			hideAutocomplete(state);
+			updateSignatureHelp(state);
 			return;
 		}
 
@@ -909,6 +1278,8 @@ finally:
 			event.preventDefault();
 			event.stopPropagation();
 			hideAutocomplete(state);
+			hideSignatureHelp(state);
+			hideHoverInfo(state);
 			handle.setPointerCapture?.(event.pointerId);
 
 			const rect = state.panel.getBoundingClientRect();
@@ -994,11 +1365,15 @@ finally:
 		state.toggle.setAttribute("aria-expanded", "true");
 		state.panel.setAttribute("aria-hidden", "false");
 		syncEditorChrome(state);
+		updateSignatureHelp(state);
+		updateHoverInfo(state);
 		focusEditor(state);
 	}
 
 	function closePanel(state) {
 		hideAutocomplete(state);
+		hideSignatureHelp(state);
+		hideHoverInfo(state);
 		state.panel.hidden = true;
 		state.panel.dataset.state = "closed";
 		state.root.dataset.state = "closed";
@@ -1024,6 +1399,7 @@ finally:
 		const close = root.querySelector("[data-python-lab-close]");
 		const editor = root.querySelector("[data-python-lab-editor]");
 		const highlight = root.querySelector("[data-python-lab-highlight]");
+		const lineHighlight = root.querySelector("[data-python-lab-line-highlight]");
 		const runButton = root.querySelector("[data-python-lab-run]");
 		const resetButton = root.querySelector("[data-python-lab-reset]");
 		const clearButton = root.querySelector("[data-python-lab-clear]");
@@ -1039,6 +1415,7 @@ finally:
 			!(close instanceof HTMLButtonElement) ||
 			!(editor instanceof HTMLTextAreaElement) ||
 			!(highlight instanceof HTMLElement) ||
+			!(lineHighlight instanceof HTMLElement) ||
 			!(runButton instanceof HTMLButtonElement) ||
 			!(resetButton instanceof HTMLButtonElement) ||
 			!(clearButton instanceof HTMLButtonElement) ||
@@ -1062,6 +1439,7 @@ finally:
 			close,
 			editor,
 			highlight,
+			lineHighlight,
 			runButton,
 			resetButton,
 			clearButton,
@@ -1071,9 +1449,13 @@ finally:
 			source,
 			gutter,
 			autocomplete: createAutocompletePortal(),
+			signature: createSignaturePortal(),
+			hover: createHoverPortal(),
 			suggestions: [],
 			activeIndex: 0,
 			context: null,
+			signatureContext: null,
+			hoverContext: null,
 		};
 		labState.set(root, state);
 
@@ -1112,6 +1494,8 @@ finally:
 			saveDraft(state);
 			syncEditorChrome(state);
 			hideAutocomplete(state);
+			updateSignatureHelp(state);
+			updateHoverInfo(state);
 			setStatus(state, "示例代码已恢复。");
 			focusEditor(state);
 		});
@@ -1125,12 +1509,20 @@ finally:
 			saveDraft(state);
 			syncEditorChrome(state);
 			updateAutocomplete(state);
+			updateSignatureHelp(state);
+			updateHoverInfo(state);
 		});
 
 		editor.addEventListener("scroll", () => {
 			syncViewport(state);
 			if (!state.autocomplete.hidden) {
 				positionAutocomplete(state);
+			}
+			if (!state.signature.hidden) {
+				positionSignatureHelp(state);
+			}
+			if (!state.hover.hidden) {
+				positionHoverInfo(state);
 			}
 		});
 
@@ -1140,16 +1532,24 @@ finally:
 
 		editor.addEventListener("keyup", (event) => {
 			if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
+				updateCurrentLineHighlight(state);
 				updateAutocomplete(state);
+				updateSignatureHelp(state);
+				updateHoverInfo(state);
 			}
 		});
 
 		editor.addEventListener("click", () => {
+			updateCurrentLineHighlight(state);
 			updateAutocomplete(state);
+			updateSignatureHelp(state);
+			updateHoverInfo(state);
 		});
 
 		editor.addEventListener("focus", () => {
 			syncEditorChrome(state);
+			updateSignatureHelp(state);
+			updateHoverInfo(state);
 		});
 
 		document.addEventListener(
@@ -1160,7 +1560,9 @@ finally:
 					!(event.target instanceof Node) ||
 					root.contains(event.target) ||
 					panel.contains(event.target) ||
-					state.autocomplete.contains(event.target)
+					state.autocomplete.contains(event.target) ||
+					state.signature.contains(event.target) ||
+					state.hover.contains(event.target)
 				) {
 					return;
 				}
@@ -1184,6 +1586,12 @@ finally:
 				if (!state.autocomplete.hidden) {
 					positionAutocomplete(state);
 				}
+				if (!state.signature.hidden) {
+					positionSignatureHelp(state);
+				}
+				if (!state.hover.hidden) {
+					positionHoverInfo(state);
+				}
 			},
 			{ passive: true },
 		);
@@ -1193,6 +1601,12 @@ finally:
 			() => {
 				if (!state.autocomplete.hidden) {
 					positionAutocomplete(state);
+				}
+				if (!state.signature.hidden) {
+					positionSignatureHelp(state);
+				}
+				if (!state.hover.hidden) {
+					positionHoverInfo(state);
 				}
 			},
 			{ passive: true },
