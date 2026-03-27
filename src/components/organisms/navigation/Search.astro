@@ -182,6 +182,14 @@ import { url } from "@/utils/url-utils";
 		text-align: center;
 		font-size: 0.9rem;
 	}
+
+	.owen-search-empty strong {
+		display: block;
+		margin-bottom: 0.24rem;
+		color: var(--text-normal);
+		font-size: 0.92rem;
+		font-weight: 650;
+	}
 </style>
 
 	<script is:inline define:vars={{ rootUrl: url("/") }}>
@@ -288,6 +296,18 @@ import { url } from "@/utils/url-utils";
 			panel.style.pointerEvents = "";
 		};
 
+		const renderIdleState = (shouldOpen = true) => {
+			results.innerHTML = `
+				<div class="owen-search-empty">
+					<strong>开始搜索</strong>
+					<div>支持标题、正文、目录锚点，以及代码块中的注释与示例内容。</div>
+				</div>
+			`;
+			if (shouldOpen) {
+				showPanel();
+			}
+		};
+
 		const renderResults = (items) => {
 			if (!items.length) {
 				results.innerHTML = '<div class="owen-search-empty">没有找到匹配内容</div>';
@@ -388,8 +408,7 @@ import { url } from "@/utils/url-utils";
 			panelInput.value = keyword;
 
 			if (!keyword) {
-				results.innerHTML = "";
-				hidePanel();
+				renderIdleState();
 				return;
 			}
 
@@ -435,6 +454,8 @@ import { url } from "@/utils/url-utils";
 			}, 0);
 			if (keyword) {
 				showPanel();
+			} else {
+				renderIdleState();
 			}
 		};
 
@@ -447,6 +468,8 @@ import { url } from "@/utils/url-utils";
 				window.setTimeout(() => panelInput.focus(), 0);
 				if (keyword) {
 					scheduleSearch(keyword);
+				} else {
+					renderIdleState();
 				}
 			} else {
 				hidePanel();
@@ -465,6 +488,8 @@ import { url } from "@/utils/url-utils";
 				hidePanel();
 			}
 		});
+
+		renderIdleState(false);
 
 		document.addEventListener("click", (event) => {
 			const target = event.target;

@@ -1745,10 +1745,19 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 			applyPythonLabPosition(root, storedPosition);
 		}
 
-		panel.dataset.state = "closed";
+		const isInitiallyOpen = !panel.hidden;
+		panel.dataset.state = isInitiallyOpen ? "open" : "closed";
+		root.dataset.state = isInitiallyOpen ? "open" : "closed";
+		toggle.setAttribute("aria-expanded", isInitiallyOpen ? "true" : "false");
 		host.hidden = true;
 		fallback.hidden = false;
-		setPythonLabLoading(root, false, "轻量编辑器待命，点击即可开始编写。");
+		setPythonLabLoading(
+			root,
+			false,
+			isInitiallyOpen
+				? "轻量编辑器已就绪，编辑器核心正在后台准备。"
+				: "轻量编辑器待命，点击即可开始编写。",
+		);
 
 		const syncPanelWithinViewport = () => {
 			if (panel.hidden) {
@@ -1838,13 +1847,24 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 				const startTop = rect.top;
 				const startX = event.clientX;
 				const startY = event.clientY;
-
-				currentState.isDragging = true;
-				root.dataset.dragging = "true";
+				let draggingStarted = false;
+				const dragThreshold = 6;
 
 				const onMove = (moveEvent) => {
 					const deltaX = moveEvent.clientX - startX;
 					const deltaY = moveEvent.clientY - startY;
+					if (
+						!draggingStarted &&
+						Math.hypot(deltaX, deltaY) < dragThreshold
+					) {
+						return;
+					}
+					if (!draggingStarted) {
+						draggingStarted = true;
+						currentState.isDragging = true;
+						root.dataset.dragging = "true";
+						panel.dataset.dragging = "true";
+					}
 					const next = clampPythonLabPosition(
 						panel,
 						startLeft + deltaX,
@@ -1854,16 +1874,19 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 				};
 
 				const onUp = () => {
-					const finalRect = panel.getBoundingClientRect();
-					const next = clampPythonLabPosition(
-						panel,
-						finalRect.left,
-						finalRect.top,
-					);
-					applyPythonLabPosition(root, next);
-					storePythonLabPosition(next);
+					if (draggingStarted) {
+						const finalRect = panel.getBoundingClientRect();
+						const next = clampPythonLabPosition(
+							panel,
+							finalRect.left,
+							finalRect.top,
+						);
+						applyPythonLabPosition(root, next);
+						storePythonLabPosition(next);
+					}
 					currentState.isDragging = false;
 					root.dataset.dragging = "false";
+					panel.dataset.dragging = "false";
 					handle.releasePointerCapture?.(event.pointerId);
 					window.removeEventListener("pointermove", onMove);
 					window.removeEventListener("pointerup", onUp);
@@ -1877,6 +1900,10 @@ __mizuki_error_output = __mizuki_stderr.getvalue()
 		});
 
 		root.dataset.pythonLabBound = "true";
+
+		if (isInitiallyOpen) {
+			void ensurePythonLabEditor(root);
+		}
 	}
 
 	function upgradeLegacyPlayground(root) {

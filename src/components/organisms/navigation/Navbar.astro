@@ -245,7 +245,7 @@ async function loadPagefind() {
         const pagefind = await import(scriptUrl);
 
         await pagefind.options({
-            excerptLength: 20
+            excerptLength: 48
         });
 
         window.pagefind = pagefind;
