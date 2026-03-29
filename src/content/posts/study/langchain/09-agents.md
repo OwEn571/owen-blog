@@ -13,13 +13,34 @@ comment: true
 ## 1. 介绍
 Agent结合语言模型和工具，创建可以推理任务、决定使用哪些工具并逐步朝着解决方案工作的系统。[create_agent](https://reference.langchain.com/python/langchain/agents/factory/create_agent) 提供了一个生产就绪的Agent实现。LLM 代理在循环中运行工具以实现目标。代理运行直到满足停止条件，即当模型发出最终输出或达到迭代限制时。
 
-```mermaid
-flowchart LR
-  INPUT([用户输入]) --> MODEL[模型]
-  MODEL -- 调用工具 --> TOOLS[工具]
-  TOOLS -- 返回结果 --> MODEL
-  MODEL -- 输出答案 --> OUTPUT([最终回答])
+```mermaid  theme={"theme":{"light":"catppuccin-latte","dark":"catppuccin-mocha"}}
+%%{
+  init: {
+    "fontFamily": "monospace",
+    "flowchart": {
+      "curve": "curve"
+    }
+  }
+}%%
+graph TD
+  %% Outside the agent
+  QUERY([input])
+  LLM{model}
+  TOOL(tools)
+  ANSWER([output])
 
+  %% Main flows (no inline labels)
+  QUERY --> LLM
+  LLM --"action"--> TOOL
+  TOOL --"observation"--> LLM
+  LLM --"finish"--> ANSWER
+
+  classDef blueHighlight fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A;
+  classDef greenHighlight fill:#DCFCE7,stroke:#16A34A,color:#14532D;
+  class QUERY blueHighlight;
+  class ANSWER blueHighlight;
+  class LLM greenHighlight;
+  class TOOL greenHighlight;
 ```
 
 如上图，换句话说，create_agent 使用 LangGraph 构建基于图的Agent运行时。一个图由节点（步骤）和边（连接）组成，定义了Agent如何处理信息。代理通过这个图移动，执行节点，例如模型节点（调用模型）、工具节点（执行工具）或中间件。
