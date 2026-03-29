@@ -16,6 +16,128 @@
 	let retryCount = 0;
 	const MAX_RETRIES = 3;
 	const RETRY_DELAY = 1000; // 1秒
+	let lightbox = null;
+
+	function getMermaidThemeVariables(isDark) {
+		if (isDark) {
+			return {
+				fontFamily: "inherit",
+				fontSize: "16px",
+				background: "#0b1220",
+				primaryColor: "#131d30",
+				primaryTextColor: "#edf3ff",
+				primaryBorderColor: "#8aa8ff",
+				lineColor: "#8aa8ff",
+				secondaryColor: "#172338",
+				tertiaryColor: "#10192a",
+				mainBkg: "#131d30",
+				secondBkg: "#172338",
+				tertiaryBkg: "#10192a",
+				clusterBkg: "#10192a",
+				clusterBorder: "#6f8eff",
+				nodeBorder: "#8aa8ff",
+				textColor: "#edf3ff",
+				labelTextColor: "#edf3ff",
+				edgeLabelBackground: "#0f1828",
+				actorBkg: "#131d30",
+				actorBorder: "#8aa8ff",
+				actorTextColor: "#edf3ff",
+				noteBkgColor: "#18253b",
+				noteTextColor: "#edf3ff",
+				noteBorderColor: "#8aa8ff",
+				activationBorderColor: "#8aa8ff",
+				activationBkgColor: "#18253b",
+				sequenceNumberColor: "#edf3ff",
+			};
+		}
+
+		return {
+			fontFamily: "inherit",
+			fontSize: "16px",
+			background: "#fff8fb",
+			primaryColor: "#fff9fc",
+			primaryTextColor: "#6b3550",
+			primaryBorderColor: "#df8ab2",
+			lineColor: "#df8ab2",
+			secondaryColor: "#fff2f7",
+			tertiaryColor: "#ffe8f1",
+			mainBkg: "#fff9fc",
+			secondBkg: "#fff2f7",
+			tertiaryBkg: "#ffe8f1",
+			clusterBkg: "#fff4f8",
+			clusterBorder: "#ebb0c8",
+			nodeBorder: "#df8ab2",
+			textColor: "#6b3550",
+			labelTextColor: "#6b3550",
+			edgeLabelBackground: "#fff9fc",
+			actorBkg: "#fff9fc",
+			actorBorder: "#df8ab2",
+			actorTextColor: "#6b3550",
+			noteBkgColor: "#fff2f7",
+			noteTextColor: "#6b3550",
+			noteBorderColor: "#df8ab2",
+			activationBorderColor: "#df8ab2",
+			activationBkgColor: "#fff0f6",
+			sequenceNumberColor: "#6b3550",
+		};
+	}
+
+	function ensureLightbox() {
+		if (lightbox) {return lightbox;}
+
+		const overlay = document.createElement("div");
+		overlay.className = "mermaid-lightbox";
+		overlay.setAttribute("hidden", "");
+		overlay.innerHTML = `
+			<div class="mermaid-lightbox__backdrop" data-mermaid-lightbox-close></div>
+			<div class="mermaid-lightbox__dialog" role="dialog" aria-modal="true" aria-label="Mermaid Diagram Preview">
+				<button type="button" class="mermaid-lightbox__close" data-mermaid-lightbox-close aria-label="Close diagram preview">×</button>
+				<div class="mermaid-lightbox__stage"></div>
+			</div>
+		`;
+
+		const close = () => {
+			overlay.setAttribute("hidden", "");
+			document.documentElement.classList.remove("mermaid-lightbox-open");
+			document.body.classList.remove("mermaid-lightbox-open");
+		};
+
+		overlay.addEventListener("click", (event) => {
+			if ((event.target instanceof Element) && event.target.closest("[data-mermaid-lightbox-close]")) {
+				close();
+			}
+		});
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key === "Escape" && !overlay.hasAttribute("hidden")) {
+				close();
+			}
+		});
+
+		document.body.appendChild(overlay);
+		lightbox = {
+			overlay,
+			stage: overlay.querySelector(".mermaid-lightbox__stage"),
+			close,
+		};
+		return lightbox;
+	}
+
+	function openLightbox(sourceSvg) {
+		const instance = ensureLightbox();
+		if (!(instance?.stage instanceof HTMLElement) || !(sourceSvg instanceof SVGElement)) {
+			return;
+		}
+
+		instance.stage.innerHTML = "";
+		const clone = sourceSvg.cloneNode(true);
+		clone.removeAttribute("height");
+		clone.setAttribute("width", "100%");
+		instance.stage.appendChild(clone);
+		instance.overlay.removeAttribute("hidden");
+		document.documentElement.classList.add("mermaid-lightbox-open");
+		document.body.classList.add("mermaid-lightbox-open");
+	}
 
 	// 检查主题是否真的发生了变化
 	function hasThemeChanged() {
@@ -88,139 +210,21 @@
 		});
 	}
 
-	// 缩放平移
-	function attachZoomControls(element, svgElement) {
-		if (element.__zoomAttached) {return;}
-		element.__zoomAttached = true;
+	function attachPreviewBehavior(element, svgElement) {
+		if (element.__previewAttached) {return;}
+		element.__previewAttached = true;
+		element.classList.add("is-rendered");
+		element.setAttribute("role", "button");
+		element.setAttribute("tabindex", "0");
+		element.setAttribute("aria-label", "点击放大 Mermaid 图表");
 
-		const wrapper = document.createElement("div");
-		wrapper.className = "mermaid-zoom-wrapper";
-
-		const svgParent = svgElement.parentNode;
-		wrapper.appendChild(svgElement);
-		svgParent.appendChild(wrapper);
-
-		let scale = 1;
-		let tx = 0;
-		let ty = 0;
-		const MIN_SCALE = 0.2;
-		const MAX_SCALE = 6;
-
-		function applyTransform() {
-			wrapper.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-		}
-		const controls = document.createElement("div");
-		controls.className = "mermaid-zoom-controls";
-		controls.innerHTML = `
-			<button class="btn-regular rounded-lg h-10 w-10 active:scale-90" data-action="zoom-in" title="Zoom in">+</button>
-			<button class="btn-regular rounded-lg h-10 w-10 active:scale-90" data-action="zoom-out" title="Zoom out">−</button>
-			<button class="btn-regular rounded-lg h-10 w-10 active:scale-90" data-action="reset" title="Reset">⤾</button>
-		`;
-		element.appendChild(controls);
-
-		controls.addEventListener("click", (ev) => {
-			const action =
-				ev.target.getAttribute && ev.target.getAttribute("data-action");
-			if (!action) {return;}
-
-			switch (action) {
-				case "zoom-in":
-					scale = Math.min(MAX_SCALE, +(scale * 1.2).toFixed(3));
-					applyTransform();
-					break;
-				case "zoom-out":
-					scale = Math.max(MIN_SCALE, +(scale / 1.2).toFixed(3));
-					applyTransform();
-					break;
-				case "reset":
-					scale = 1;
-					tx = 0;
-					ty = 0;
-					applyTransform();
-					break;
+		const open = () => openLightbox(svgElement);
+		element.addEventListener("click", open);
+		element.addEventListener("keydown", (event) => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				open();
 			}
-		});
-
-		let isPanning = false;
-		let startX = 0;
-		let startY = 0;
-		let startTx = 0;
-		let startTy = 0;
-
-		wrapper.style.touchAction = "none";
-
-		wrapper.addEventListener("pointerdown", (ev) => {
-			if (ev.button !== 0) {return;} // 仅左键
-			isPanning = true;
-			wrapper.setPointerCapture(ev.pointerId);
-			startX = ev.clientX;
-			startY = ev.clientY;
-			startTx = tx;
-			startTy = ty;
-		});
-
-		wrapper.addEventListener("pointermove", (ev) => {
-			if (!isPanning) {return;}
-			const dx = ev.clientX - startX;
-			const dy = ev.clientY - startY;
-			tx = startTx + dx / scale; // 根据当前缩放调整灵敏度
-			ty = startTy + dy / scale;
-			applyTransform();
-		});
-
-		wrapper.addEventListener("pointerup", (ev) => {
-			isPanning = false;
-			try {
-				wrapper.releasePointerCapture(ev.pointerId);
-			} catch (e) {}
-		});
-
-		wrapper.addEventListener("pointercancel", () => {
-			isPanning = false;
-		});
-
-		// 鼠标滚轮缩放
-		element.addEventListener(
-			"wheel",
-			(ev) => {
-				ev.preventDefault();
-				const delta = -ev.deltaY;
-				const zoomFactor = delta > 0 ? 1.12 : 1 / 1.12;
-				const prevScale = scale;
-				scale = Math.min(
-					MAX_SCALE,
-					Math.max(MIN_SCALE, +(scale * zoomFactor).toFixed(3)),
-				);
-
-				const rect = wrapper.getBoundingClientRect();
-				const cx = ev.clientX - rect.left;
-				const cy = ev.clientY - rect.top;
-
-				const worldX = cx / prevScale - tx;
-				const worldY = cy / prevScale - ty;
-
-				tx = cx / scale - worldX;
-				ty = cy / scale - worldY;
-
-				applyTransform();
-			},
-			{ passive: false },
-		);
-
-		// 双击重置
-		wrapper.addEventListener("dblclick", () => {
-			scale = 1;
-			tx = 0;
-			ty = 0;
-			applyTransform();
-		});
-		applyTransform();
-		let resizeTimer = null;
-		window.addEventListener("resize", () => {
-			clearTimeout(resizeTimer);
-			resizeTimer = setTimeout(() => {
-				applyTransform();
-			}, 200);
 		});
 	}
 
@@ -251,13 +255,9 @@
 			// 初始化 Mermaid 配置
 			window.mermaid.initialize({
 				startOnLoad: false,
-				theme: "default",
-				themeVariables: {
-					fontFamily: "inherit",
-					fontSize: "16px",
-				},
+				theme: "base",
+				themeVariables: getMermaidThemeVariables(document.documentElement.classList.contains("dark")),
 				securityLevel: "loose",
-				// 添加错误处理配置
 				errorLevel: "warn",
 				logLevel: "error",
 			});
@@ -303,23 +303,10 @@
 
 			const htmlElement = document.documentElement;
 			const isDark = htmlElement.classList.contains("dark");
-			const theme = isDark ? "dark" : "default";
-
-			// 更新 Mermaid 主题（只需要更新一次）
 			window.mermaid.initialize({
 				startOnLoad: false,
-				theme: theme,
-				themeVariables: {
-					fontFamily: "inherit",
-					fontSize: "16px",
-					// 强制应用主题变量
-					primaryColor: isDark ? "#ffffff" : "#000000",
-					primaryTextColor: isDark ? "#ffffff" : "#000000",
-					primaryBorderColor: isDark ? "#ffffff" : "#000000",
-					lineColor: isDark ? "#ffffff" : "#000000",
-					secondaryColor: isDark ? "#333333" : "#f0f0f0",
-					tertiaryColor: isDark ? "#555555" : "#e0e0e0",
-				},
+				theme: "base",
+				themeVariables: getMermaidThemeVariables(isDark),
 				securityLevel: "loose",
 				errorLevel: "warn",
 				logLevel: "error",
@@ -368,17 +355,9 @@
 								insertedSvg.removeAttribute("height");
 								insertedSvg.style.maxWidth = "100%";
 								insertedSvg.style.height = "auto";
-								//Todo 需要根据实际情况
-								insertedSvg.style.minHeight = "300px";
-
-								// 强制应用样式
-								if (isDark) {
-									svgElement.style.filter =
-										"brightness(0.9) contrast(1.1)";
-								} else {
-									svgElement.style.filter = "none";
-								}
-								attachZoomControls(element, insertedSvg);
+								insertedSvg.style.minHeight = "0";
+								svgElement.style.filter = "none";
+								attachPreviewBehavior(element, insertedSvg);
 							}
 
 							// 渲染成功，跳出重试循环

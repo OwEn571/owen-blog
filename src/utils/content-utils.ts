@@ -36,6 +36,12 @@ async function getRawSortedPosts() {
 	return sorted;
 }
 
+function getSeriesKey(postId: string) {
+	const parts = postId.split("/");
+	if (parts.length <= 1) {return "";}
+	return parts.slice(0, -1).join("/");
+}
+
 export async function getSortedPosts() {
 	const sorted = await getRawSortedPosts();
 
@@ -46,6 +52,30 @@ export async function getSortedPosts() {
 	for (let i = 0; i < sorted.length - 1; i++) {
 		sorted[i].data.prevSlug = sorted[i + 1].id;
 		sorted[i].data.prevTitle = sorted[i + 1].data.title;
+	}
+
+	const seriesGroups = new Map<string, typeof sorted>();
+	for (const post of sorted) {
+		const seriesKey = getSeriesKey(post.id);
+		if (!seriesKey) {continue;}
+		const group = seriesGroups.get(seriesKey) || [];
+		group.push(post);
+		seriesGroups.set(seriesKey, group);
+	}
+
+	for (const group of seriesGroups.values()) {
+		if (group.length <= 1) {continue;}
+
+		for (let i = 0; i < group.length; i++) {
+			const current = group[i];
+			const previousInSeries = group[i - 1];
+			const nextInSeries = group[i + 1];
+
+			current.data.nextSlug = previousInSeries?.id || "";
+			current.data.nextTitle = previousInSeries?.data.title || "";
+			current.data.prevSlug = nextInSeries?.id || "";
+			current.data.prevTitle = nextInSeries?.data.title || "";
+		}
 	}
 
 	return sorted;
