@@ -1,10 +1,9 @@
 import { h } from "hastscript";
 import { visit } from "unist-util-visit";
 
-import mermaidRenderScript from "./mermaid-render-script.js?raw";
-
 export function rehypeMermaid() {
 	return (tree) => {
+		let hasInjectedRuntime = false;
 		visit(tree, "element", (node) => {
 			if (
 				node.tagName === "div" &&
@@ -34,19 +33,21 @@ export function rehypeMermaid() {
 					],
 				);
 
-				// 创建客户端渲染脚本
-				const renderScript = h(
-					"script",
-					{
-						type: "text/javascript",
-					},
-					mermaidRenderScript,
-				);
-
 				// 替换原始节点
 				node.tagName = "div";
 				node.properties = { class: "mermaid-diagram-container" };
-				node.children = [mermaidContainer, renderScript];
+				node.children = [mermaidContainer];
+
+				if (!hasInjectedRuntime) {
+					node.children.push(
+						h("script", {
+							src: "/scripts/mermaid-runtime.js",
+							defer: true,
+							"data-mermaid-runtime-loader": "true",
+						}),
+					);
+					hasInjectedRuntime = true;
+				}
 			}
 		});
 	};
