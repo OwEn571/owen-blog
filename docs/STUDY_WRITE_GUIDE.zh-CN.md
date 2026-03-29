@@ -12,6 +12,7 @@ Study 模块现在只认这一层目录：
 - `Fine Tuning` -> `src/content/posts/study/fine-tuning/`
 - `FastAPI` -> `src/content/posts/study/fastapi/`
 - `Pytorch` -> `src/content/posts/study/pytorch/`
+- `LangChain` -> `src/content/posts/study/langchain/`
 
 ## 你应该怎么写
 
