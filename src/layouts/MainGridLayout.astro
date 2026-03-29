@@ -113,7 +113,7 @@ const shouldRenderSidebarTOC =
 const shouldRenderImmersiveFloatTOC =
 	siteConfig.toc.enable && immersiveLayout && hasHeadings;
 const shouldRenderImmersiveSidebarTOC =
-	siteConfig.toc.enable && isSidebarTOC && immersiveLayout && hasHeadings;
+	false;
 
 // 半透明效果
 const shouldEnable = shouldEnableTransparency(siteConfig.wallpaperMode.defaultMode);
