@@ -1208,13 +1208,13 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
 
   .section-title {
     margin-top: 0.45rem;
-    max-width: min(100%, 18ch);
+    max-width: 100%;
     font-size: clamp(2.35rem, 4.8vw, 4.35rem);
     line-height: 0.94;
     font-weight: 680;
     letter-spacing: -0.065em;
     color: rgba(15, 23, 42, 0.94);
-    text-wrap: pretty;
+    text-wrap: balance;
   }
 
   :root.dark .section-title {
@@ -1438,14 +1438,14 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
 
   .module-title {
     margin-top: 0.55rem;
-    max-width: min(100%, 18ch);
+    max-width: 100%;
     font-family: var(--owen-font-display);
     font-size: clamp(2.7rem, 5.2vw, 5rem);
     line-height: 0.9;
     font-weight: 720;
     letter-spacing: -0.068em;
     color: rgba(248, 250, 255, 0.96);
-    text-wrap: pretty;
+    text-wrap: balance;
   }
 
   .module-title__typed {
@@ -4419,13 +4419,13 @@ body {
 }
 
 .module-title {
-  max-width: min(100%, 18ch);
+  max-width: 100%;
   font-family: var(--owen-font-display);
   font-weight: 700;
   line-height: 0.93;
   letter-spacing: -0.076em;
   text-shadow: 0 14px 36px rgb(var(--module-accent, 104 140 255) / 0.14);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 .module-description {
@@ -4455,12 +4455,12 @@ body {
 }
 
 body.immersive-page .post-article-title {
-  max-width: min(100%, 24ch);
+  max-width: 100%;
   font-family: var(--owen-font-display);
   font-weight: 720;
   line-height: 0.94;
   letter-spacing: -0.074em;
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 body.immersive-page .post-markdown-flow {
@@ -4867,8 +4867,8 @@ body.immersive-page .post-title-frame::after {
 }
 
 body.immersive-page .post-article-title {
-  max-width: min(100%, 24ch);
-  text-wrap: pretty;
+  max-width: 100%;
+  text-wrap: balance;
 }
 
 body.immersive-page .post-reading-strip {

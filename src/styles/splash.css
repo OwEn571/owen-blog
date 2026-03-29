@@ -259,12 +259,12 @@ body {
 }
 
 .splash-title {
-  max-width: min(100%, 18ch);
+  max-width: 100%;
   font-family: var(--owen-font-display);
   font-weight: 700;
   line-height: 0.92;
   letter-spacing: -0.078em;
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 .splash-description {
