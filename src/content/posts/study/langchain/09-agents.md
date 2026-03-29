@@ -14,16 +14,11 @@ comment: true
 Agent结合语言模型和工具，创建可以推理任务、决定使用哪些工具并逐步朝着解决方案工作的系统。[create_agent](https://reference.langchain.com/python/langchain/agents/factory/create_agent) 提供了一个生产就绪的Agent实现。LLM 代理在循环中运行工具以实现目标。代理运行直到满足停止条件，即当模型发出最终输出或达到迭代限制时。
 
 ```mermaid
-%%{init: {
-  "theme": "base",
-  "themeVariables": { "fontFamily": "monospace" },
-  "flowchart": { "curve": "basis" }
-}}%%
-graph TD
-  QUERY([input]) --> LLM{model}
-  LLM -- action --> TOOL(tools)
-  TOOL -- observation --> LLM
-  LLM -- finish --> ANSWER([output])
+flowchart LR
+  INPUT([用户输入]) --> MODEL[模型]
+  MODEL -- 调用工具 --> TOOLS[工具]
+  TOOLS -- 返回结果 --> MODEL
+  MODEL -- 输出答案 --> OUTPUT([最终回答])
 
 ```
 

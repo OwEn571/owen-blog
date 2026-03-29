@@ -9,73 +9,8 @@
 	const state = {
 		rendering: false,
 		currentTheme: null,
-		lightbox: null,
 		loadPromise: null,
 	};
-
-	function getThemeVariables(isDark) {
-		if (isDark) {
-			return {
-				fontFamily: "inherit",
-				fontSize: "16px",
-				background: "#0b1220",
-				primaryColor: "#131d30",
-				primaryTextColor: "#edf3ff",
-				primaryBorderColor: "#8aa8ff",
-				lineColor: "#8aa8ff",
-				secondaryColor: "#172338",
-				tertiaryColor: "#10192a",
-				mainBkg: "#131d30",
-				secondBkg: "#172338",
-				tertiaryBkg: "#10192a",
-				clusterBkg: "#10192a",
-				clusterBorder: "#6f8eff",
-				nodeBorder: "#8aa8ff",
-				textColor: "#edf3ff",
-				labelTextColor: "#edf3ff",
-				edgeLabelBackground: "#0f1828",
-				actorBkg: "#131d30",
-				actorBorder: "#8aa8ff",
-				actorTextColor: "#edf3ff",
-				noteBkgColor: "#18253b",
-				noteTextColor: "#edf3ff",
-				noteBorderColor: "#8aa8ff",
-				activationBorderColor: "#8aa8ff",
-				activationBkgColor: "#18253b",
-				sequenceNumberColor: "#edf3ff",
-			};
-		}
-
-		return {
-			fontFamily: "inherit",
-			fontSize: "16px",
-			background: "#fff8fb",
-			primaryColor: "#fff9fc",
-			primaryTextColor: "#6b3550",
-			primaryBorderColor: "#df8ab2",
-			lineColor: "#df8ab2",
-			secondaryColor: "#fff2f7",
-			tertiaryColor: "#ffe8f1",
-			mainBkg: "#fff9fc",
-			secondBkg: "#fff2f7",
-			tertiaryBkg: "#ffe8f1",
-			clusterBkg: "#fff4f8",
-			clusterBorder: "#ebb0c8",
-			nodeBorder: "#df8ab2",
-			textColor: "#6b3550",
-			labelTextColor: "#6b3550",
-			edgeLabelBackground: "#fff9fc",
-			actorBkg: "#fff9fc",
-			actorBorder: "#df8ab2",
-			actorTextColor: "#6b3550",
-			noteBkgColor: "#fff2f7",
-			noteTextColor: "#6b3550",
-			noteBorderColor: "#df8ab2",
-			activationBorderColor: "#df8ab2",
-			activationBkgColor: "#fff0f6",
-			sequenceNumberColor: "#6b3550",
-		};
-	}
 
 	function normalizeMermaidCode(rawCode) {
 		if (typeof rawCode !== "string") {
@@ -88,11 +23,11 @@
 			return trimmed;
 		}
 
-		const originalConfig = initMatch[1];
+		const configSource = initMatch[1];
 		const remainingCode = trimmed.slice(initMatch[0].length).trimStart();
 
 		try {
-			const parsed = JSON.parse(originalConfig);
+			const parsed = JSON.parse(configSource);
 			delete parsed.theme;
 			delete parsed.themeVariables;
 
@@ -102,90 +37,9 @@
 
 			return `%%{init: ${JSON.stringify(parsed)}}%%\n${remainingCode}`;
 		} catch (error) {
-			console.warn("[mermaid] failed to parse init block, dropping it for stable theme rendering", error);
+			console.warn("[mermaid] invalid init block, dropping custom init for stability", error);
 			return remainingCode;
 		}
-	}
-
-	function ensureLightbox() {
-		if (state.lightbox) {
-			return state.lightbox;
-		}
-
-		const overlay = document.createElement("div");
-		overlay.className = "mermaid-lightbox";
-		overlay.setAttribute("hidden", "");
-		overlay.innerHTML = `
-			<div class="mermaid-lightbox__backdrop" data-mermaid-lightbox-close></div>
-			<div class="mermaid-lightbox__dialog" role="dialog" aria-modal="true" aria-label="Mermaid diagram preview">
-				<button type="button" class="mermaid-lightbox__close" data-mermaid-lightbox-close aria-label="Close diagram preview">×</button>
-				<div class="mermaid-lightbox__stage"></div>
-			</div>
-		`;
-
-		const close = () => {
-			overlay.setAttribute("hidden", "");
-			document.documentElement.classList.remove("mermaid-lightbox-open");
-			document.body.classList.remove("mermaid-lightbox-open");
-		};
-
-		overlay.addEventListener("click", (event) => {
-			if (event.target instanceof Element && event.target.closest("[data-mermaid-lightbox-close]")) {
-				close();
-			}
-		});
-
-		document.addEventListener("keydown", (event) => {
-			if (event.key === "Escape" && !overlay.hasAttribute("hidden")) {
-				close();
-			}
-		});
-
-		document.body.appendChild(overlay);
-		state.lightbox = {
-			overlay,
-			stage: overlay.querySelector(".mermaid-lightbox__stage"),
-			close,
-		};
-
-		return state.lightbox;
-	}
-
-	function openLightbox(sourceSvg) {
-		const lightbox = ensureLightbox();
-		if (!(lightbox.stage instanceof HTMLElement) || !(sourceSvg instanceof SVGElement)) {
-			return;
-		}
-
-		lightbox.stage.innerHTML = "";
-		const clone = sourceSvg.cloneNode(true);
-		clone.removeAttribute("height");
-		clone.setAttribute("width", "100%");
-		lightbox.stage.appendChild(clone);
-		lightbox.overlay.removeAttribute("hidden");
-		document.documentElement.classList.add("mermaid-lightbox-open");
-		document.body.classList.add("mermaid-lightbox-open");
-	}
-
-	function attachPreviewBehavior(element, svgElement) {
-		if (element.__owenMermaidPreviewBound) {
-			return;
-		}
-
-		element.__owenMermaidPreviewBound = true;
-		element.classList.add("is-rendered");
-		element.setAttribute("role", "button");
-		element.setAttribute("tabindex", "0");
-		element.setAttribute("aria-label", "点击放大 Mermaid 图表");
-
-		const open = () => openLightbox(svgElement);
-		element.addEventListener("click", open);
-		element.addEventListener("keydown", (event) => {
-			if (event.key === "Enter" || event.key === " ") {
-				event.preventDefault();
-				open();
-			}
-		});
 	}
 
 	function loadMermaidLibrary() {
@@ -253,13 +107,12 @@
 			await loadMermaidLibrary();
 
 			const isDark = document.documentElement.classList.contains("dark");
-			const themeKey = isDark ? "dark" : "light";
-			state.currentTheme = themeKey;
+			const theme = isDark ? "dark" : "default";
+			state.currentTheme = theme;
 
 			window.mermaid.initialize({
 				startOnLoad: false,
-				theme: "base",
-				themeVariables: getThemeVariables(isDark),
+				theme,
 				securityLevel: "loose",
 				errorLevel: "warn",
 				logLevel: "error",
@@ -267,26 +120,25 @@
 
 			for (let index = 0; index < targets.length; index += 1) {
 				const element = targets[index];
-				const code = element.getAttribute("data-mermaid-code") || "";
-				const normalizedCode = normalizeMermaidCode(code);
-				const signature = `${themeKey}:${normalizedCode}`;
+				const rawCode = element.getAttribute("data-mermaid-code") || "";
+				const code = normalizeMermaidCode(rawCode);
+				const signature = `${theme}:${code}`;
 
 				if (element.dataset.mermaidSignature === signature && element.querySelector("svg")) {
 					continue;
 				}
 
-				element.classList.remove("is-rendered");
 				element.innerHTML = '<div class="mermaid-loading">Rendering diagram...</div>';
 
 				try {
-					const { svg } = await window.mermaid.render(`owen-mermaid-${Date.now()}-${index}`, normalizedCode);
+					const { svg } = await window.mermaid.render(`owen-mermaid-${Date.now()}-${index}`, code);
 					const parser = new DOMParser();
 					const doc = parser.parseFromString(svg, "image/svg+xml");
 					const svgElement = doc.documentElement;
 
 					element.innerHTML = "";
-					element.__owenMermaidPreviewBound = false;
 					element.appendChild(svgElement);
+					element.classList.add("is-rendered");
 					element.dataset.mermaidSignature = signature;
 
 					const insertedSvg = element.querySelector("svg");
@@ -297,8 +149,7 @@
 						insertedSvg.style.height = "auto";
 						insertedSvg.style.minHeight = "0";
 						insertedSvg.style.display = "block";
-						insertedSvg.style.filter = "none";
-						attachPreviewBehavior(element, insertedSvg);
+						insertedSvg.style.marginInline = "auto";
 					}
 				} catch (error) {
 					console.error("[mermaid] render failed", error);
@@ -324,7 +175,7 @@
 		}
 	}
 
-	function scheduleRender(delay) {
+	function scheduleRender(delay = 80) {
 		window.clearTimeout(window.__owenMermaidRenderTimer);
 		window.__owenMermaidRenderTimer = window.setTimeout(() => {
 			renderMermaidDiagrams();
@@ -335,8 +186,7 @@
 		const observer = new MutationObserver((mutations) => {
 			for (const mutation of mutations) {
 				if (mutation.type === "attributes" && mutation.attributeName === "class") {
-					const isDark = document.documentElement.classList.contains("dark");
-					const nextTheme = isDark ? "dark" : "light";
+					const nextTheme = document.documentElement.classList.contains("dark") ? "dark" : "default";
 					if (nextTheme !== state.currentTheme) {
 						scheduleRender(120);
 					}
@@ -349,11 +199,11 @@
 			attributeFilter: ["class"],
 		});
 
-		document.addEventListener("astro:page-load", () => scheduleRender(50));
-		document.addEventListener("pageshow", () => scheduleRender(50));
+		document.addEventListener("astro:page-load", () => scheduleRender(40));
+		document.addEventListener("pageshow", () => scheduleRender(40));
 		document.addEventListener("visibilitychange", () => {
 			if (!document.hidden) {
-				scheduleRender(80);
+				scheduleRender(60);
 			}
 		});
 	}
