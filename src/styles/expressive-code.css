@@ -12,12 +12,13 @@
   /* 复制按钮样式 (Copy Button) */
   .copy-btn {
     all: initial;
-    @apply opacity-0 absolute active:scale-90 h-8 w-8 top-3 right-3 text-sm rounded-lg transition-all ease-in-out z-20 cursor-pointer;
+    @apply absolute active:scale-90 h-8 w-8 top-3 right-3 text-sm rounded-lg transition-all ease-in-out z-20 cursor-pointer;
     background: var(--btn-regular-bg);
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     display: flex;
     align-items: center;
     justify-content: center;
+    opacity: 0.92;
   }
 
   .copy-btn:hover {
@@ -80,10 +81,10 @@
 /* 折叠按钮 */
 .expressive-code.collapsible .collapse-toggle-btn {
   all: initial;
-  opacity: 0;
+  opacity: 0.92;
   position: absolute;
   top: 0.75rem;
-  right: 3.5rem;
+  right: 3.25rem;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -129,7 +130,7 @@
 
 /* 代码内容折叠状态 */
 .expressive-code.collapsed .frame pre {
-  max-height: 5rem;
+  max-height: 4.75rem;
   overflow: hidden;
 }
 
@@ -152,6 +153,23 @@
 .expressive-code.collapsible .frame pre {
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+
+.expressive-code .frame[data-language]:not(.has-title):not(.is-terminal)::after {
+  left: 0.8rem;
+  right: auto;
+  top: 0.72rem;
+  padding: 0.14rem 0.58rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .expressive-code .frame[data-language]:not(.has-title):not(.is-terminal):hover::after {
+    opacity: 1;
+  }
 }
 
 /* 移动端适配 (Mobile) */

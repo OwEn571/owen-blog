@@ -41,44 +41,25 @@ function renderPythonCodeCard(source, options) {
 	const lines = source.split("\n").length;
 	const normalizedTitle = normalizePythonCardTitle(options.title);
 	const hasCustomTitle = Boolean(normalizedTitle);
-	const packagesText =
-		options.packages.length > 0 ? options.packages.join(", ") : "";
-	const summaryNote =
-		options.packages.length > 0
-			? `${options.packages.join(", ")} · ${lines} lines`
-			: `${lines} lines · frozen view`;
 
 	return `<div class="python-code-card" data-python-code-card="true" data-python-title="${escapeAttribute(normalizedTitle)}" data-python-packages="${escapeAttribute(options.packages.join(","))}">
-	<div class="python-code-card__toolbar">
-		<div class="python-code-card__toolbar-meta">
-			<span class="python-code-card__eyebrow">Frozen Editor</span>
-			<strong class="python-code-card__title">${hasCustomTitle ? escapeHtml(normalizedTitle) : "Python3 代码片段"}</strong>
-		</div>
-		<div class="python-code-card__toolbar-side">
-			${packagesText ? `<span class="python-code-card__meta">${escapeHtml(packagesText)}</span>` : ""}
-			<span class="python-code-card__meta">${lines} lines</span>
-		</div>
-	</div>
 	<details class="python-code-card__details">
 		<summary class="python-code-card__summary">
-			<div class="python-code-card__summary-copy">
-				<span class="python-code-card__summary-label">${hasCustomTitle ? escapeHtml(normalizedTitle) : "点击展开代码"}</span>
-				<span class="python-code-card__summary-note">${escapeHtml(summaryNote)}</span>
+			<div class="python-code-card__summary-main">
+				<span class="python-code-card__badge">Python3</span>
+				${hasCustomTitle ? `<strong class="python-code-card__title">${escapeHtml(normalizedTitle)}</strong>` : `<span class="python-code-card__summary-label">点击展开代码</span>`}
 			</div>
-			<span class="python-code-card__summary-toggle">展开</span>
+			<div class="python-code-card__summary-side">
+				${options.packages.length > 0 ? `<span class="python-code-card__meta">${escapeHtml(options.packages.join(", "))}</span>` : ""}
+				<span class="python-code-card__meta">${lines} lines</span>
+				<span class="python-code-card__summary-toggle">展开代码</span>
+			</div>
 		</summary>
 		<div class="python-code-card__body">
 			<div class="python-code-card__utility">
-				<button class="python-code-card__copy" type="button">复制代码</button>
+				<button class="python-code-card__copy" type="button">复制</button>
 			</div>
 			<div class="python-code-card__surface">
-				<div class="python-code-card__surface-bar">
-					<div class="python-code-card__surface-dots" aria-hidden="true">
-						<span></span><span></span><span></span>
-					</div>
-					<span class="python-code-card__surface-name">Python3</span>
-					<span class="python-code-card__surface-state">Readonly</span>
-				</div>
 				<code class="python-code-card__code" data-python-code-display="true"></code>
 			</div>
 		</div>

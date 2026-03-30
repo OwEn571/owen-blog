@@ -181,6 +181,12 @@ const jsonLd = {
 		: siteConfig.lang.replace("_", "-"),
 	// TODO include cover image here
 };
+
+const postSeries = path.dirname(entry.id).split("/").pop()?.replace(/[-_]/g, " ") || "";
+const articleEyebrows = [
+	entry.data.category?.trim(),
+	postSeries && postSeries !== entry.data.category ? postSeries : "",
+].filter(Boolean);
 ---
 
 <MainGridLayout
@@ -247,6 +253,15 @@ const jsonLd = {
 
             <!-- title -->
             <div class="post-title-frame relative onload-animation">
+                {
+                    articleEyebrows.length > 0 && (
+                        <div class="post-eyebrow-row mb-3">
+                            {articleEyebrows.map((item) => (
+                                <span class="post-eyebrow-chip">{item}</span>
+                            ))}
+                        </div>
+                    )
+                }
                 <div
                     data-pagefind-body
                     data-pagefind-weight="10"
@@ -259,6 +274,13 @@ const jsonLd = {
                 >
                     {entry.data.title}
                 </div>
+                {
+                    entry.data.description && (
+                        <p class="post-description-lead">
+                            {entry.data.description}
+                        </p>
+                    )
+                }
             </div>
 
             <!-- metadata -->
@@ -463,13 +485,16 @@ const jsonLd = {
         >
             {
                 entry.data.nextSlug && (
-                    <div class="post-neighbor-card post-info-card btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-start gap-4">
+                    <div class="post-neighbor-card post-info-card btn-card rounded-2xl w-full min-h-[4.65rem] max-w-full px-4 py-3 flex items-center !justify-start gap-4">
                         <Icon
                             name="material-symbols:chevron-left-rounded"
                             class="text-[2rem] text-[var(--primary)]"
                         />
-                        <div class="overflow-hidden transition overflow-ellipsis whitespace-nowrap max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
-                            {entry.data.nextTitle}
+                        <div class="post-neighbor-copy overflow-hidden transition max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
+                            <div class="post-neighbor-kicker">Previous</div>
+                            <div class="post-neighbor-title">
+                                {entry.data.nextTitle}
+                            </div>
                         </div>
                     </div>
                 )
@@ -487,9 +512,12 @@ const jsonLd = {
         >
             {
                 entry.data.prevSlug && (
-                    <div class="post-neighbor-card post-info-card btn-card rounded-2xl w-full h-[3.75rem] max-w-full px-4 flex items-center !justify-end gap-4">
-                        <div class="overflow-hidden transition overflow-ellipsis whitespace-nowrap max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75">
-                            {entry.data.prevTitle}
+                    <div class="post-neighbor-card post-info-card btn-card rounded-2xl w-full min-h-[4.65rem] max-w-full px-4 py-3 flex items-center !justify-end gap-4">
+                        <div class="post-neighbor-copy overflow-hidden transition max-w-[calc(100%_-_3rem)] text-black/75 dark:text-white/75 text-right">
+                            <div class="post-neighbor-kicker">Next</div>
+                            <div class="post-neighbor-title">
+                                {entry.data.prevTitle}
+                            </div>
                         </div>
                         <Icon
                             name="material-symbols:chevron-right-rounded"

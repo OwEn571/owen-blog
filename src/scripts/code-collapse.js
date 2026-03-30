@@ -160,25 +160,27 @@ class CodeBlockCollapser {
 			return;
 		}
 
-		if (frame.classList.contains("has-title")) {
-			this.log("Code block has title, skipping collapse feature");
+		const language = frame.getAttribute("data-language");
+		if (!language) {
+			this.log("Code block has no language label, leaving expanded");
 			return;
 		}
 
 		this.log("Adding collapse feature to code block");
-		codeBlock.classList.add("collapsible", "expanded");
+		codeBlock.classList.add("collapsible", "collapsed");
 
-		const toggleBtn = this.createToggleButton();
+		const toggleBtn = this.createToggleButton(language);
 		frame.appendChild(toggleBtn);
 
 		this.bindToggleEvents(codeBlock, toggleBtn);
 	}
 
-	createToggleButton() {
+	createToggleButton(language) {
 		const button = document.createElement("button");
 		button.className = "collapse-toggle-btn";
 		button.type = "button";
-		button.setAttribute("aria-label", "折叠/展开代码块");
+		button.setAttribute("aria-label", `展开或收起 ${language} 代码块`);
+		button.setAttribute("aria-expanded", "false");
 
 		button.innerHTML = `
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -196,27 +198,29 @@ class CodeBlockCollapser {
 		button.addEventListener("click", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			this.toggleCollapse(codeBlock);
+			this.toggleCollapse(codeBlock, button);
 		});
 
 		button.addEventListener("keydown", (e) => {
 			if (e.key === "Enter" || e.key === " ") {
 				e.preventDefault();
-				this.toggleCollapse(codeBlock);
+				this.toggleCollapse(codeBlock, button);
 			}
 		});
 	}
 
-	toggleCollapse(codeBlock) {
+	toggleCollapse(codeBlock, button) {
 		const isCollapsed = codeBlock.classList.contains("collapsed");
 
 		requestAnimationFrame(() => {
 			if (isCollapsed) {
 				codeBlock.classList.remove("collapsed");
 				codeBlock.classList.add("expanded");
+				button?.setAttribute("aria-expanded", "true");
 			} else {
 				codeBlock.classList.remove("expanded");
 				codeBlock.classList.add("collapsed");
+				button?.setAttribute("aria-expanded", "false");
 			}
 		});
 

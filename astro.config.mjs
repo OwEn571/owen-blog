@@ -1,7 +1,6 @@
 import sitemap from "@astrojs/sitemap";
 import svelte, { vitePreprocess } from "@astrojs/svelte";
 import tailwind from "@astrojs/tailwind";
-import { pluginCollapsibleSections } from "@expressive-code/plugin-collapsible-sections";
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
 import { defineConfig } from "astro/config";
 import expressiveCode from "astro-expressive-code";
@@ -51,7 +50,6 @@ export default defineConfig({
 		expressiveCode({
 			themes: ["github-light", "github-dark"],
 			plugins: [
-				pluginCollapsibleSections(),
 				pluginLineNumbers(),
 				pluginLanguageBadge(),
 				pluginCustomCopyButton(),

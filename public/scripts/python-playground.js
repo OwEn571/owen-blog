@@ -1022,43 +1022,31 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 	root.dataset.pythonCodeCard = "true";
 	root.dataset.pythonTitle = normalizedTitle;
 	root.dataset.pythonPackages = packages.join(",");
-
-	const toolbar = createElement("div", "python-code-card__toolbar");
-	const toolbarMeta = createElement("div", "python-code-card__toolbar-meta");
-	const badge = createElement("span", "python-code-card__badge", "Python3");
-	const toolbarSide = createElement("div", "python-code-card__toolbar-side");
-	const packagesElement = createElement(
-		"span",
-		"python-code-card__meta",
-		packages.join(", "),
-	);
-	const linesElement = createElement(
-		"span",
-		"python-code-card__meta",
-		`${source.split("\n").length} lines`,
-	);
+	const lineCount = source.split("\n").length;
 
 	const details = createElement("details", "python-code-card__details");
 	details.open = false;
 
 	const summary = createElement("summary", "python-code-card__summary");
-	const summaryCopy = createElement("div", "python-code-card__summary-copy");
+	const summaryMain = createElement("div", "python-code-card__summary-main");
+	const summarySide = createElement("div", "python-code-card__summary-side");
+	const badge = createElement("span", "python-code-card__badge", "Python3");
 	const summaryLabel = createElement(
-		"span",
-		"python-code-card__summary-label",
+		hasCustomTitle ? "strong" : "span",
+		hasCustomTitle
+			? "python-code-card__title"
+			: "python-code-card__summary-label",
 		hasCustomTitle ? normalizedTitle : "点击展开代码",
 	);
-	const summaryNote = createElement(
+	const linesElement = createElement(
 		"span",
-		"python-code-card__summary-note",
-		packages.length > 0
-			? `${packages.join(", ")} · ${source.split("\n").length} lines`
-			: `${source.split("\n").length} lines · frozen view`,
+		"python-code-card__meta",
+		`${lineCount} lines`,
 	);
 	const summaryToggle = createElement(
 		"span",
 		"python-code-card__summary-toggle",
-		"展开",
+		"展开代码",
 	);
 
 	const body = createElement("div", "python-code-card__body");
@@ -1066,28 +1054,10 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 	const copyButton = createElement(
 		"button",
 		"python-code-card__copy",
-		"复制代码",
+		"复制",
 	);
 	copyButton.type = "button";
 	const surface = createElement("div", "python-code-card__surface");
-	const surfaceBar = createElement("div", "python-code-card__surface-bar");
-	const surfaceDots = createElement("div", "python-code-card__surface-dots");
-	surfaceDots.setAttribute("aria-hidden", "true");
-	surfaceDots.append(
-		createElement("span", "", ""),
-		createElement("span", "", ""),
-		createElement("span", "", ""),
-	);
-	const surfaceName = createElement(
-		"span",
-		"python-code-card__surface-name",
-		"Python3",
-	);
-	const surfaceState = createElement(
-		"span",
-		"python-code-card__surface-state",
-		"Readonly",
-	);
 	const code = createElement("code", "python-code-card__code");
 	code.setAttribute("data-python-code-display", "true");
 	const sourceField = document.createElement("textarea");
@@ -1095,33 +1065,22 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 	sourceField.hidden = true;
 	sourceField.value = source;
 
-	if (hasCustomTitle) {
-		const titleElement = createElement(
-			"strong",
-			"python-code-card__title",
-			normalizedTitle,
-		);
-		toolbarMeta.append(badge, titleElement);
-	} else {
-		toolbarMeta.append(badge);
-	}
+	summaryMain.append(badge, summaryLabel);
 	if (packages.length > 0) {
-		toolbarSide.append(packagesElement);
+		summarySide.append(
+			createElement("span", "python-code-card__meta", packages.join(", ")),
+		);
 	}
-	toolbarSide.append(linesElement);
-	toolbar.append(toolbarMeta, toolbarSide);
-
-	summaryCopy.append(summaryLabel, summaryNote);
-	summary.append(summaryCopy, summaryToggle);
+	summarySide.append(linesElement, summaryToggle);
+	summary.append(summaryMain, summarySide);
 	details.append(summary);
 
 	utility.append(copyButton);
-	surfaceBar.append(surfaceDots, surfaceName, surfaceState);
-	surface.append(surfaceBar, code);
+	surface.append(code);
 	body.append(utility, surface);
 	details.append(body);
 
-	root.append(toolbar, details, sourceField);
+	root.append(details, sourceField);
 	return root;
 }
 
@@ -1162,7 +1121,7 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 			return;
 		}
 
-		label.textContent = details.open ? "收起" : "展开";
+		label.textContent = details.open ? "收起代码" : "展开代码";
 	}
 
 	function bindPythonCodeCard(root) {
@@ -1197,12 +1156,12 @@ function buildPythonCodeCardElement({ title, packages, source }) {
 				await navigator.clipboard.writeText(source.value);
 				copyButton.textContent = "已复制";
 				window.setTimeout(() => {
-					copyButton.textContent = "复制代码";
+					copyButton.textContent = "复制";
 				}, 1400);
 			} catch (error) {
 				copyButton.textContent = "复制失败";
 				window.setTimeout(() => {
-					copyButton.textContent = "复制代码";
+					copyButton.textContent = "复制";
 				}, 1400);
 			}
 		});
