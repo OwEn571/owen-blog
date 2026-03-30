@@ -1,0 +1,9 @@
+{
+  "title": "RAG",
+  "eyebrow": "Retrieval",
+  "description": "把 RAG 的学习顺序收成一条更适合系统入门的路径：先理解问题与边界，再进入数据加载、分块、嵌入、向量数据库和 Milvus 实践。",
+  "size": "wide",
+  "accent": "255 156 118",
+  "icon": "mdi:database-search-outline",
+  "order": 26
+}
