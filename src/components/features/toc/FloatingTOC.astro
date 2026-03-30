@@ -64,6 +64,7 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 				<div class="floating-toc-panel-title-group">
 					<p class="floating-toc-panel-kicker">On This Page</p>
 					<h3 class="floating-toc-panel-title">文章目录</h3>
+					<p class="floating-toc-panel-current" data-floating-toc-current>当前章节将在这里显示</p>
 				</div>
 				<p id={floatingTocMetaId} class="floating-toc-panel-meta">0 sections</p>
 			</div>
@@ -230,6 +231,17 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 		color: color-mix(in srgb, var(--text-secondary) 78%, transparent);
 	}
 
+	.floating-toc-panel-current {
+		margin: 0.35rem 0 0;
+		font-size: 0.78rem;
+		line-height: 1.4;
+		color: color-mix(in srgb, var(--text-secondary) 84%, transparent);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 14rem;
+	}
+
 	.floating-toc-panel-content {
 		padding: 0.7rem;
 		max-height: 60vh;
@@ -342,6 +354,19 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 		margin-left: 0.88rem;
 		padding-left: 0.76rem;
 		border-left: 1px solid color-mix(in srgb, var(--primary) 12%, transparent);
+		max-height: 0;
+		opacity: 0;
+		overflow: hidden;
+		transform: translateY(-0.15rem);
+		transition:
+			max-height 0.22s ease,
+			opacity 0.18s ease,
+			transform 0.18s ease;
+	}
+
+	:global(.floating-toc-children.expanded) {
+		opacity: 1;
+		transform: translateY(0);
 	}
 
 	:global(.floating-toc-parent) {
@@ -413,6 +438,10 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 		border-color: color-mix(in srgb, var(--primary) 16%, transparent);
 		color: var(--primary);
 		font-weight: 620;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.14),
+			0 10px 24px color-mix(in srgb, var(--primary) 10%, transparent);
+		transform: translateX(-1px);
 	}
 
 	:global(.floating-toc-badge) {
@@ -522,6 +551,10 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 
 	:root:not(.dark) .floating-toc-panel-meta {
 		color: rgba(126, 78, 99, 0.68);
+	}
+
+	:root:not(.dark) .floating-toc-panel-current {
+		color: rgba(119, 77, 96, 0.76);
 	}
 
 	:root.dark .floating-toc-panel-header {
@@ -672,7 +705,11 @@ class FloatingTOC {
 
 		this.state.content?.querySelectorAll<HTMLElement>("[data-floating-children]").forEach((container) => {
 			const groupId = container.dataset.floatingChildren || "";
-			container.hidden = !this.isGroupExpanded(groupId);
+			const expanded = this.isGroupExpanded(groupId);
+			container.hidden = false;
+			container.classList.toggle("expanded", expanded);
+			container.style.maxHeight = expanded ? `${container.scrollHeight}px` : "0px";
+			container.style.pointerEvents = expanded ? "auto" : "none";
 		});
 
 		this.state.content?.querySelectorAll<HTMLButtonElement>("[data-floating-toggle]").forEach((button) => {
@@ -727,6 +764,10 @@ class FloatingTOC {
 
 		const activeIndex = findActiveHeadingIndex(headings, window.scrollY, 150);
 		const activeHeading = headings[activeIndex];
+		const currentLabel = this.state.panel?.querySelector("[data-floating-toc-current]");
+		if (currentLabel instanceof HTMLElement) {
+			currentLabel.textContent = activeHeading?.textContent?.trim() || "当前章节将在这里显示";
+		}
 		if (activeHeading?.id) {
 			this.syncAutoExpandedGroup(activeHeading.id);
 		} else {

@@ -120,7 +120,10 @@ class TableOfContents extends HTMLElement {
 		this.querySelectorAll<HTMLElement>("[data-toc-children]").forEach((container) => {
 			const groupId = container.dataset.tocChildren || "";
 			const expanded = this.isGroupExpanded(groupId);
-			container.hidden = !expanded;
+			container.hidden = false;
+			container.classList.toggle("expanded", expanded);
+			container.style.maxHeight = expanded ? `${container.scrollHeight}px` : "0px";
+			container.style.pointerEvents = expanded ? "auto" : "none";
 		});
 
 		this.querySelectorAll<HTMLButtonElement>("[data-toc-toggle]").forEach((button) => {
@@ -531,6 +534,19 @@ if (!customElements.get("table-of-contents")) {
 		margin-left: 0.95rem;
 		padding-left: 0.7rem;
 		border-left: 1px solid color-mix(in srgb, var(--primary) 14%, transparent);
+		max-height: 0;
+		opacity: 0;
+		overflow: hidden;
+		transform: translateY(-0.18rem);
+		transition:
+			max-height 0.24s ease,
+			opacity 0.18s ease,
+			transform 0.18s ease;
+	}
+
+	table-of-contents#toc .toc-children.expanded {
+		opacity: 1;
+		transform: translateY(0);
 	}
 
 	table-of-contents#toc .toc-link {
@@ -557,6 +573,18 @@ if (!customElements.get("table-of-contents")) {
 	table-of-contents#toc .toc-link:hover {
 		background: color-mix(in srgb, var(--primary) 8%, transparent);
 		border-color: color-mix(in srgb, var(--primary) 10%, transparent);
+	}
+
+	table-of-contents#toc .toc-link.visible {
+		background:
+			linear-gradient(180deg, color-mix(in srgb, var(--primary) 11%, transparent), color-mix(in srgb, var(--primary) 7%, transparent));
+		border-color: color-mix(in srgb, var(--primary) 16%, transparent);
+		color: var(--primary);
+		font-weight: 620;
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.14),
+			0 10px 24px color-mix(in srgb, var(--primary) 10%, transparent);
+		transform: translateX(-1px);
 	}
 
 	table-of-contents#toc .toc-badge {
@@ -601,6 +629,11 @@ if (!customElements.get("table-of-contents")) {
 
 	:global(.light) table-of-contents#toc .toc-dot-small {
 		background: rgb(0 0 0 / 0.08);
+	}
+
+	table-of-contents#toc .toc-link.visible .toc-dot-square,
+	table-of-contents#toc .toc-link.visible .toc-dot-small {
+		background: var(--primary);
 	}
 
 	table-of-contents#toc .toc-label {
