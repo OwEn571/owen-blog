@@ -372,6 +372,72 @@ body.immersive-preloading {
   }
 }
 
+body.immersive-page .immersive-sidebar-toc-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 1.4rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--line-color));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 96%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--card-bg) 88%, transparent)),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 10%, transparent), transparent 70%);
+  box-shadow:
+    0 28px 60px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+body.immersive-page .immersive-sidebar-toc-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.95rem 1rem 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 10%, var(--line-color));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 98%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--card-bg) 92%, transparent)),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 8%, transparent), transparent 10rem);
+}
+
+body.immersive-page .immersive-sidebar-toc-title-group {
+  min-width: 0;
+}
+
+body.immersive-page .immersive-sidebar-toc-kicker {
+  margin: 0;
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text-secondary) 76%, transparent);
+}
+
+body.immersive-page .immersive-sidebar-toc-title {
+  margin: 0.22rem 0 0;
+  font-family: var(--owen-font-display);
+  font-size: 1rem;
+  font-weight: 690;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--text-primary) 94%, transparent);
+}
+
+body.immersive-page .immersive-sidebar-toc-meta {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 0.76rem;
+  font-weight: 560;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text-secondary) 78%, transparent);
+}
+
+body.immersive-page .immersive-sidebar-toc-body {
+  max-height: calc(100vh - 12rem);
+  overflow: hidden;
+  padding: 0.45rem;
+}
+
 body.immersive-page .nav-brand {
   padding-inline: 0.95rem 1.2rem;
   border-radius: 1.15rem;
@@ -4271,6 +4337,7 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
 :root:not(.dark) .module-page .apple-post-card,
 :root:not(.dark) .module-page .card-base-daily,
 :root:not(.dark) .module-content-shell,
+:root:not(.dark) body.immersive-page .immersive-sidebar-toc-shell,
 :root:not(.dark) body.immersive-page .post-article-card,
 :root:not(.dark) body.immersive-page .post-support-card,
 :root:not(.dark) body.immersive-page .license-container,
@@ -4286,6 +4353,12 @@ html.is-theme-transitioning body > :not(#theme-transition-overlay):not(script):n
   box-shadow:
     0 26px 72px rgba(176, 102, 136, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+}
+
+:root:not(.dark) body.immersive-page .immersive-sidebar-toc-header {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 244, 248, 0.62)),
+    radial-gradient(circle at top right, rgba(255, 190, 211, 0.14), transparent 10rem);
 }
 
 :root:not(.dark) .module-page .apple-post-card:hover,

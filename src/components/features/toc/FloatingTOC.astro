@@ -19,6 +19,7 @@ const floatingTocUid = `floating-toc-${Math.random().toString(36).slice(2, 10)}`
 const floatingTocWrapperId = `${floatingTocUid}-wrapper`;
 const floatingTocButtonId = `${floatingTocUid}-btn`;
 const floatingTocPanelId = `${floatingTocUid}-panel`;
+const floatingTocBackdropId = `${floatingTocUid}-backdrop`;
 const floatingTocContentId = `${floatingTocUid}-content`;
 const floatingTocMetaId = `${floatingTocUid}-meta`;
 ---
@@ -69,6 +70,7 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 			<div class="floating-toc-panel-content" id={floatingTocContentId}></div>
 		</div>
 	</div>
+	<div id={floatingTocBackdropId} class="floating-toc-backdrop" aria-hidden="true"></div>
 </div>
 
 <style>
@@ -159,6 +161,22 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 		opacity: 1;
 		visibility: visible;
 		transform: translateY(0) scale(1);
+		pointer-events: auto;
+	}
+
+	.floating-toc-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 1300;
+		background: transparent;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+
+	.floating-toc-backdrop.show {
+		opacity: 1;
+		visibility: visible;
 		pointer-events: auto;
 	}
 
@@ -543,6 +561,7 @@ type FloatingTOCGroup = {
 interface FloatingTOCState {
 	btn: HTMLElement | null;
 	panel: HTMLElement | null;
+	backdrop: HTMLElement | null;
 	content: HTMLElement | null;
 	wrapper: HTMLElement | null;
 	isOpen: boolean;
@@ -583,11 +602,13 @@ class FloatingTOC {
 		const wrapper = document.querySelector(".floating-toc-wrapper");
 		const button = wrapper?.querySelector(".floating-toc-btn") ?? null;
 		const panel = wrapper?.querySelector(".floating-toc-panel") ?? null;
+		const backdrop = wrapper?.querySelector(".floating-toc-backdrop") ?? null;
 		const content = panel?.querySelector(".floating-toc-panel-content") ?? null;
 
 		this.state = {
 			btn: button instanceof HTMLElement ? button : null,
 			panel: panel instanceof HTMLElement ? panel : null,
+			backdrop: backdrop instanceof HTMLElement ? backdrop : null,
 			content: content instanceof HTMLElement ? content : null,
 			wrapper: wrapper instanceof HTMLElement ? wrapper : null,
 			isOpen: false,
@@ -604,6 +625,13 @@ class FloatingTOC {
 				this.state.panel.parentElement !== document.body
 			) {
 				document.body.appendChild(this.state.panel);
+			}
+
+			if (
+				this.state.backdrop instanceof HTMLElement &&
+				this.state.backdrop.parentElement !== document.body
+			) {
+				document.body.appendChild(this.state.backdrop);
 			}
 
 		this.init();
@@ -860,7 +888,8 @@ class FloatingTOC {
 			this.toggle();
 		});
 
-		document.addEventListener("click", this.handleDocumentClick);
+		document.addEventListener("pointerdown", this.handleDocumentClick, true);
+		this.state.backdrop?.addEventListener("click", () => this.close());
 
 		content?.addEventListener("click", (e) => {
 			const toggle = (e.target as Element).closest("[data-floating-toggle]");
@@ -945,17 +974,19 @@ class FloatingTOC {
 			panel.style.bottom = "auto";
 		}
 
-		open() {
-			this.positionPanel();
-			this.state.isOpen = true;
-			this.state.panel?.classList.add("show");
-			this.state.btn?.classList.add("active");
+	open() {
+		this.positionPanel();
+		this.state.isOpen = true;
+		this.state.backdrop?.classList.add("show");
+		this.state.panel?.classList.add("show");
+		this.state.btn?.classList.add("active");
 		this.state.btn?.setAttribute("aria-expanded", "true");
 		this.state.wrapper?.classList.add("active");
 	}
 
 	close() {
 		this.state.isOpen = false;
+		this.state.backdrop?.classList.remove("show");
 		this.state.panel?.classList.remove("show");
 		this.state.btn?.classList.remove("active");
 		this.state.btn?.setAttribute("aria-expanded", "false");
@@ -976,7 +1007,7 @@ class FloatingTOC {
 		this.state.observer?.disconnect();
 		window.removeEventListener("scroll", this.handleScroll);
 		window.removeEventListener("resize", this.handleScroll);
-		document.removeEventListener("click", this.handleDocumentClick);
+		document.removeEventListener("pointerdown", this.handleDocumentClick, true);
 		document.removeEventListener("keydown", this.handleKeyDown);
 		if (window.swup) {
 			window.swup.hooks.off("page:view", this.handleSwupPageView);

@@ -113,7 +113,8 @@ const shouldRenderSidebarTOC =
 const shouldRenderImmersiveFloatTOC =
 	siteConfig.toc.enable && immersiveLayout && hasHeadings;
 const shouldRenderImmersiveSidebarTOC =
-	false;
+	siteConfig.toc.enable && immersiveLayout && hasHeadings;
+const immersiveTocSectionCount = headings.length;
 
 // 半透明效果
 const shouldEnable = shouldEnableTransparency(siteConfig.wallpaperMode.defaultMode);
@@ -560,8 +561,19 @@ const defaultPostListLayout = siteConfig.postListLayout?.defaultMode || "list";
 									id="toc-inner-wrapper"
 									class="fixed top-24 w-[var(--toc-width)] max-h-[calc(100vh_-_12rem)] overflow-hidden pointer-events-none"
 								>
-									<div id="toc-container" class="w-full transition-swup-fade pointer-events-auto">
-										<SidebarTOC headings={headings}></SidebarTOC>
+									<div class="immersive-sidebar-toc-shell w-full transition-swup-fade pointer-events-auto">
+										<div class="immersive-sidebar-toc-header">
+											<div class="immersive-sidebar-toc-title-group">
+												<p class="immersive-sidebar-toc-kicker">On This Page</p>
+												<h3 class="immersive-sidebar-toc-title">文章目录</h3>
+											</div>
+											<p class="immersive-sidebar-toc-meta">
+												{immersiveTocSectionCount} {immersiveTocSectionCount === 1 ? "section" : "sections"}
+											</p>
+										</div>
+										<div id="toc-container" class="immersive-sidebar-toc-body">
+											<SidebarTOC headings={headings}></SidebarTOC>
+										</div>
 									</div>
 								</div>
 							</div>
