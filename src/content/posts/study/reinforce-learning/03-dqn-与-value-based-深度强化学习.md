@@ -13,7 +13,9 @@ comment: true
 # 一. 引入深度网络
 
 我们需要在连续的状态和动作空间中计算函数值$Q_\pi(s,a)$, 我们可以用一个函数$Q_\phi(s,a)$ 来近似计算, 称为**价值函数近似 (value funciton approximation)** :
-$$Q_\phi(\boldsymbol{s},\boldsymbol{a})\approx Q_\pi(\boldsymbol{s},\boldsymbol{a}) \tag{1.1}$$
+$$
+Q_\phi(\boldsymbol{s},\boldsymbol{a})\approx Q_\pi(\boldsymbol{s},\boldsymbol{a}) \tag{1.1}
+$$
 函数$Q_\phi(s,a)$ 通常是一个参数为$\phi$ 的函数, 比如神经网络, 其输出为一个实数, 称为**Q网络 (Q-network)**. 因为Q值本质上是一个实数, 所以我们可以通过这种端到端的方法, 直接计算出Q值.
 
 
@@ -24,11 +26,17 @@ $$Q_\phi(\boldsymbol{s},\boldsymbol{a})\approx Q_\pi(\boldsymbol{s},\boldsymbol{
 ## 1. 目标网络
 
 DQN与Q-learning的思想没有区别, 只是用神经网络完成了标量Q的输出.我们回顾Q-learning算法, 他的核心思想也是让做策略评估, 让当前的Q更接近于贝尔曼公式递推出来的Q‘. Q-learning的更新式可以写作:
-$$Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ r_{t+1} + \gamma \max_a Q(s_{t+1}, a) - Q(s_t, a_t) \right] \tag{2.1.1}$$
+$$
+Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ r_{t+1} + \gamma \max_a Q(s_{t+1}, a) - Q(s_t, a_t) \right] \tag{2.1.1}
+$$
 这其中, Q-Target为: 
-$$Q_{target}=r_{t+1}+\gamma \underset{a}{max}Q(s_{t+1},a) \tag{2.1.2}$$
+$$
+Q_{target}=r_{t+1}+\gamma \underset{a}{max}Q(s_{t+1},a) \tag{2.1.2}
+$$
 对于DQN就是用一个带有参数$\theta^-$ 的目标网络来输出这个值, 所以可以写作:
-$$Q_{target}=r_{t+1}+\gamma \underset{a}{max}Q(s_{t+1},a;\theta^-) \tag{2.1.3}$$
+$$
+Q_{target}=r_{t+1}+\gamma \underset{a}{max}Q(s_{t+1},a;\theta^-) \tag{2.1.3}
+$$
 相对的, 左侧的Q就用一个参数为$\theta$ 的网络来输出, 用于选择动作和计算当前Q值.
 
 回顾之前的TD方法, 我们用TD error, 加上学习率$\alpha$ 对Q进行软更新. 但是这样其实是不好学习的, 因为每次Q都是更新的, 也就是说, 我们在学习的过程中, 目标也是变动的.
@@ -50,7 +58,9 @@ $$Q_{target}=r_{t+1}+\gamma \underset{a}{max}Q(s_{t+1},a;\theta^-) \tag{2.1.3}$$
 如果我们没有很好探索, 训练就会遇到这种问题. 所以, 我们需要在探索和利用中找到一个trade-off, 这个问题被称为强化学习过程中的**探索-利用窘境(exploration-exploitation dilemma)**.
 
 我们通常可以用两个方法来解决它, 首先是我们的老熟人 **$\epsilon$-贪心**, 我们在model-free的MC方法中就使用了这种优化. 而另一种是**玻尔兹曼探索 (Boltzmann exploration)**. 我们假设对于所有s-a对, Q值均大于等于0, 那么a选中的概率就和Q成正比. 我们引入温度系数T, 得到下面式子:
-$$\pi(a\mid s)=\frac{\mathrm{e}^{Q(s,a)/T}}{\sum_{a^{\prime}\in A}\mathrm{e}^{Q(s,a^{\prime})/T}} \tag{2.1.1}$$
+$$
+\pi(a\mid s)=\frac{\mathrm{e}^{Q(s,a)/T}}{\sum_{a^{\prime}\in A}\mathrm{e}^{Q(s,a^{\prime})/T}} \tag{2.1.1}
+$$
   其中T为正数. 如果T很大, 所有动作几乎都以等概率选择 (探索); 如果T很小, Q值大的动作更倾向于被选中 (利用). 通过调整T值, 我们可以实现trade-off. 
 
 ## 3. 经验回放
@@ -70,7 +80,9 @@ $$\pi(a\mid s)=\frac{\mathrm{e}^{Q(s,a)/T}}{\sum_{a^{\prime}\in A}\mathrm{e}^{Q(
 为什么要提出DDQN ? 这是因为, 在传统的Q网络中, Q值往往是被高估的. 这是因为我们实际在设计更新式子的过程中, 我们实际上就是看哪个a可以得到最大的Q值, 就贪心为目标. 但是, 网络是有误差的, 假设其中一个动作被高估了, 就总会倾向于选择它, 从而使目标总是太大. 
 
 为了解决高估问题, 我们在DDQN设置了两个Q函数. 其中一个与之前一样, 贪心决定动作a, 但是决定之后并不适用这个Q网络计算Q值, 而是用另一个Q‘计算, 也就是:
-$$Q\left(s_t,a_t\right)\longleftrightarrow r_t+Q^{\prime}\left(s_{t+1},\arg\max_aQ\left(s_{t+1},a\right)\right)\tag{3.1.1}$$
+$$
+Q\left(s_t,a_t\right)\longleftrightarrow r_t+Q^{\prime}\left(s_{t+1},\arg\max_aQ\left(s_{t+1},a\right)\right)\tag{3.1.1}
+$$
 这样一来, 如果Q高估了a, 只要Q‘没有高估, 就还是正常的值; 如果Q’高估了, 也是没问题的, 只要Q不选择这个a就可以. 这种互相制约的网络, 正是DDQN的神奇之处. 
 
 我们针对如下几个游戏中, DDQN和DQN之间的对比, DDQN得到的真正的Q值是要比DQN高的, 所以我们说, DDQN学出来的策略比较强, 实际得到的奖励比较大.
@@ -132,7 +144,9 @@ OpenAI和DeepMind几乎在同一时间提出了几乎一模一样的噪声网络
 ## 3. 设计网络架构
 
 我们通过特别设计Q函数来解决arg max操作问题, 通过, 我们输入的状态s可以用向量或矩阵来表示它, Q函数则会输出向量$\mu(s)$ 、矩阵$\Sigma(s)$ 和标量$V(s)$. 
-$$Q(\boldsymbol{s},\boldsymbol{a})=-(\boldsymbol{a}-\boldsymbol{\mu}(\boldsymbol{s}))^\mathrm{T}\boldsymbol{\Sigma}(\boldsymbol{s})(\boldsymbol{a}-\boldsymbol{\mu}(\boldsymbol{s}))+V(\boldsymbol{s})\tag{4.3.1}$$
+$$
+Q(\boldsymbol{s},\boldsymbol{a})=-(\boldsymbol{a}-\boldsymbol{\mu}(\boldsymbol{s}))^\mathrm{T}\boldsymbol{\Sigma}(\boldsymbol{s})(\boldsymbol{a}-\boldsymbol{\mu}(\boldsymbol{s}))+V(\boldsymbol{s})\tag{4.3.1}
+$$
 注意这里的a是连续的动作, 所以是一个向量. $\boldsymbol{a}$ 和$\boldsymbol{\mu}(\boldsymbol{s})$ 都是列向量, $(\boldsymbol{a}-\boldsymbol{\mu}(\boldsymbol{s}))^\mathrm{T}$ 是一个行向量, $\boldsymbol{\Sigma}(\boldsymbol{s})$ 是一个正定矩阵. 通过矩阵运算很显然Q值是一个标量.
 
 我们让$(\boldsymbol{a}-\boldsymbol{\mu}(\boldsymbol{s}))^\mathrm{T}\boldsymbol{\Sigma}(\boldsymbol{s})(\boldsymbol{a}-\boldsymbol{\mu}(\boldsymbol{s}))+V(\boldsymbol{s})$ 的值越小, 显然Q的值就越大. 很显然, 令 $\boldsymbol{a}$ 接近$\boldsymbol{\mu}(\boldsymbol{s})$ , 得到的Q值就会更大, 从而解决arg max操作. 
