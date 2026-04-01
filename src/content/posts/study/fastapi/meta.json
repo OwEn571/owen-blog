@@ -1,9 +1,9 @@
 {
   "title": "FastAPI",
   "eyebrow": "Backend",
-  "description": "放 FastAPI 接口开发、鉴权、部署和服务化实践。",
-  "size": "medium",
+  "description": "把 FastAPI 官方教程里偏碎片化的章节重新收成一条更适合入门的学习路径：先理解请求流，再进入参数、请求体、校验、响应模型。",
+  "size": "wide",
   "accent": "102 204 232",
   "icon": "mdi:api",
-  "order": 50
+  "order": 28
 }
