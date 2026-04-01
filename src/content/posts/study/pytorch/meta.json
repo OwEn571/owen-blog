@@ -1,7 +1,7 @@
 {
-  "title": "Pytorch",
+  "title": "PyTorch",
   "eyebrow": "Framework",
-  "description": "放 PyTorch 张量、训练循环、实验记录和工程化笔记。",
+  "description": "放 PyTorch 从张量、Autograd、训练循环到 CNN、RNN、Transformer 的系统学习笔记。",
   "size": "medium",
   "accent": "94 154 255",
   "icon": "mdi:fire-circle",
