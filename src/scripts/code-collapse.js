@@ -166,6 +166,12 @@ class CodeBlockCollapser {
 			return;
 		}
 
+		const lineCount = this.getCodeLineCount(codeBlock);
+		if (lineCount < 3) {
+			this.log(`Code block has only ${lineCount} line(s), leaving expanded`);
+			return;
+		}
+
 		this.log("Adding collapse feature to code block");
 		codeBlock.classList.add("collapsible", "collapsed");
 
@@ -228,6 +234,20 @@ class CodeBlockCollapser {
 			detail: { collapsed: !isCollapsed, element: codeBlock },
 		});
 		document.dispatchEvent(event);
+	}
+
+	getCodeLineCount(codeBlock) {
+		const pre = codeBlock.querySelector(".frame pre");
+		if (!pre) {
+			return 0;
+		}
+
+		const text = pre.textContent?.replace(/\r\n/g, "\n") ?? "";
+		const lines = text.split("\n");
+		if (lines.length > 1 && lines.at(-1) === "") {
+			lines.pop();
+		}
+		return lines.length;
 	}
 
 	observePageChanges() {

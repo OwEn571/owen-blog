@@ -38,21 +38,22 @@ function parseMeta(meta = "", lang = "python") {
 }
 
 function renderPythonCodeCard(source, options) {
-	const lines = source.split("\n").length;
+	const lines = getLineCount(source);
 	const normalizedTitle = normalizePythonCardTitle(options.title);
 	const hasCustomTitle = Boolean(normalizedTitle);
+	const shouldCollapse = lines >= 3;
 
 	return `<div class="python-code-card" data-python-code-card="true" data-python-title="${escapeAttribute(normalizedTitle)}" data-python-packages="${escapeAttribute(options.packages.join(","))}">
-	<details class="python-code-card__details">
+	<details class="python-code-card__details"${shouldCollapse ? "" : " open"}>
 		<summary class="python-code-card__summary">
 			<div class="python-code-card__summary-main">
 				<span class="python-code-card__badge">Python3</span>
-				${hasCustomTitle ? `<strong class="python-code-card__title">${escapeHtml(normalizedTitle)}</strong>` : `<span class="python-code-card__summary-label">点击展开代码</span>`}
+				${hasCustomTitle ? `<strong class="python-code-card__title">${escapeHtml(normalizedTitle)}</strong>` : `<span class="python-code-card__summary-label">${shouldCollapse ? "点击展开代码" : "代码示例"}</span>`}
 			</div>
 			<div class="python-code-card__summary-side">
 				${options.packages.length > 0 ? `<span class="python-code-card__meta">${escapeHtml(options.packages.join(", "))}</span>` : ""}
 				<span class="python-code-card__meta">${lines} lines</span>
-				<span class="python-code-card__summary-toggle">展开代码</span>
+				${shouldCollapse ? `<span class="python-code-card__summary-toggle">展开代码</span>` : ""}
 			</div>
 		</summary>
 		<div class="python-code-card__body">
@@ -66,6 +67,14 @@ function renderPythonCodeCard(source, options) {
 	</details>
 	<textarea class="python-code-card__source" hidden>${escapeTextarea(source)}</textarea>
 </div>`;
+}
+
+function getLineCount(source = "") {
+	const lines = String(source).replace(/\r\n/g, "\n").split("\n");
+	if (lines.length > 1 && lines.at(-1) === "") {
+		lines.pop();
+	}
+	return lines.length;
 }
 
 function escapeHtml(value) {
