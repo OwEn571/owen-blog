@@ -1,7 +1,7 @@
 {
   "title": "Reinforce Learning",
   "eyebrow": "RL",
-  "description": "放强化学习、DQN、PPO、策略梯度等内容。",
+  "description": "从强化学习基础、DQN、PPO 一路整理到 RLHF、DPO 与 RLVR 的连续学习笔记。",
   "size": "medium",
   "accent": "138 168 255",
   "icon": "mdi:robot-outline",
