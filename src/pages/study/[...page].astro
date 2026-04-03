@@ -149,17 +149,26 @@ const heroSummary = [
 			return;
 		}
 
-		if (!studyWindow["oddmisc"]) {
-			if (retries < 8) {
+		try {
+			let stats = null;
+
+			if (studyWindow["oddmisc"]?.getSiteStats) {
+				stats = await studyWindow["oddmisc"].getSiteStats();
+			} else if (studyWindow.__owenStatsClient?.getSiteStats) {
+				stats = await studyWindow.__owenStatsClient.getSiteStats(
+					window.location.pathname,
+				);
+			} else if (retries < 8) {
 				window.setTimeout(() => {
 					syncStudyPageViews(retries + 1);
 				}, 450);
+				return;
 			}
-			return;
-		}
 
-		try {
-			const stats = await studyWindow["oddmisc"].getSiteStats();
+			if (!stats) {
+				throw new Error("No study stats provider is available.");
+			}
+
 			const pageViews = Number(stats?.pageviews || 0);
 			const text =
 				pageViews > 0
@@ -184,6 +193,13 @@ const heroSummary = [
 	} else {
 		syncStudyPageViews();
 	}
+
+	window.addEventListener("pageshow", () => {
+		syncStudyPageViews();
+	});
+	document.addEventListener("owen-blog:page:loaded", () => {
+		syncStudyPageViews();
+	});
 </script>
 
 <style>

@@ -4,6 +4,7 @@ import type { CollectionEntry } from "astro:content";
 import { commentConfig } from "@/config";
 import { removeFileExtension } from "@/utils/url-utils";
 
+import InternalComments from "./InternalComments.astro";
 import Twikoo from "./Twikoo.astro";
 
 interface Props {
@@ -25,21 +26,15 @@ const commentEnabled = data.comment ?? true;
 ---
 {commentEnabled && (
 	<div class="post-support-card post-comment-card card-base p-6 mb-4">
-		{
-			commentConfig?.enable && commentService === "twikoo" ? (
-				<Twikoo path={path} />
-			) : (
-				<div class="comment-placeholder">
-					<p class="comment-placeholder__eyebrow">Comments</p>
-					<h3 class="comment-placeholder__title">评论区待接入</h3>
-					<p class="comment-placeholder__copy">
-						配置 <code>PUBLIC_TWIKOO_ENV_ID</code> 后，这里会自动启用评论区。
-					</p>
-				</div>
-			)
-		}
-	</div>
-)}
+			{
+				commentConfig?.enable && commentService === "twikoo" ? (
+					<Twikoo path={path} />
+				) : (
+					<InternalComments path={path} />
+				)
+			}
+		</div>
+	)}
 
 <style>
 	.comment-placeholder {

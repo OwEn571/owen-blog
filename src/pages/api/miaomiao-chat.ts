@@ -29,6 +29,58 @@ function json(body: unknown, status = 200) {
 	});
 }
 
+function sanitizeAssistantAnswer(answer: string) {
+	return String(answer || "")
+		.replace(/<details[\s\S]*?<\/details>/gi, "")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+}
+
+function parseStreamingChatResponse(raw: string) {
+	let answer = "";
+	let conversationId = "";
+	let streamError = "";
+
+	for (const line of raw.split(/\r?\n/)) {
+		if (!line.startsWith("data:")) {
+			continue;
+		}
+
+		const payload = line.slice(5).trim();
+		if (!payload || payload === "[DONE]") {
+			continue;
+		}
+
+		try {
+			const data = JSON.parse(payload) as Record<string, unknown>;
+			if (!conversationId && typeof data.conversation_id === "string") {
+				conversationId = data.conversation_id;
+			}
+
+			if (typeof data.answer === "string") {
+				answer += data.answer;
+			}
+
+			if (
+				!streamError &&
+				typeof data.event === "string" &&
+				data.event === "error" &&
+				typeof data.message === "string"
+			) {
+				streamError = data.message;
+			}
+		} catch {
+			continue;
+		}
+	}
+
+	return {
+		answer,
+		conversationId,
+		streamError,
+	};
+}
+
 export const POST: APIRoute = async ({ request }) => {
 	const difyApiBase =
 		process.env.DIFY_API_BASE_URL ||
@@ -78,7 +130,7 @@ export const POST: APIRoute = async ({ request }) => {
 						currentPath: String(payload.currentPath || ""),
 						currentTitle: String(payload.currentTitle || ""),
 					}),
-					response_mode: "blocking",
+					response_mode: "streaming",
 					conversation_id: payload.conversationId || undefined,
 					user: String(payload.visitorId || "owen-blog-guest"),
 				}),
@@ -95,10 +147,25 @@ export const POST: APIRoute = async ({ request }) => {
 			);
 		}
 
-		const data = await response.json();
+		const contentType = response.headers.get("content-type") || "";
+		if (contentType.includes("application/json")) {
+			const data = await response.json();
+			return json({
+				answer: sanitizeAssistantAnswer(data.answer || ""),
+				conversationId:
+					data.conversation_id || payload.conversationId || "",
+			});
+		}
+
+		const rawStream = await response.text();
+		const data = parseStreamingChatResponse(rawStream);
+		if (data.streamError) {
+			return json({ error: data.streamError }, 502);
+		}
+
 		return json({
-			answer: data.answer || "",
-			conversationId: data.conversation_id || payload.conversationId || "",
+			answer: sanitizeAssistantAnswer(data.answer || ""),
+			conversationId: data.conversationId || payload.conversationId || "",
 		});
 	} catch (error) {
 		return json(

@@ -1,0 +1,571 @@
+---
+interface Props {
+	path: string;
+}
+
+const commentsPath = Astro.props.path;
+---
+
+<div class="owen-internal-comments" data-owen-comments data-path={commentsPath}>
+	<div class="owen-internal-comments__header">
+		<div>
+			<p class="owen-internal-comments__eyebrow">Comments</p>
+			<h3 class="owen-internal-comments__title">站内评论区</h3>
+		</div>
+		<span class="owen-internal-comments__count" data-comments-count>0</span>
+	</div>
+
+	<p class="owen-internal-comments__note">
+		现在这套评论直接保存在博客服务器上，不依赖外部评论服务。
+	</p>
+
+	<form class="owen-internal-comments__form" data-comments-form>
+		<div class="owen-internal-comments__grid">
+			<label class="owen-internal-comments__field">
+				<span>昵称</span>
+				<input
+					type="text"
+					name="author"
+					maxlength="32"
+					required
+					placeholder="怎么称呼你？"
+				/>
+			</label>
+
+			<label class="owen-internal-comments__field">
+				<span>主页</span>
+				<input
+					type="url"
+					name="website"
+					maxlength="240"
+					placeholder="可选，例如 https://example.com"
+				/>
+			</label>
+
+			<label class="owen-internal-comments__field owen-internal-comments__field--full">
+				<span>评论内容</span>
+				<textarea
+					name="content"
+					rows="5"
+					maxlength="2000"
+					required
+					placeholder="想法、反馈、补充都可以留在这里。"
+				></textarea>
+			</label>
+		</div>
+
+		<input
+			class="owen-internal-comments__honeypot"
+			type="text"
+			name="company"
+			tabindex="-1"
+			autocomplete="off"
+			aria-hidden="true"
+		/>
+
+		<div class="owen-internal-comments__actions">
+			<p class="owen-internal-comments__status" data-comments-status>
+				正在加载评论...
+			</p>
+			<button type="submit" class="owen-internal-comments__submit" data-comments-submit>
+				发送评论
+			</button>
+		</div>
+	</form>
+
+	<div class="owen-internal-comments__list" data-comments-list></div>
+</div>
+
+<script is:inline define:vars={{ commentsApiUrl: "/api/comments.json" }}>
+	(() => {
+		const VISITOR_KEY = "owen-internal-comment-visitor-v1";
+
+		function normalizePath(input) {
+			let value = String(input || "").trim() || "/";
+			value = value.split("?")[0].split("#")[0] || "/";
+			if (!value.startsWith("/")) {
+				value = `/${value}`;
+			}
+			value = value.replace(/\/{2,}/g, "/");
+			if (!/\.[a-z0-9]+$/i.test(value) && !value.endsWith("/")) {
+				value = `${value}/`;
+			}
+			return value || "/";
+		}
+
+		function createVisitorId() {
+			if (window.crypto && typeof window.crypto.randomUUID === "function") {
+				return window.crypto.randomUUID().replace(/-/g, "");
+			}
+			return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+		}
+
+		function getVisitorId() {
+			try {
+				const current = localStorage.getItem(VISITOR_KEY);
+				if (current) {
+					return current;
+				}
+				const next = createVisitorId();
+				localStorage.setItem(VISITOR_KEY, next);
+				return next;
+			} catch (_error) {
+				return createVisitorId();
+			}
+		}
+
+		function formatDate(value) {
+			try {
+				return new Intl.DateTimeFormat("zh-CN", {
+					dateStyle: "medium",
+					timeStyle: "short",
+				}).format(new Date(value));
+			} catch (_error) {
+				return value;
+			}
+		}
+
+		function setStatus(root, message) {
+			const status = root.querySelector("[data-comments-status]");
+			if (status instanceof HTMLElement) {
+				status.textContent = message;
+			}
+		}
+
+		function updateCount(root, count) {
+			const countEl = root.querySelector("[data-comments-count]");
+			if (countEl instanceof HTMLElement) {
+				countEl.textContent = String(count);
+			}
+		}
+
+		function createCommentCard(comment) {
+			const article = document.createElement("article");
+			article.className = "owen-internal-comments__item";
+
+			const meta = document.createElement("div");
+			meta.className = "owen-internal-comments__item-meta";
+
+			const author = document.createElement(
+				comment.website ? "a" : "span",
+			);
+			author.className = "owen-internal-comments__item-author";
+			author.textContent = comment.author || "匿名访客";
+			if (author instanceof HTMLAnchorElement && comment.website) {
+				author.href = comment.website;
+				author.target = "_blank";
+				author.rel = "noreferrer";
+			}
+
+			const time = document.createElement("time");
+			time.className = "owen-internal-comments__item-time";
+			time.dateTime = comment.createdAt;
+			time.textContent = formatDate(comment.createdAt);
+
+			meta.append(author, time);
+
+			const content = document.createElement("p");
+			content.className = "owen-internal-comments__item-content";
+			content.textContent = comment.content;
+
+			article.append(meta, content);
+			return article;
+		}
+
+		function renderComments(root, items) {
+			const list = root.querySelector("[data-comments-list]");
+			if (!(list instanceof HTMLElement)) {
+				return;
+			}
+
+			updateCount(root, items.length);
+			list.innerHTML = "";
+
+			if (!items.length) {
+				const empty = document.createElement("div");
+				empty.className = "owen-internal-comments__empty";
+				empty.innerHTML =
+					"<strong>还没有评论</strong><span>这块空间已经准备好，来留下第一条反馈吧。</span>";
+				list.append(empty);
+				return;
+			}
+
+			items.forEach((comment) => {
+				list.append(createCommentCard(comment));
+			});
+		}
+
+		async function requestComments(path) {
+			const response = await fetch(
+				`${commentsApiUrl}?path=${encodeURIComponent(path)}`,
+			);
+			const payload = await response.json().catch(() => ({ items: [] }));
+			if (!response.ok) {
+				throw new Error(payload.error || "评论加载失败。");
+			}
+			return payload;
+		}
+
+		async function submitComment(path, payload) {
+			const response = await fetch(commentsApiUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(payload),
+			});
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				throw new Error(data.error || "评论发送失败。");
+			}
+			return data;
+		}
+
+		async function initCommentRoot(root) {
+			if (!(root instanceof HTMLElement) || root.dataset.commentsReady === "true") {
+				return;
+			}
+
+			root.dataset.commentsReady = "true";
+			const form = root.querySelector("[data-comments-form]");
+			const submitButton = root.querySelector("[data-comments-submit]");
+			const path = normalizePath(root.dataset.path || window.location.pathname);
+
+			if (!(form instanceof HTMLFormElement) || !(submitButton instanceof HTMLButtonElement)) {
+				return;
+			}
+
+			const loadComments = async () => {
+				setStatus(root, "正在加载评论...");
+				try {
+					const data = await requestComments(path);
+					renderComments(root, Array.isArray(data.items) ? data.items : []);
+					setStatus(
+						root,
+						data.items?.length
+							? "欢迎继续留言交流。"
+							: "评论区已经准备好。",
+					);
+				} catch (error) {
+					setStatus(
+						root,
+						error instanceof Error ? error.message : "评论加载失败。",
+					);
+				}
+			};
+
+			form.addEventListener("submit", async (event) => {
+				event.preventDefault();
+				const formData = new FormData(form);
+				const author = String(formData.get("author") || "").trim();
+				const website = String(formData.get("website") || "").trim();
+				const content = String(formData.get("content") || "").trim();
+				const company = String(formData.get("company") || "").trim();
+
+				if (!author || !content) {
+					setStatus(root, "请先填写昵称和评论内容。");
+					return;
+				}
+
+				submitButton.disabled = true;
+				setStatus(root, "评论发送中...");
+
+				try {
+					const data = await submitComment(path, {
+						path,
+						author,
+						website,
+						content,
+						company,
+						visitorId: getVisitorId(),
+					});
+					renderComments(root, Array.isArray(data.items) ? data.items : []);
+					form.reset();
+					setStatus(root, "评论发送成功，已经显示在下方。");
+				} catch (error) {
+					setStatus(
+						root,
+						error instanceof Error ? error.message : "评论发送失败。",
+					);
+				} finally {
+					submitButton.disabled = false;
+				}
+			});
+
+			void loadComments();
+		}
+
+		function mountComments() {
+			document.querySelectorAll("[data-owen-comments]").forEach((root) => {
+				void initCommentRoot(root);
+			});
+		}
+
+		if (document.readyState === "loading") {
+			document.addEventListener("DOMContentLoaded", mountComments, {
+				once: true,
+			});
+		} else {
+			mountComments();
+		}
+
+		window.addEventListener("pageshow", mountComments);
+		document.addEventListener("owen-blog:page:loaded", mountComments);
+	})();
+</script>
+
+<style>
+	.owen-internal-comments {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.owen-internal-comments__header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.8rem;
+	}
+
+	.owen-internal-comments__eyebrow {
+		margin: 0;
+		font-size: 0.74rem;
+		font-weight: 650;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(190, 92, 132, 0.74);
+	}
+
+	:global(.dark) .owen-internal-comments__eyebrow {
+		color: rgba(166, 196, 255, 0.74);
+	}
+
+	.owen-internal-comments__title {
+		margin: 0.32rem 0 0;
+		font-family: var(--owen-font-display);
+		font-size: 1.14rem;
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		color: var(--text-normal);
+	}
+
+	.owen-internal-comments__count {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 2rem;
+		height: 2rem;
+		padding: 0 0.7rem;
+		border-radius: 999px;
+		border: 1px solid rgba(118, 156, 255, 0.16);
+		background: rgba(118, 156, 255, 0.1);
+		color: var(--primary);
+		font-size: 0.82rem;
+		font-weight: 700;
+	}
+
+	.owen-internal-comments__note {
+		margin: 0;
+		line-height: 1.75;
+		color: var(--text-secondary);
+	}
+
+	.owen-internal-comments__form {
+		display: grid;
+		gap: 0.9rem;
+		padding: 1rem;
+		border-radius: 1.2rem;
+		border: 1px solid rgba(118, 156, 255, 0.12);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(247, 250, 255, 0.42)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.09), transparent 10rem);
+	}
+
+	:global(.dark) .owen-internal-comments__form {
+		border-color: rgba(255, 255, 255, 0.08);
+		background:
+			linear-gradient(180deg, rgba(10, 14, 22, 0.56), rgba(5, 8, 14, 0.38)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.12), transparent 10rem);
+	}
+
+	.owen-internal-comments__grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.9rem;
+	}
+
+	.owen-internal-comments__field {
+		display: grid;
+		gap: 0.4rem;
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+	}
+
+	.owen-internal-comments__field--full {
+		grid-column: 1 / -1;
+	}
+
+	.owen-internal-comments__field input,
+	.owen-internal-comments__field textarea {
+		width: 100%;
+		border-radius: 0.95rem;
+		border: 1px solid rgba(118, 156, 255, 0.12);
+		background: rgba(255, 255, 255, 0.72);
+		color: var(--text-normal);
+		padding: 0.82rem 0.9rem;
+		outline: none;
+		transition:
+			border-color 0.18s ease,
+			box-shadow 0.18s ease,
+			transform 0.18s ease;
+	}
+
+	:global(.dark) .owen-internal-comments__field input,
+	:global(.dark) .owen-internal-comments__field textarea {
+		border-color: rgba(255, 255, 255, 0.08);
+		background: rgba(15, 23, 42, 0.7);
+	}
+
+	.owen-internal-comments__field input:focus,
+	.owen-internal-comments__field textarea:focus {
+		border-color: rgba(118, 156, 255, 0.26);
+		box-shadow: 0 0 0 3px rgba(118, 156, 255, 0.12);
+		transform: translateY(-1px);
+	}
+
+	.owen-internal-comments__honeypot {
+		position: absolute;
+		left: -9999px;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.owen-internal-comments__actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.8rem;
+	}
+
+	.owen-internal-comments__status {
+		margin: 0;
+		font-size: 0.85rem;
+		line-height: 1.6;
+		color: var(--text-secondary);
+	}
+
+	.owen-internal-comments__submit {
+		border: none;
+		border-radius: 999px;
+		padding: 0.78rem 1.15rem;
+		font-weight: 700;
+		color: white;
+		background: linear-gradient(135deg, rgba(104, 126, 255, 0.96), rgba(181, 87, 127, 0.92));
+		box-shadow: 0 18px 36px rgba(104, 126, 255, 0.2);
+		cursor: pointer;
+		transition:
+			transform 0.18s ease,
+			opacity 0.18s ease,
+			box-shadow 0.18s ease;
+	}
+
+	.owen-internal-comments__submit:hover:not(:disabled) {
+		transform: translateY(-1px);
+		box-shadow: 0 22px 42px rgba(104, 126, 255, 0.26);
+	}
+
+	.owen-internal-comments__submit:disabled {
+		opacity: 0.65;
+		cursor: progress;
+	}
+
+	.owen-internal-comments__list {
+		display: grid;
+		gap: 0.9rem;
+	}
+
+	.owen-internal-comments__empty,
+	.owen-internal-comments__item {
+		border-radius: 1.1rem;
+		border: 1px solid rgba(118, 156, 255, 0.12);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(247, 250, 255, 0.4)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 10rem);
+		padding: 1rem 1.05rem;
+	}
+
+	:global(.dark) .owen-internal-comments__empty,
+	:global(.dark) .owen-internal-comments__item {
+		border-color: rgba(255, 255, 255, 0.08);
+		background:
+			linear-gradient(180deg, rgba(10, 14, 22, 0.56), rgba(5, 8, 14, 0.38)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.12), transparent 10rem);
+	}
+
+	.owen-internal-comments__empty {
+		display: grid;
+		gap: 0.35rem;
+		color: var(--text-secondary);
+		text-align: center;
+	}
+
+	.owen-internal-comments__empty strong {
+		font-size: 0.96rem;
+		color: var(--text-normal);
+	}
+
+	.owen-internal-comments__item {
+		display: grid;
+		gap: 0.72rem;
+	}
+
+	.owen-internal-comments__item-meta {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.owen-internal-comments__item-author {
+		font-size: 0.92rem;
+		font-weight: 700;
+		color: var(--text-normal);
+		text-decoration: none;
+	}
+
+	.owen-internal-comments__item-author:hover {
+		color: var(--primary);
+	}
+
+	.owen-internal-comments__item-time {
+		font-size: 0.78rem;
+		color: var(--text-secondary);
+	}
+
+	.owen-internal-comments__item-content {
+		margin: 0;
+		white-space: pre-wrap;
+		line-height: 1.82;
+		color: var(--text-secondary);
+	}
+
+	@media (max-width: 720px) {
+		.owen-internal-comments__grid {
+			grid-template-columns: 1fr;
+		}
+
+		.owen-internal-comments__actions {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.owen-internal-comments__submit {
+			width: 100%;
+		}
+
+		.owen-internal-comments__item-meta {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+</style>
