@@ -192,7 +192,7 @@ import { url } from "@/utils/url-utils";
 	}
 </style>
 
-	<script is:inline define:vars={{ rootUrl: url("/") }}>
+	<script is:inline define:vars={{ searchApiUrl: url("/api/search.json") }}>
 	(() => {
 		const desktopTrigger = document.getElementById("search-switch-desktop");
 		const mobileTrigger = document.getElementById("search-switch");
@@ -216,15 +216,7 @@ import { url } from "@/utils/url-utils";
 
 		let keyword = "";
 		let debounceTimer = 0;
-
-		const fakeResults = [
-			{
-				url: rootUrl,
-				title: "Search preview is only available after build",
-				excerpt: "开发模式下这里会显示模拟结果，线上会使用 Pagefind。",
-				parentTitle: "",
-			},
-		];
+		let activeController = null;
 
 		const escapeHtml = (value) =>
 			value
@@ -279,9 +271,6 @@ import { url } from "@/utils/url-utils";
 			return html;
 		};
 
-		const containsPhrase = (value, query) =>
-			stripHtml(value).toLocaleLowerCase().includes(String(query || "").trim().toLocaleLowerCase());
-
 		const showPanel = () => {
 			panel.classList.remove("float-panel-closed");
 			panel.style.opacity = "1";
@@ -300,7 +289,7 @@ import { url } from "@/utils/url-utils";
 			results.innerHTML = `
 				<div class="owen-search-empty">
 					<strong>开始搜索</strong>
-					<div>支持标题、正文、目录锚点，以及代码块中的注释与示例内容。</div>
+					<div>支持标题、摘要、分类、标签和正文片段。</div>
 				</div>
 			`;
 			if (shouldOpen) {
@@ -338,71 +327,6 @@ import { url } from "@/utils/url-utils";
 			showPanel();
 		};
 
-		const buildSearchItems = (entries, query) => {
-			const rawItems = entries.flatMap((entry) => {
-				const parentTitle = entry.meta?.title || "Untitled";
-				const subResults = Array.isArray(entry.sub_results) ? entry.sub_results : [];
-				const anchoredItems = subResults
-					.filter((item) => typeof item?.url === "string" && item.url)
-					.slice(0, 4)
-					.map((item) => {
-						const sectionTitle =
-							typeof item.title === "string" && item.title.trim()
-								? item.title.trim()
-								: parentTitle;
-						const isNested = sectionTitle !== parentTitle;
-						return {
-							url: item.url,
-							title: sectionTitle,
-							parentTitle: isNested ? parentTitle : "",
-							excerpt: stripHtml(item.excerpt || entry.excerpt || ""),
-						};
-					});
-
-				if (anchoredItems.length) {
-					return anchoredItems;
-				}
-
-				return [
-					{
-						url: entry.url,
-						title: parentTitle,
-						parentTitle: "",
-						excerpt: stripHtml(entry.excerpt || ""),
-					},
-				];
-			});
-
-			const deduped = [];
-			const seen = new Set();
-			for (const item of rawItems) {
-				const key = `${item.url}::${item.title}`;
-				if (seen.has(key)) {
-					continue;
-				}
-				seen.add(key);
-				const phraseInTitle = containsPhrase(item.title, query);
-				const phraseInExcerpt = containsPhrase(item.excerpt, query);
-				const phraseInParent = containsPhrase(item.parentTitle, query);
-				deduped.push({
-					...item,
-					relevance:
-						(phraseInTitle ? 0 : 10) +
-						(phraseInExcerpt ? 1 : 10) +
-						(phraseInParent ? 2 : 10),
-				});
-			}
-
-			const exactMatches = deduped.filter(
-				(item) =>
-					containsPhrase(item.title, query) ||
-					containsPhrase(item.excerpt, query) ||
-					containsPhrase(item.parentTitle, query),
-			);
-			const finalItems = exactMatches.length ? exactMatches : deduped;
-			return finalItems.sort((left, right) => left.relevance - right.relevance).slice(0, 8);
-		};
-
 		const performSearch = async (nextKeyword) => {
 			keyword = nextKeyword.trim();
 			panelInput.value = keyword;
@@ -412,22 +336,26 @@ import { url } from "@/utils/url-utils";
 				return;
 			}
 
-			if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-				renderResults(fakeResults);
-				return;
-			}
-
-			const pagefind = window.pagefind;
-			if (!pagefind || typeof pagefind.search !== "function") {
-				renderResults([]);
-				return;
-			}
+			activeController?.abort();
+			activeController = new AbortController();
 
 			try {
-				const response = await pagefind.search(keyword);
-				const entries = await Promise.all(response.results.map((item) => item.data()));
-				renderResults(buildSearchItems(entries, keyword));
+				const response = await fetch(
+					`${searchApiUrl}?q=${encodeURIComponent(keyword)}`,
+					{
+						credentials: "same-origin",
+						signal: activeController.signal,
+					},
+				);
+				if (!response.ok) {
+					throw new Error(`Search request failed with ${response.status}`);
+				}
+				const payload = await response.json();
+				renderResults(Array.isArray(payload.items) ? payload.items : []);
 			} catch (error) {
+				if (error instanceof DOMException && error.name === "AbortError") {
+					return;
+				}
 				console.error("Search error:", error);
 				renderResults([]);
 			}

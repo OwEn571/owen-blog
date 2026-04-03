@@ -14,6 +14,8 @@ import {
 	getStudyTotalWords,
 } from "../../utils/study-utils";
 
+export const prerender = true;
+
 export const getStaticPaths = (async ({ paginate }) => {
 	const allBlogPosts = await getStudyPosts();
 	initPostIdMap(allBlogPosts);

@@ -13,19 +13,19 @@
 
 - 仓库名：`owen-blog`
 - 当前本地路径：`/Users/owen/owen-blog`
-- 部署方式：`GitHub -> Vercel`
-- 当前站点域名：`https://www.owen571.top/`
+- 部署方式：`自托管服务器（Astro Node standalone）`
+- 当前站点域名：`https://owen.top/`
 - 站点框架：`Astro`
-- 当前输出模式：`static`
+- 当前输出模式：`server`
 
 这意味着：
 
-- 博客主体是静态站
-- 页面、文章、Study 文集、搜索索引都是构建产物
-- 如果要做真正的服务端能力，要么：
-  - 上 Vercel Serverless / Edge Function
-  - 要么切 Astro adapter
-  - 要么单独接远程后端
+- 博客已经切到 Node 侧可运行的服务端模式
+- 文章主体仍可按页面维度保留预渲染，以兼顾性能和稳定性
+- 搜索、喵喵代理、后续扩展 API 已经可以走站内真实服务端接口
+- 如果后面还要接更重的业务后端：
+  - 可以继续单独接 FastAPI
+  - 也可以让 Astro 只负责前台与轻 API
 
 ---
 
@@ -168,16 +168,16 @@ Mermaid 已经回退成“尽量接近默认 Mermaid”的稳定方案。
 - 构建时生成的站内知识索引：
   - `src/pages/api/miaomiao-knowledge.json.ts`
 
-- Vercel Serverless 代理：
-  - `api/miaomiao-chat.ts`
+- Astro 服务端代理：
+  - `src/pages/api/miaomiao-chat.ts`
 
 这套设计的关键点：
 
-- 站点本体还是静态站
+- 站点主体仍以内容页为主，但现在运行在 server mode
 - 喵喵会先读取“站内知识索引”
 - 再把相关上下文交给 Dify
 - 优先走服务端代理，避免把主密钥直接暴露到浏览器
-- 本地静态开发时也预留了前端直连 fallback
+- 本地开发时也预留了前端直连 fallback
 
 ### 重要边界
 
@@ -225,24 +225,26 @@ Mermaid 已经回退成“尽量接近默认 Mermaid”的稳定方案。
 ```bash
 pnpm check
 pnpm build
+pnpm start
 ```
 
-### Vercel 相关
+### 服务器相关
 
 当前部署文档在：
 
-- `docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md`
+- `docs/SERVER_DYNAMIC_DEPLOY.zh-CN.md`
 
 如果远程 Codex 在服务器上接手，需要知道：
 
-- 项目现在不是 Astro SSR
-- `src/pages/api/*.ts` 在当前 `output: "static"` 下只会被静态化成 JSON 文件，不是真 API
-- 真正的服务端 Dify 代理现在走的是 `api/miaomiao-chat.ts`，这是给 Vercel Function 用的
+- 项目现在运行在 `output: "server"` 下
+- `src/pages/api/*.ts` 现在是站内真实 API
+- 喵喵服务端代理现在走的是 `src/pages/api/miaomiao-chat.ts`
+- 根目录 `api/miaomiao-chat.ts` 仅是旧 Vercel 方案遗留，可视情况清理
 
 如果未来要把站迁到“真正动态”的服务器：
 
 - 可以考虑单独接 FastAPI 后端
-- 或者 Astro 切 adapter
+- 或者继续扩展 Astro 自己的服务端能力
 - 不建议在当前大量前端逻辑都已成型的情况下，直接全站重写
 
 ---

@@ -14,7 +14,8 @@ OwEn 的个人博客源码仓库，对应线上站点 [owen.top](https://owen.to
 - 项目结构说明：[docs/PROJECT_STRUCTURE.zh-CN.md](docs/PROJECT_STRUCTURE.zh-CN.md)
 - Study 写作说明：[docs/STUDY_WRITE_GUIDE.zh-CN.md](docs/STUDY_WRITE_GUIDE.zh-CN.md)
 - 目录模块与 Python 代码说明：[docs/MODULE_DIRECTORY_AND_PYTHON_GUIDE.zh-CN.md](docs/MODULE_DIRECTORY_AND_PYTHON_GUIDE.zh-CN.md)
-- Vercel 部署说明：[docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md](docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md)
+- 服务器动态部署说明：[docs/SERVER_DYNAMIC_DEPLOY.zh-CN.md](docs/SERVER_DYNAMIC_DEPLOY.zh-CN.md)
+- Vercel 旧部署说明（历史参考）：[docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md](docs/VERCEL_OWEN_TOP_DEPLOY.zh-CN.md)
 
 ## 本地开发
 
@@ -28,7 +29,7 @@ pnpm dev
 ```bash
 pnpm check
 pnpm build
-pnpm preview
+pnpm start
 pnpm new-post
 ```
 
@@ -43,7 +44,7 @@ pnpm new-post
 
 ## 发布方式
 
-当前正式站通过 Vercel 部署，推送 `main` 分支后会自动重新构建并更新线上版本。
+当前仓库已经支持 `Astro + Node adapter` 的服务器动态部署。博客主体保持现有内容结构和前端体验，搜索与喵喵代理则走真实服务端接口。
 
 ## 致谢
 

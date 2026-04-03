@@ -1,5 +1,7 @@
 # Vercel + owen.top 发布说明
 
+> 注：这份文档保留为旧的 Vercel 静态部署记录。当前主线部署已经切到服务器动态模式，优先参考 `docs/SERVER_DYNAMIC_DEPLOY.zh-CN.md`。
+
 这份说明面向当前这个博客仓库，目标是：
 
 1. 先把站点挂到线上

@@ -67,6 +67,8 @@
   目录模块与 Python 代码卡说明。
 - `VERCEL_OWEN_TOP_DEPLOY.zh-CN.md`
   Vercel + 域名部署记录。
+- `SERVER_DYNAMIC_DEPLOY.zh-CN.md`
+  当前服务器动态部署说明。
 - `THEME_AND_COPY_EDIT_GUIDE.zh-CN.md`
   静态资源、前端文案和主题风格的修改入口说明。
 - `REMOTE_CODEX_HANDOFF.zh-CN.md`
@@ -124,6 +126,9 @@ GitHub Actions 工作流。
 
 - `src/pages/404.astro`
 - `src/pages/api/calendar-data.json.ts`
+- `src/pages/api/miaomiao-chat.ts`
+- `src/pages/api/miaomiao-knowledge.json.ts`
+- `src/pages/api/search.json.ts`
 
 ## 4. 内容目录怎么用
 

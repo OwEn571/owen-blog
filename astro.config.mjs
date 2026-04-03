@@ -1,4 +1,5 @@
 import sitemap from "@astrojs/sitemap";
+import node from "@astrojs/node";
 import svelte, { vitePreprocess } from "@astrojs/svelte";
 import tailwind from "@astrojs/tailwind";
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
@@ -37,7 +38,10 @@ export default defineConfig({
 	base: "/",
 	trailingSlash: "always",
 
-	output: "static",
+	output: "server",
+	adapter: node({
+		mode: "standalone",
+	}),
 
 	integrations: [
 		umami({

@@ -7,6 +7,8 @@ import { PAGE_SIZE } from "../constants/constants";
 import { getStudyPosts } from "../utils/study-utils";
 import { initPostIdMap } from "../utils/permalink-utils";
 
+export const prerender = true;
+
 export const getStaticPaths = (async ({ paginate }) => {
 	const allBlogPosts = await getStudyPosts();
 	// 初始化文章 ID 映射（用于 permalink 功能）

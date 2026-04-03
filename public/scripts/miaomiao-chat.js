@@ -392,7 +392,7 @@
 			state.messages.push({
 				role: "assistant",
 				content:
-					`喵喵这次没有成功连上。\n\n${messageText}\n\n如果你现在是本地静态开发环境，需要启用 PUBLIC_DIFY_API_KEY 直连，或在 Vercel 上配置 DIFY_API_KEY 服务端代理。`,
+					`喵喵这次没有成功连上。\n\n${messageText}\n\n如果你现在是本地开发环境，可以启用 PUBLIC_DIFY_API_KEY 直连；如果你在服务器上运行博客，请配置 DIFY_API_KEY，让 /api/miaomiao-chat/ 走服务端代理。`,
 			});
 			setStatus(state, "喵喵暂时掉线了，请稍后再试。");
 			renderMessages(state);
