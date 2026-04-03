@@ -1,5 +1,6 @@
 ---
 import ConfigCarrier from "@components/misc/ConfigCarrier.astro";
+import FloatingMiaoMiaoChat from "@components/control/FloatingMiaoMiaoChat.astro";
 import {
 	profileConfig,
 	siteConfig,
@@ -234,6 +235,7 @@ if (siteConfig.font) {
 				<p class="theme-transition-overlay__title">正在切换昼夜氛围</p>
 			</div>
 		</div>
+		<FloatingMiaoMiaoChat />
 		<slot />
 		<script
 			is:inline
