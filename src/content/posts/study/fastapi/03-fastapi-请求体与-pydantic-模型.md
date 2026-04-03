@@ -1,6 +1,6 @@
 ---
 title: FastAPI 请求体：Pydantic 模型、多参数与嵌套结构
-published: 2026-03-29
+published: 2026-03-31
 description: 当输入不再只是 URL 参数，而是一整个 JSON 请求体时，FastAPI 如何借助 Pydantic 做解析、校验、嵌套和文档生成。
 tags: [FastAPI, Pydantic, Request Body]
 category: FastAPI
@@ -8,11 +8,9 @@ draft: false
 comment: true
 ---
 
-> 到了请求体这一层，FastAPI 的真正优势会开始明显起来：你不再是手写 JSON 解析，而是直接把数据结构声明成模型，让校验、转换、编辑器支持和 OpenAPI 一起联动。
+从这一篇开始，输入不再只是 URL 上的几个值，而是成块的数据结构。FastAPI 的优势也从这里开始明显：不是自己手写 JSON 解析，而是直接把结构声明成模型。
 
 ## 1. 用 Pydantic 模型声明请求体
-
-最基础的请求体写法如下：
 
 ```python3
 from fastapi import FastAPI
@@ -42,8 +40,8 @@ async def create_item(item: Item):
 
 - FastAPI 会把请求体按 `Item` 模型解析
 - Pydantic 会自动校验字段类型
-- 错误时会指出具体字段和原因
-- 生成的 schema 会自动进入 OpenAPI 文档
+- 文档会自动生成 schema
+- 校验错误会定位到具体字段
 
 ## 2. 路径参数、查询参数、请求体可以一起出现
 
@@ -56,17 +54,15 @@ async def update_item(item_id: int, item: Item, q: str | None = None):
     return result
 ```
 
-这里其实已经把三层输入放在一起了：
+这里已经把三类最核心的输入组合起来了：
 
 - `item_id`：路径参数
 - `q`：查询参数
 - `item`：请求体
 
-理解这一点很重要，因为后面很多复杂接口，本质上都是这三类输入的组合。
+后面很多复杂接口，本质上还是这三层输入的组合。
 
 ## 3. 多个请求体参数
-
-当一个接口需要提交多个结构对象时，可以直接声明多个 Pydantic 模型：
 
 ```python3
 from pydantic import BaseModel
@@ -86,11 +82,10 @@ class User(BaseModel):
 
 @app.put("/items/{item_id}")
 async def update_item(item_id: int, item: Item, user: User):
-    results = {"item_id": item_id, "item": item, "user": user}
-    return results
+    return {"item_id": item_id, "item": item, "user": user}
 ```
 
-这时 FastAPI 会期望请求体长成：
+这时 FastAPI 期望请求体长成：
 
 ```json
 {
@@ -121,20 +116,17 @@ async def update_item(
     user: User,
     importance: Annotated[int, Body(gt=0)],
 ):
-    results = {"item_id": item_id, "item": item, "user": user, "importance": importance}
-    return results
+    return {"item_id": item_id, "item": item, "user": user, "importance": importance}
 ```
 
-这是一个很容易忽略的规则：
+这里有个很关键的规则：
 
 - Pydantic 模型默认会被当成请求体
 - 简单类型如果不额外声明，默认会被当成查询参数
 
-所以 `Body()` 的作用，不只是加校验，还在告诉 FastAPI：**这个参数来自请求体**。
+所以 `Body()` 不只是补校验，它还在明确参数来源。
 
 ## 5. 嵌套模型
-
-Pydantic 的强项之一就是可以自然表达复杂嵌套结构。
 
 ```python3
 from pydantic import BaseModel, HttpUrl
@@ -159,17 +151,17 @@ async def update_item(item_id: int, item: Item):
     return {"item_id": item_id, "item": item}
 ```
 
-这里顺手也能看到几类好用的能力：
+这里顺手也能看到 Pydantic 提供的几个常用能力：
 
 - `HttpUrl`：校验 URL
-- `set[str]`：去重标签
+- `set[str]`：自动去重
 - `list[Image]`：子模型列表
 
 ## 6. 给请求体补示例和文档信息
 
-你写的模型不仅能校验数据，还能直接影响 API 文档的展示效果。
+模型不仅负责校验，还会直接影响 `/docs` 里的展示效果。
 
-一种方式是在模型里写：
+可以在模型里写：
 
 ```python3
 class Item(BaseModel):
@@ -192,48 +184,16 @@ class Item(BaseModel):
     }
 ```
 
-另一种方式是在 `Body()` 里写 `openapi_examples`：
+也可以在 `Body()` 里写 `openapi_examples`，这样能给同一个接口准备多个示例场景。
 
-```python3
-@app.put("/o_items/{item_id}")
-async def update_item(
-    *,
-    item_id: int,
-    item: Annotated[
-        Item,
-        Body(
-            openapi_examples={
-                "normal": {
-                    "summary": "A normal example",
-                    "description": "A **normal** item works correctly.",
-                    "value": {
-                        "name": "Foo",
-                        "description": "A very nice Item",
-                        "price": 35.4,
-                        "tax": 3.2,
-                    },
-                }
-            },
-        ),
-    ],
-):
-    return {"item_id": item_id, "item": item}
-```
+## 7. 请求体这一层真正带来的变化
 
-这会直接反映到 `/docs` 里。
+到了这里，FastAPI 的体验已经开始和“手写 Flask 风格的 JSON 解析”拉开差距了。
 
-## 7. 这一阶段应该记住什么
+你写的不是“接收一个 dict 再自己判空”，而是：
 
-我自己到这里最大的收获是：FastAPI 里的请求体不是“手动解析 JSON”，而是“声明数据模型”。
+- 先把数据结构声明出来
+- 再让框架负责解析
+- 再让文档跟着模型自动长出来
 
-一旦你把结构声明清楚了：
-
-- 解析
-- 校验
-- 编辑器补全
-- OpenAPI
-- 文档示例
-
-这些能力就会自动串起来。
-
-所以这一阶段真正该练的，不是“记住某个装饰器”，而是学会把输入数据建模。
+这也是为什么后面学响应模型、依赖注入和安全时，Pydantic 一直会反复出现。

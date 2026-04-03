@@ -1,6 +1,6 @@
 ---
 title: FastAPI 参数校验：Query、Path、Body、Cookie、Header
-published: 2026-03-28
+published: 2026-03-30
 description: 把 Query、Path、Body、Cookie、Header 统一进一个心智模型：参数从哪里来，以及怎样利用 Annotated 和 Pydantic 做精细校验。
 tags: [FastAPI, Validation, Query, Header]
 category: FastAPI
@@ -8,13 +8,9 @@ draft: false
 comment: true
 ---
 
-> 我觉得官方教程在这一段最容易让人产生“怎么又是一个新章节”的感觉。其实 `Query / Path / Body / Cookie / Header` 可以一起理解：它们本质上都在回答“参数从哪里来”，只不过来源不同、约束方式不同。
+官方教程在这里会连续切出 `Query`、`Path`、`Body`、`Cookie`、`Header` 好几页，第一次读容易觉得“怎么又来一个函数”。更顺的理解方式是：它们其实都在回答同一个问题，只是参数来源不同。
 
-## 1. `Query`、`Path`、`Body` 的核心作用
-
-这三个工具最重要的意义，不是“多一个函数”，而是：
-
-**告诉 FastAPI 参数的来源，并附带额外规则。**
+## 1. `Query`、`Path`、`Body` 的真正作用
 
 ```python3
 from typing import Annotated
@@ -35,29 +31,27 @@ async def read_items(
 
 这里 `Query(...)` 做了两件事：
 
-- 明确告诉框架：这个参数来自查询字符串
-- 补充了长度、说明等规则
+- 告诉 FastAPI：这个参数来自查询字符串
+- 顺手附带额外约束和文档信息
 
-`Path()` 同理，只不过针对路径参数。
+`Path()` 和 `Body()` 也是同样的模式，只是来源不同。
 
 ## 2. `Annotated` 的意义
-
-这一段的写法刚开始容易显得绕，但它其实很好懂：
 
 ```python3
 q: Annotated[str | None, Query(max_length=50)] = None
 ```
 
-可以把它理解成：
+可以把它拆成两层：
 
 - 真正的数据类型是 `str | None`
-- 额外的校验和文档说明在 `Query(...)` 里
+- 额外的校验规则和来源说明放在 `Query(...)`
 
-这使得“类型”和“约束”可以放在一处表达。
+这样“类型”和“元信息”就放在了一起，读起来会比老写法更清楚。
 
-## 3. 额外校验：长度、范围、正则、别名
+## 3. 常见约束：长度、范围、别名、弃用
 
-`Query`、`Path`、`Body` 都支持一大批相似的约束参数，例如：
+`Query`、`Path`、`Body` 支持一大批相似的约束参数：
 
 - `max_length`
 - `min_length`
@@ -67,8 +61,6 @@ q: Annotated[str | None, Query(max_length=50)] = None
 - `alias`
 - `deprecated`
 - `include_in_schema`
-
-比如：
 
 ```python3
 @app.get("/p_items/{item_id}")
@@ -84,12 +76,12 @@ async def read_items(
 
 这里：
 
-- `item_id` 必须 `>= 1`
-- 查询参数对外暴露的名字叫 `item-query`
+- `item_id` 必须大于等于 1
+- 对外暴露的查询参数名是 `item-query`
 
 ## 4. 自定义校验：`AfterValidator`
 
-有些规则没法只靠 `gt`、`max_length` 解决，这时候就可以接 Pydantic 的验证器。
+有些规则不是 `gt`、`max_length` 这种现成参数能覆盖的，这时可以接 Pydantic 验证器。
 
 ```python3
 import random
@@ -119,11 +111,11 @@ async def read_items(
     return {"id": id, "name": item}
 ```
 
-这一步很重要，因为它说明 FastAPI 的校验能力并不只停留在简单规则上，而是能自然接入 Pydantic 的更复杂能力。
+这一步很重要，因为它说明 FastAPI 并不只支持“表面上的参数约束”，而是可以自然接入 Pydantic 更细的校验能力。
 
 ## 5. 用模型承接一整组查询参数
 
-查询参数多起来之后，散着写会越来越乱。这个时候可以把它们收成模型：
+查询参数一多，散着写会越来越乱。这个时候可以把它们建成一个模型：
 
 ```python3
 from typing import Annotated, Literal
@@ -145,16 +137,15 @@ async def read_items(filter_query: Annotated[FilterParams, Query()]):
     return filter_query
 ```
 
-这段特别值得记，因为它让“查询条件”也能像请求体一样被建模。
+这段非常值得记，因为它把“查询参数”也推进了结构化建模这一层。
 
-## 6. Cookie 和 Header 其实也是同一套逻辑
+## 6. Cookie 和 Header 其实还是同一个模式
 
-Cookie 和 Header 这两章单独拆开看会很碎，但本质上还是同一个模式：只是来源不同。
+它们看起来像两个新知识点，本质上还是同一个问题：参数从哪里来。
 
 ```python3
 from typing import Annotated
 from fastapi import Cookie, FastAPI, Header
-from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -169,25 +160,12 @@ async def read_items(user_agent: Annotated[str | None, Header()] = None):
     return {"User-Agent": user_agent}
 ```
 
-甚至它们也能用模型一起收：
+这类来源参数也能继续用模型收起来：
 
 ```python3
-class Cookies(BaseModel):
-    model_config = {"extra": "forbid"}
-
-    session_id: str
-    fatebook_tracker: str | None = None
-    googall_tracker: str | None = None
+from pydantic import BaseModel
 
 
-@app.get("/cs_items/")
-async def read_items(cookies: Annotated[Cookies, Cookie()]):
-    return cookies
-```
-
-以及：
-
-```python3
 class CommonHeaders(BaseModel):
     host: str
     save_data: bool
@@ -201,12 +179,12 @@ async def read_items(headers: Annotated[CommonHeaders, Header()]):
     return headers
 ```
 
-## 7. 这一阶段应该记住什么
+## 7. 到这里最值得留下来的心智
 
-到这里最值得建立的统一心智是：
+这一层最重要的不是把 `Query / Path / Body / Cookie / Header` 分别背下来，而是先把统一模式站稳：
 
-- 参数不仅有“类型”，还有“来源”
-- `Query / Path / Body / Cookie / Header` 是来源标记
-- Pydantic 负责更深层的结构化校验
+- 参数先有类型
+- 参数再有来源
+- 参数还可以继续叠加规则
 
-只要这个心智建立起来，后面无论遇到表单、文件上传，还是依赖注入，理解都会顺得多。
+后面你再看表单、文件上传、依赖注入，理解会快很多，因为底层模式其实没变。
