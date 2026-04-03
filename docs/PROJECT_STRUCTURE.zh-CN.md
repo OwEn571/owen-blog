@@ -69,6 +69,8 @@
   Vercel + 域名部署记录。
 - `THEME_AND_COPY_EDIT_GUIDE.zh-CN.md`
   静态资源、前端文案和主题风格的修改入口说明。
+- `REMOTE_CODEX_HANDOFF.zh-CN.md`
+  给远程主机上的 Codex / 代理的接手说明。
 
 ### `scripts/`
 
