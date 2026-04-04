@@ -11,7 +11,11 @@ import {
 	type ModuleKey,
 } from "../data/module-blueprint";
 import type { PostForList } from "./content-utils";
-import { getSortedPosts, getSortedPostsList } from "./content-utils";
+import {
+	getSortedPosts,
+	getSortedPostsList,
+	sortPostsBySeriesOrder,
+} from "./content-utils";
 
 const POSTS_ROOT = path.resolve(process.cwd(), "src", "content", "posts");
 
@@ -254,9 +258,13 @@ export async function getModuleDirectoryCards(
 
 	return sortedDirectories.map(({ directoryName, config }, index) => {
 		const title = config.title ?? humanizeDirectoryName(directoryName);
-		const allPosts = posts.filter((post) =>
+		const directoryPosts = posts.filter((post) =>
 			isPostInModuleDirectory(post.id, moduleKey, directoryName),
 		);
+		const allPosts =
+			moduleKey === "study"
+				? sortPostsBySeriesOrder(directoryPosts)
+				: directoryPosts;
 		const previewPosts = allPosts.slice(0, 3);
 		const postCount = allPosts.length;
 

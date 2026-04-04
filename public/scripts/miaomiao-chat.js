@@ -1,37 +1,36 @@
 	(function () {
 		const STORAGE_KEY = "owen-miaomiao-chat-state-v2";
 		const SHARE_PAGE_KEY = "owen-miaomiao-share-page-v1";
-		const VISITOR_KEY = "owen-miaomiao-chat-visitor-v1";
-	const REMOVE_SELECTORS = [
-		"script",
-		"style",
-		"noscript",
-		"svg",
-		"button",
-		"input",
-		"textarea",
-		"select",
-		"form",
-		"nav",
-		"aside",
-		"footer",
-		".footer",
-		".owen-comments",
-		"[data-miaomiao-chat]",
-		".miaomiao-chat-shell",
-		".python-lab-shell",
-		".floating-utility-rail",
-		".post-reading-strip",
-		".post-metadata-shell",
-		"#share-component",
-		"#license-component",
-		".license-container",
-		".post-support-card",
-		"#toc-container",
-		"#toc-wrapper",
-		"table-of-contents",
-		"[data-pagefind-ignore]",
-	].join(",");
+		const REMOVE_SELECTORS = [
+			"script",
+			"style",
+			"noscript",
+			"svg",
+			"button",
+			"input",
+			"textarea",
+			"select",
+			"form",
+			"nav",
+			"aside",
+			"footer",
+			".footer",
+			".owen-comments",
+			"[data-miaomiao-chat]",
+			".miaomiao-chat-shell",
+			".python-lab-shell",
+			".floating-utility-rail",
+			".post-reading-strip",
+			".post-metadata-shell",
+			"#share-component",
+			"#license-component",
+			".license-container",
+			".post-support-card",
+			"#toc-container",
+			"#toc-wrapper",
+			"table-of-contents",
+			"[data-pagefind-ignore]",
+		].join(",");
 		const CONTENT_CANDIDATES = [
 			[".post-markdown-flow", 2100],
 			[".markdown-content", 1900],
@@ -41,285 +40,266 @@
 			["main", 400],
 		];
 
-	function safeStorageGet(storage, key) {
-		try {
-			return storage.getItem(key);
-		} catch {
-			return null;
-		}
-	}
-
-	function safeStorageSet(storage, key, value) {
-		try {
-			storage.setItem(key, value);
-		} catch {
-			// Ignore storage failures in private browsing and restricted contexts.
-		}
-	}
-
-	function createRandomId(prefix) {
-		if (window.crypto && typeof window.crypto.randomUUID === "function") {
-			return `${prefix}${window.crypto.randomUUID().replace(/-/g, "")}`;
-		}
-		return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
-	}
-
-	function getVisitorId() {
-		const existing = safeStorageGet(window.localStorage, VISITOR_KEY);
-		if (existing) {
-			return existing;
-		}
-
-		const next = createRandomId("miaomiao-");
-		safeStorageSet(window.localStorage, VISITOR_KEY, next);
-		return next;
-	}
-
-	function escapeHtml(value) {
-		return String(value || "")
-			.replaceAll("&", "&amp;")
-			.replaceAll("<", "&lt;")
-			.replaceAll(">", "&gt;")
-			.replaceAll('"', "&quot;")
-			.replaceAll("'", "&#39;");
-	}
-
-	function normalizeText(value) {
-		return String(value || "")
-			.replace(/\r\n/g, "\n")
-			.replace(/\u00a0/g, " ")
-			.replace(/[ \t]+\n/g, "\n")
-			.replace(/\n{3,}/g, "\n\n")
-			.replace(/[ \t]{2,}/g, " ")
-			.trim();
-	}
-
-	function limitText(value, maxLength) {
-		const text = normalizeText(value);
-		if (!text || text.length <= maxLength) {
-			return text;
-		}
-		return `${text.slice(0, maxLength).trimEnd()}…`;
-	}
-
-	function renderMessageHtml(value) {
-		const blocks = normalizeText(value)
-			.split(/\n{2,}/)
-			.map((block) => block.trim())
-			.filter(Boolean);
-
-		if (!blocks.length) {
-			return "<p></p>";
-		}
-
-		return blocks
-			.map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`)
-			.join("");
-	}
-
-	function getVisibleText(element) {
-		if (!(element instanceof Element)) {
-			return "";
-		}
-
-		const clone = element.cloneNode(true);
-		if (!(clone instanceof Element)) {
-			return normalizeText(element.textContent || "");
-		}
-
-		clone.querySelectorAll(REMOVE_SELECTORS).forEach((node) => node.remove());
-		return normalizeText(clone.textContent || "");
-	}
-
-	function getPageTitle() {
-		const titleCandidate = document.querySelector(
-			".post-article-title, [data-pagefind-meta='title'], h1",
-		);
-		const explicitTitle = normalizeText(titleCandidate?.textContent || "");
-		if (explicitTitle) {
-			return explicitTitle.slice(0, 160);
-		}
-
-		const rawTitle = normalizeText(document.title || "");
-		return rawTitle.replace(/\s*[|｜·-]\s*.+$/, "").trim() || "当前页面";
-	}
-
-	function getPageDescription() {
-		const lead = document.querySelector(".post-description-lead");
-		const leadText = normalizeText(lead?.textContent || "");
-		if (leadText) {
-			return leadText.slice(0, 260);
-		}
-
-		const metaDescription = document.querySelector('meta[name="description"]');
-		return normalizeText(metaDescription?.getAttribute("content") || "").slice(0, 260);
-	}
-
-	function getHeadings(root) {
-		if (!(root instanceof Element)) {
-			return [];
-		}
-
-		const seen = new Set();
-		const headings = [];
-
-		root.querySelectorAll("h1, h2, h3").forEach((heading) => {
-			const text = limitText(heading.textContent || "", 120);
-			if (!text || seen.has(text)) {
-				return;
+		function safeStorageGet(storage, key) {
+			try {
+				return storage.getItem(key);
+			} catch {
+				return null;
 			}
-			seen.add(text);
-			headings.push(text);
-		});
-
-		return headings.slice(0, 12);
-	}
-
-	function findBestContentRoot() {
-		let best = null;
-
-		for (const [selector, bonus] of CONTENT_CANDIDATES) {
-			document.querySelectorAll(selector).forEach((node) => {
-				if (!(node instanceof Element)) {
-					return;
-				}
-
-				if (node.closest("[data-miaomiao-chat]")) {
-					return;
-				}
-
-				const text = getVisibleText(node);
-				if (text.length < 120) {
-					return;
-				}
-
-				const score = text.length + bonus;
-				if (!best || score > best.score) {
-					best = { node, text, score };
-				}
-			});
 		}
 
-		return best?.node || null;
-	}
+		function safeStorageSet(storage, key, value) {
+			try {
+				storage.setItem(key, value);
+			} catch {
+				// Ignore storage failures in private browsing and restricted contexts.
+			}
+		}
 
-	function extractCurrentPageContext(shareDetailedContent) {
-		const path = window.location.pathname || "/";
-		const title = getPageTitle();
-		const description = getPageDescription();
-		if (!shareDetailedContent) {
+		function escapeHtml(value) {
+			return String(value || "")
+				.replaceAll("&", "&amp;")
+				.replaceAll("<", "&lt;")
+				.replaceAll(">", "&gt;")
+				.replaceAll('"', "&quot;")
+				.replaceAll("'", "&#39;");
+		}
+
+		function normalizeText(value) {
+			return String(value || "")
+				.replace(/\r\n/g, "\n")
+				.replace(/\u00a0/g, " ")
+				.replace(/[ \t]+\n/g, "\n")
+				.replace(/\n{3,}/g, "\n\n")
+				.replace(/[ \t]{2,}/g, " ")
+				.trim();
+		}
+
+		function limitText(value, maxLength) {
+			const text = normalizeText(value);
+			if (!text || text.length <= maxLength) {
+				return text;
+			}
+			return `${text.slice(0, maxLength).trimEnd()}…`;
+		}
+
+		function renderMessageHtml(value) {
+			const blocks = normalizeText(value)
+				.split(/\n{2,}/)
+				.map((block) => block.trim())
+				.filter(Boolean);
+
+			if (!blocks.length) {
+				return "<p></p>";
+			}
+
+			return blocks
+				.map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`)
+				.join("");
+		}
+
+		function getVisibleText(element) {
+			if (!(element instanceof Element)) {
+				return "";
+			}
+
+			const clone = element.cloneNode(true);
+			if (!(clone instanceof Element)) {
+				return normalizeText(element.textContent || "");
+			}
+
+			clone.querySelectorAll(REMOVE_SELECTORS).forEach((node) => node.remove());
+			return normalizeText(clone.textContent || "");
+		}
+
+		function getPageTitle() {
+			const titleCandidate = document.querySelector(
+				".post-article-title, [data-pagefind-meta='title'], h1",
+			);
+			const explicitTitle = normalizeText(titleCandidate?.textContent || "");
+			if (explicitTitle) {
+				return explicitTitle.slice(0, 160);
+			}
+
+			const rawTitle = normalizeText(document.title || "");
+			return rawTitle.replace(/\s*[|｜·-]\s*.+$/, "").trim() || "当前页面";
+		}
+
+		function getPageDescription() {
+			const lead = document.querySelector(".post-description-lead");
+			const leadText = normalizeText(lead?.textContent || "");
+			if (leadText) {
+				return leadText.slice(0, 260);
+			}
+
+			const metaDescription = document.querySelector('meta[name="description"]');
+			return normalizeText(metaDescription?.getAttribute("content") || "").slice(0, 260);
+		}
+
+		function getHeadings(root) {
+			if (!(root instanceof Element)) {
+				return [];
+			}
+
+			const seen = new Set();
+			const headings = [];
+
+			root.querySelectorAll("h1, h2, h3").forEach((heading) => {
+				const text = limitText(heading.textContent || "", 120);
+				if (!text || seen.has(text)) {
+					return;
+				}
+				seen.add(text);
+				headings.push(text);
+			});
+
+			return headings.slice(0, 12);
+		}
+
+		function findBestContentRoot() {
+			let best = null;
+
+			for (const [selector, bonus] of CONTENT_CANDIDATES) {
+				document.querySelectorAll(selector).forEach((node) => {
+					if (!(node instanceof Element)) {
+						return;
+					}
+
+					if (node.closest("[data-miaomiao-chat]")) {
+						return;
+					}
+
+					const text = getVisibleText(node);
+					if (text.length < 120) {
+						return;
+					}
+
+					const score = text.length + bonus;
+					if (!best || score > best.score) {
+						best = { node, text, score };
+					}
+				});
+			}
+
+			return best?.node || null;
+		}
+
+		function extractCurrentPageContext(shareDetailedContent) {
+			const path = window.location.pathname || "/";
+			const title = getPageTitle();
+			const description = getPageDescription();
+			if (!shareDetailedContent) {
+				return {
+					path,
+					title,
+					description,
+					headings: [],
+					content: "",
+				};
+			}
+			const contentRoot = findBestContentRoot();
+			const bodyText = limitText(contentRoot ? getVisibleText(contentRoot) : "", 2800);
+			const headings = contentRoot ? getHeadings(contentRoot) : [];
+
 			return {
 				path,
 				title,
 				description,
-				headings: [],
-				content: "",
+				headings,
+				content: bodyText,
 			};
 		}
-		const contentRoot = findBestContentRoot();
-		const bodyText = limitText(contentRoot ? getVisibleText(contentRoot) : "", 2800);
-		const headings = contentRoot ? getHeadings(contentRoot) : [];
 
-		return {
-			path,
-			title,
-			description,
-			headings,
-			content: bodyText,
-		};
-	}
-
-	function persistSharePreference(value) {
-		safeStorageSet(window.localStorage, SHARE_PAGE_KEY, value ? "true" : "false");
-	}
-
-	function hydrateSharePreference() {
-		return safeStorageGet(window.localStorage, SHARE_PAGE_KEY) === "true";
-	}
-
-	function createWelcomeMessage(context) {
-		return `喵，我先陪你读《${context.title || "这一页"}》。你可以让我总结这页、把难点讲白，或者直接追问卡住的地方。`;
-	}
-
-	function persistState(state) {
-		const snapshot = {
-			path: state.currentPath,
-			conversationId: state.conversationId,
-			visitorId: state.visitorId,
-			messages: state.messages.slice(-20),
-		};
-		safeStorageSet(window.sessionStorage, STORAGE_KEY, JSON.stringify(snapshot));
-	}
-
-	function hydrateState() {
-		const raw = safeStorageGet(window.sessionStorage, STORAGE_KEY);
-		if (!raw) {
-			return null;
+		function persistSharePreference(value) {
+			safeStorageSet(window.localStorage, SHARE_PAGE_KEY, value ? "true" : "false");
 		}
 
-		try {
-			const parsed = JSON.parse(raw);
-			if (!parsed || !Array.isArray(parsed.messages)) {
+		function hydrateSharePreference() {
+			return safeStorageGet(window.localStorage, SHARE_PAGE_KEY) === "true";
+		}
+
+		function createWelcomeMessage(context) {
+			return `喵，我先陪你读《${context.title || "这一页"}》。你可以让我总结这页、把难点讲白，或者直接追问卡住的地方。`;
+		}
+
+		function persistState(state) {
+			const snapshot = {
+				path: state.currentPath,
+				conversationId: state.conversationId,
+				messages: state.messages.slice(-20),
+			};
+			safeStorageSet(window.sessionStorage, STORAGE_KEY, JSON.stringify(snapshot));
+		}
+
+		function hydrateState() {
+			const raw = safeStorageGet(window.sessionStorage, STORAGE_KEY);
+			if (!raw) {
 				return null;
 			}
-			return parsed;
-		} catch {
-			return null;
-		}
-	}
 
-	function syncPageContext(state) {
-		const context = extractCurrentPageContext(state.sharePageContext);
-		state.currentContext = context;
-		state.currentPath = context.path;
-
-		if (state.pageTitleEl instanceof HTMLElement) {
-			state.pageTitleEl.textContent = context.title || "当前页面";
+			try {
+				const parsed = JSON.parse(raw);
+				if (!parsed || !Array.isArray(parsed.messages)) {
+					return null;
+				}
+				return parsed;
+			} catch {
+				return null;
+			}
 		}
 
-		if (state.pagePathEl instanceof HTMLElement) {
-			state.pagePathEl.textContent = context.path || "/";
+		function syncPageContext(state) {
+			const context = extractCurrentPageContext(state.sharePageContext);
+			state.currentContext = context;
+			state.currentPath = context.path;
+
+			if (state.pageTitleEl instanceof HTMLElement) {
+				state.pageTitleEl.textContent = context.title || "当前页面";
+			}
+
+			if (state.pagePathEl instanceof HTMLElement) {
+				state.pagePathEl.textContent = context.path || "/";
+			}
+
+			return context;
 		}
 
-		return context;
-	}
+		function setComposerBusy(state, busy) {
+			state.isSending = busy;
+			state.inputEl.readOnly = busy;
 
-	function setComposerBusy(state, busy) {
-		state.isSending = busy;
-		state.inputEl.readOnly = busy;
+			if (state.sendButton instanceof HTMLButtonElement) {
+				state.sendButton.disabled = busy;
+				state.sendButton.textContent = busy ? "发送中..." : "发送";
+			}
 
-		if (state.sendButton instanceof HTMLButtonElement) {
-			state.sendButton.disabled = busy;
-			state.sendButton.textContent = busy ? "发送中..." : "发送";
+			if (state.resetButton instanceof HTMLButtonElement) {
+				state.resetButton.disabled = busy;
+			}
+
+			state.promptButtons.forEach((button) => {
+				button.disabled = busy;
+			});
 		}
 
-		if (state.resetButton instanceof HTMLButtonElement) {
-			state.resetButton.disabled = busy;
-		}
+		function renderMessages(state) {
+			const items = state.messages.map((message) => {
+				const label = message.role === "assistant" ? "喵喵" : "你";
+				const avatar = message.role === "assistant" ? "喵" : "你";
+				const tone = message.tone || "default";
 
-		state.promptButtons.forEach((button) => {
-			button.disabled = busy;
-		});
-	}
-
-	function renderMessages(state) {
-		const items = state.messages.map((message) => {
-			const label = message.role === "assistant" ? "喵喵" : "你";
-			const avatar = message.role === "assistant" ? "喵" : "你";
-			const tone = message.tone || "default";
-
-			return `
-				<div class="miaomiao-chat-message" data-role="${escapeHtml(message.role)}" data-tone="${escapeHtml(tone)}">
-					<div class="miaomiao-chat-message__row">
-						<div class="miaomiao-chat-message__avatar">${avatar}</div>
-						<div class="miaomiao-chat-message__content">
-							<div class="miaomiao-chat-message__meta">${label}</div>
-							<div class="miaomiao-chat-message__bubble">${renderMessageHtml(message.content)}</div>
+				return `
+					<div class="miaomiao-chat-message" data-role="${escapeHtml(message.role)}" data-tone="${escapeHtml(tone)}">
+						<div class="miaomiao-chat-message__row">
+							<div class="miaomiao-chat-message__avatar">${avatar}</div>
+							<div class="miaomiao-chat-message__content">
+								<div class="miaomiao-chat-message__meta">${label}</div>
+								<div class="miaomiao-chat-message__bubble">${renderMessageHtml(message.content)}</div>
+							</div>
 						</div>
 					</div>
-				</div>
-			`;
-		});
+				`;
+			});
 
 		if (state.isSending) {
 			items.push(`
@@ -411,7 +391,6 @@
 			const responseData = await callProxy(state.config.proxyUrl, {
 				message,
 				conversationId: state.conversationId,
-				visitorId: state.visitorId,
 				shareCurrentPage: state.sharePageContext,
 				currentPath: pageContext.path,
 				currentTitle: pageContext.title,
@@ -548,7 +527,6 @@
 			sharePageContext,
 			isOpen: false,
 			isSending: false,
-			visitorId: hydrated?.visitorId || getVisitorId(),
 			conversationId:
 				hydrated?.path === initialContext.path ? hydrated?.conversationId || "" : "",
 			messages,

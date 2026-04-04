@@ -7,6 +7,7 @@ import { getRuntimeDataDir } from "./runtime-env";
 const VISITOR_COOKIE_NAME = "owen_visitor";
 const VISITOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 const SECRET_FILE_NAME = "visitor-secret.txt";
+const VISITOR_ID_PATTERN = /^[a-f0-9]{32}$/i;
 
 let secretPromise: Promise<string> | null = null;
 
@@ -83,35 +84,8 @@ function signVisitorId(visitorId: string, secret: string) {
 	return createHmac("sha256", secret).update(visitorId).digest("hex");
 }
 
-function buildFallbackFingerprint(request: Request) {
-	const forwardedFor =
-		request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-		request.headers.get("x-real-ip")?.trim() ||
-		request.headers.get("cf-connecting-ip")?.trim() ||
-		"ip:unknown";
-	const userAgent = request.headers.get("user-agent")?.trim() || "ua:unknown";
-	const acceptLanguage =
-		request.headers.get("accept-language")?.trim() || "lang:unknown";
-	const secChUa = request.headers.get("sec-ch-ua")?.trim() || "";
-	const secChPlatform =
-		request.headers.get("sec-ch-ua-platform")?.trim() || "";
-	const secChMobile = request.headers.get("sec-ch-ua-mobile")?.trim() || "";
-
-	return [
-		forwardedFor,
-		userAgent,
-		acceptLanguage,
-		secChUa,
-		secChPlatform,
-		secChMobile,
-	].join("|");
-}
-
-function deriveFallbackVisitorId(request: Request, secret: string) {
-	return createHmac("sha256", secret)
-		.update(buildFallbackFingerprint(request))
-		.digest("hex")
-		.slice(0, 40);
+function createVisitorId() {
+	return randomUUID().replace(/-/g, "");
 }
 
 function readSignedVisitorCookie(request: Request) {
@@ -124,7 +98,7 @@ function readSignedVisitorCookie(request: Request) {
 	const splitIndex = cookieValue.lastIndexOf(".");
 	const visitorId = cookieValue.slice(0, splitIndex);
 	const signature = cookieValue.slice(splitIndex + 1);
-	if (!visitorId || !signature) {
+	if (!visitorId || !signature || !VISITOR_ID_PATTERN.test(visitorId)) {
 		return null;
 	}
 
@@ -161,7 +135,7 @@ export async function resolveTrustedVisitor(request: Request) {
 		}
 	}
 
-	const visitorId = deriveFallbackVisitorId(request, secret);
+	const visitorId = createVisitorId();
 	return {
 		visitorId,
 		setCookie: serializeVisitorCookie(visitorId, signVisitorId(visitorId, secret)),

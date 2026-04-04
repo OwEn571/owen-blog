@@ -2,7 +2,7 @@
 import { render } from "astro:content";
 import { Icon } from "astro-icon/components";
 
-import { getFileDirFromPath, getPostUrl,getTagUrl } from "@/utils/url-utils";
+import { getFileDirFromPath, getPostUrl, getTagUrl } from "@/utils/url-utils";
 
 import { siteConfig } from "../../../config";
 import I18nKey from "../../../i18n/i18nKey";
@@ -11,7 +11,11 @@ import Image from "../../atoms/Image/Image.astro";
 import PostMetadata from "./PostMeta.astro";
 import type { PostCardProps } from "./types";
 
-const { entry, style }: PostCardProps = Astro.props as PostCardProps;
+const {
+	entry,
+	style,
+	preferUpdatedDate = false,
+}: PostCardProps = Astro.props as PostCardProps;
 const className = Astro.props.class;
 
 const {
@@ -84,6 +88,7 @@ const { remarkPluginFrontmatter } = await render(entry);
 			category={category || ""}
 			hideTagsForMobile={true}
 			hideUpdateDate={true}
+			preferUpdatedDate={preferUpdatedDate}
 			className="mb-4"
 			showOnlyBasicMeta={true}
 			words={remarkPluginFrontmatter.words}

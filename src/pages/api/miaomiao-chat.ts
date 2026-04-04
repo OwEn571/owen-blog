@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 
+import { resolveTrustedVisitor } from "../../server/trusted-visitor";
+
 const DEFAULT_DIFY_API_BASE_URL = "https://api.dify.ai/v1";
 
 function compilePrompt(payload: {
@@ -57,11 +59,12 @@ function sanitizeHeadings(input: unknown) {
 		.slice(0, 12);
 }
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
+			...(extraHeaders || {}),
 		},
 	});
 }
@@ -152,6 +155,12 @@ export const POST: APIRoute = async ({ request }) => {
 	const currentPageContent = shareCurrentPage
 		? sanitizeText(payload.currentPageContent, 12000)
 		: "";
+	const trustedVisitor = await resolveTrustedVisitor(request);
+	const responseHeaders = trustedVisitor.setCookie
+		? {
+				"Set-Cookie": trustedVisitor.setCookie,
+			}
+		: undefined;
 
 	try {
 		const response = await fetch(
@@ -169,18 +178,18 @@ export const POST: APIRoute = async ({ request }) => {
 						current_description: currentDescription,
 						current_headings: currentHeadings.join("\n"),
 					},
-						query: compilePrompt({
-							message,
-							shareCurrentPage,
-							currentPath,
-							currentTitle,
-							currentDescription,
+					query: compilePrompt({
+						message,
+						shareCurrentPage,
+						currentPath,
+						currentTitle,
+						currentDescription,
 						currentHeadings,
 						currentPageContent,
 					}),
 					response_mode: "streaming",
 					conversation_id: payload.conversationId || undefined,
-					user: String(payload.visitorId || "owen-blog-guest"),
+					user: trustedVisitor.visitorId,
 				}),
 			},
 		);
@@ -192,6 +201,7 @@ export const POST: APIRoute = async ({ request }) => {
 					error: errorText || `Dify request failed with status ${response.status}`,
 				},
 				response.status,
+				responseHeaders,
 			);
 		}
 
@@ -202,25 +212,26 @@ export const POST: APIRoute = async ({ request }) => {
 				answer: sanitizeAssistantAnswer(data.answer || ""),
 				conversationId:
 					data.conversation_id || payload.conversationId || "",
-			});
+			}, 200, responseHeaders);
 		}
 
 		const rawStream = await response.text();
 		const data = parseStreamingChatResponse(rawStream);
 		if (data.streamError) {
-			return json({ error: data.streamError }, 502);
+			return json({ error: data.streamError }, 502, responseHeaders);
 		}
 
 		return json({
 			answer: sanitizeAssistantAnswer(data.answer || ""),
 			conversationId: data.conversationId || payload.conversationId || "",
-		});
+		}, 200, responseHeaders);
 	} catch (error) {
 		return json(
 			{
 				error: error instanceof Error ? error.message : "Unknown error",
 			},
 			500,
+			responseHeaders,
 		);
 	}
 };

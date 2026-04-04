@@ -3,6 +3,7 @@ import path from "node:path";
 
 import Comment from "@components/comment/index.astro";
 import PostMetadata from "@components/features/posts/PostMeta.astro";
+import SeriesNavigator from "@components/features/posts/SeriesNavigator.astro";
 import License from "@components/misc/License.astro";
 import Markdown from "@components/misc/Markdown.astro";
 import SharePoster from "@components/misc/SharePoster.svelte";
@@ -178,6 +179,7 @@ const jsonLd = {
 		url: Astro.site,
 	},
 	datePublished: formatDateToYYYYMMDD(entry.data.published),
+	dateModified: formatDateToYYYYMMDD(entry.data.updated || entry.data.published),
 	inLanguage: entry.data.lang
 		? entry.data.lang.replace("_", "-")
 		: siteConfig.lang.replace("_", "-"),
@@ -385,6 +387,8 @@ const articleEyebrows = [
             )}
         </div>
     </div>
+
+    <SeriesNavigator entry={entry} />
 
     <!-- 评论 -->
     <Comment post={entry} />

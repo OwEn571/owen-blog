@@ -4,6 +4,13 @@ import { initPostIdMap } from "@utils/permalink-utils";
 import { getCategoryUrl, getPostUrl } from "@utils/url-utils";
 import { type CollectionEntry, getCollection } from "astro:content";
 
+type PostLike = {
+	id: string;
+	data?: {
+		published?: Date;
+	};
+};
+
 // // Retrieve posts and sort them by publication date
 async function getRawSortedPosts() {
 	const allBlogPosts = await getCollection("posts", ({ data }) => {
@@ -36,10 +43,48 @@ async function getRawSortedPosts() {
 	return sorted;
 }
 
-function getSeriesKey(postId: string) {
+export function getSeriesKey(postId: string) {
 	const parts = postId.split("/");
 	if (parts.length <= 1) {return "";}
 	return parts.slice(0, -1).join("/");
+}
+
+function getSeriesSlug(postId: string) {
+	return postId.split("/").pop() || postId;
+}
+
+function getSeriesOrderValue(postId: string) {
+	const slug = getSeriesSlug(postId);
+	const match = slug.match(/^(\d+)(?=[-_]|$)/);
+	return match ? Number.parseInt(match[1], 10) : Number.POSITIVE_INFINITY;
+}
+
+export function comparePostsBySeriesOrder<T extends PostLike>(left: T, right: T) {
+	const leftOrder = getSeriesOrderValue(left.id);
+	const rightOrder = getSeriesOrderValue(right.id);
+
+	if (leftOrder !== rightOrder) {
+		return leftOrder - rightOrder;
+	}
+
+	const leftPublished = left.data?.published?.getTime();
+	const rightPublished = right.data?.published?.getTime();
+	if (
+		typeof leftPublished === "number" &&
+		typeof rightPublished === "number" &&
+		leftPublished !== rightPublished
+	) {
+		return leftPublished - rightPublished;
+	}
+
+	return getSeriesSlug(left.id).localeCompare(getSeriesSlug(right.id), "zh-CN", {
+		numeric: true,
+		sensitivity: "base",
+	});
+}
+
+export function sortPostsBySeriesOrder<T extends PostLike>(posts: T[]) {
+	return [...posts].sort(comparePostsBySeriesOrder);
 }
 
 export async function getSortedPosts() {
@@ -65,6 +110,7 @@ export async function getSortedPosts() {
 
 	for (const group of seriesGroups.values()) {
 		if (group.length <= 1) {continue;}
+		group.sort(comparePostsBySeriesOrder);
 
 		for (let i = 0; i < group.length; i++) {
 			const current = group[i];

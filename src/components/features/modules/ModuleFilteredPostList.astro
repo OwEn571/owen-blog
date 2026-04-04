@@ -2,6 +2,7 @@
 import type { CollectionEntry } from "astro:content";
 
 import PostCard from "@components/features/posts/PostCard.astro";
+import { comparePostsBySeriesOrder } from "@utils/content-utils";
 
 import type { ModuleDirectoryCard } from "../../../utils/module-content-utils";
 import { getModuleDirectoryNameFromId } from "../../../utils/module-content-utils";
@@ -31,7 +32,54 @@ const {
 	entries = [],
 } = Astro.props;
 
-const filterableEntries = entries.map((entry) => ({
+const directoryOrderMap = new Map(
+	cards.map((card, index) => [card.directoryName, index]),
+);
+const postOrderMap = new Map<string, number>();
+
+cards.forEach((card) => {
+	card.allPosts.forEach((post, index) => {
+		postOrderMap.set(post.id, index);
+	});
+});
+
+const orderedEntries = [...entries].sort((left, right) => {
+	const leftDirectoryName = getModuleDirectoryNameFromId(left.id, moduleKey);
+	const rightDirectoryName = getModuleDirectoryNameFromId(right.id, moduleKey);
+	const leftDirectoryOrder =
+		directoryOrderMap.get(leftDirectoryName) ?? Number.MAX_SAFE_INTEGER;
+	const rightDirectoryOrder =
+		directoryOrderMap.get(rightDirectoryName) ?? Number.MAX_SAFE_INTEGER;
+
+	if (leftDirectoryOrder !== rightDirectoryOrder) {
+		return leftDirectoryOrder - rightDirectoryOrder;
+	}
+
+	const leftPostOrder = postOrderMap.get(left.id);
+	const rightPostOrder = postOrderMap.get(right.id);
+	if (leftPostOrder !== undefined || rightPostOrder !== undefined) {
+		if (leftPostOrder === undefined) {
+			return 1;
+		}
+		if (rightPostOrder === undefined) {
+			return -1;
+		}
+		if (leftPostOrder !== rightPostOrder) {
+			return leftPostOrder - rightPostOrder;
+		}
+	}
+
+	if (leftDirectoryName === rightDirectoryName) {
+		return comparePostsBySeriesOrder(left, right);
+	}
+
+	return left.id.localeCompare(right.id, "zh-CN", {
+		numeric: true,
+		sensitivity: "base",
+	});
+});
+
+const filterableEntries = orderedEntries.map((entry) => ({
 	entry,
 	directoryName: getModuleDirectoryNameFromId(entry.id, moduleKey),
 }));
@@ -105,7 +153,11 @@ const filterableEntries = entries.map((entry) => ({
 					data-directory-name={directoryName}
 					style={`--i: ${index}; --interval: 50ms;`}
 				>
-					<PostCard entry={entry} class:list="onload-animation" />
+					<PostCard
+						entry={entry}
+						preferUpdatedDate={moduleKey === "study"}
+						class:list="onload-animation"
+					/>
 				</div>
 			))
 		}

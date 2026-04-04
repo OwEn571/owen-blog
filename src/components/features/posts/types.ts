@@ -4,6 +4,7 @@ import type { CollectionEntry } from "astro:content";
 export interface PostCardProps {
 	class?: string;
 	entry: CollectionEntry<"posts">;
+	preferUpdatedDate?: boolean;
 	style?: string;
 }
 
@@ -20,6 +21,7 @@ export interface PostMetaProps {
 	showOnlyBasicMeta?: boolean;
 	words?: number;
 	minutes?: number;
+	preferUpdatedDate?: boolean;
 	showWordCount?: boolean;
 }
 

@@ -1,0 +1,406 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { Icon } from "astro-icon/components";
+
+import {
+	comparePostsBySeriesOrder,
+	getSeriesKey,
+	getSortedPosts,
+} from "@utils/content-utils";
+import { formatDateToYYYYMMDD } from "@utils/date-utils";
+import { getPostUrl } from "@utils/url-utils";
+
+interface Props {
+	entry: CollectionEntry<"posts">;
+}
+
+const { entry } = Astro.props;
+
+const TITLE_TOKEN_MAP: Record<string, string> = {
+	ai: "AI",
+	api: "API",
+	cv: "CV",
+	fastapi: "FastAPI",
+	gpu: "GPU",
+	llm: "LLM",
+	ml: "ML",
+	nlp: "NLP",
+	oj: "OJ",
+	ppo: "PPO",
+	py: "Py",
+	python: "Python",
+	pytorch: "PyTorch",
+	rl: "RL",
+	sft: "SFT",
+	ui: "UI",
+	ux: "UX",
+};
+
+function humanizeSeriesDirectory(value: string) {
+	return value
+		.split(/[-_]+/g)
+		.filter(Boolean)
+		.map(
+			(segment) =>
+				TITLE_TOKEN_MAP[segment.toLowerCase()] ??
+				`${segment.charAt(0).toUpperCase()}${segment.slice(1)}`,
+		)
+		.join(" ");
+}
+
+const seriesKey = getSeriesKey(entry.id);
+const sortedPosts = seriesKey ? await getSortedPosts() : [];
+const seriesPosts = seriesKey
+	? sortedPosts
+			.filter((post) => getSeriesKey(post.id) === seriesKey)
+			.sort(comparePostsBySeriesOrder)
+	: [];
+const currentIndex = seriesPosts.findIndex((post) => post.id === entry.id);
+const currentStep = currentIndex >= 0 ? currentIndex + 1 : 0;
+const seriesDirectory = seriesKey.split("/").pop() ?? "";
+const fallbackSeriesTitle = humanizeSeriesDirectory(seriesDirectory);
+const seriesTitle = entry.data.category?.trim() || fallbackSeriesTitle || "专题阅读";
+const seriesLabel = seriesKey.startsWith("study/") ? "专题阅读" : "系列导航";
+---
+
+{
+	seriesPosts.length > 1 && (
+		<section class="series-jump-shell card-base mb-6" aria-labelledby="series-jump-title">
+			<div class="series-jump-header">
+				<div class="series-jump-copy">
+					<p class="series-jump-eyebrow">{seriesLabel}</p>
+					<h2 id="series-jump-title" class="series-jump-title">
+						{seriesTitle}
+					</h2>
+					<p class="series-jump-description">
+						这篇文章属于同一条阅读链。你可以直接在这里切换，不用再回到列表页重新找。
+					</p>
+				</div>
+				<div class="series-jump-progress" aria-label="当前专题进度">
+					<span>当前进度</span>
+					<strong>
+						{currentStep} / {seriesPosts.length}
+					</strong>
+				</div>
+			</div>
+
+			<div class="series-jump-grid" role="list">
+				{
+					seriesPosts.map((post, index) => {
+						const isCurrent = post.id === entry.id;
+						return (
+							<a
+								href={getPostUrl(post)}
+								data-no-swup
+								role="listitem"
+								aria-current={isCurrent ? "page" : undefined}
+								class:list={[
+									"series-jump-item",
+									{ "is-current": isCurrent },
+								]}
+							>
+								<span class="series-jump-index">
+									{String(index + 1).padStart(2, "0")}
+								</span>
+								<div class="series-jump-item-copy">
+									<strong>{post.data.title}</strong>
+									<span>
+										更新于{" "}
+										{formatDateToYYYYMMDD(
+											post.data.updated ||
+												post.data.published,
+										)}
+									</span>
+								</div>
+								{
+									isCurrent ? (
+										<span class="series-jump-current">
+											当前
+										</span>
+									) : (
+										<Icon
+											name="material-symbols:chevron-right-rounded"
+											class="series-jump-chevron"
+										/>
+									)
+								}
+							</a>
+						);
+					})
+				}
+			</div>
+		</section>
+	)
+}
+
+<style>
+	.series-jump-shell {
+		padding: 1.25rem;
+		border: 1px solid rgba(108, 166, 255, 0.14);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 255, 0.78)),
+			radial-gradient(circle at top right, rgba(123, 168, 255, 0.14), transparent 12rem);
+		box-shadow:
+			0 20px 48px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+	}
+
+	.series-jump-header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.series-jump-copy {
+		max-width: 42rem;
+	}
+
+	.series-jump-eyebrow {
+		margin: 0 0 0.35rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: rgba(83, 122, 214, 0.82);
+	}
+
+	.series-jump-title {
+		margin: 0;
+		font-size: clamp(1.1rem, 1rem + 0.5vw, 1.38rem);
+		line-height: 1.2;
+		font-weight: 760;
+		color: rgba(16, 24, 40, 0.9);
+	}
+
+	.series-jump-description {
+		margin: 0.55rem 0 0;
+		font-size: 0.96rem;
+		line-height: 1.7;
+		color: rgba(51, 65, 85, 0.72);
+	}
+
+	.series-jump-progress {
+		display: inline-flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 8rem;
+		padding: 0.85rem 1rem;
+		border-radius: 1rem;
+		border: 1px solid rgba(108, 166, 255, 0.16);
+		background: rgba(255, 255, 255, 0.72);
+		box-shadow:
+			0 14px 32px rgba(15, 23, 42, 0.06),
+			inset 0 1px 0 rgba(255, 255, 255, 0.78);
+	}
+
+	.series-jump-progress span {
+		font-size: 0.78rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: rgba(71, 85, 105, 0.66);
+	}
+
+	.series-jump-progress strong {
+		font-size: 1.25rem;
+		font-weight: 760;
+		color: rgba(37, 99, 235, 0.92);
+	}
+
+	.series-jump-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr));
+		gap: 0.9rem;
+	}
+
+	.series-jump-item {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.9rem;
+		padding: 0.95rem 1rem;
+		border-radius: 1.1rem;
+		border: 1px solid rgba(148, 163, 184, 0.18);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 255, 0.72));
+		box-shadow:
+			0 18px 36px rgba(15, 23, 42, 0.05),
+			inset 0 1px 0 rgba(255, 255, 255, 0.72);
+		text-decoration: none;
+		transition:
+			transform 220ms ease,
+			border-color 220ms ease,
+			box-shadow 220ms ease,
+			background 220ms ease;
+	}
+
+	.series-jump-item:hover {
+		transform: translateY(-2px);
+		border-color: rgba(96, 165, 250, 0.28);
+		box-shadow:
+			0 22px 42px rgba(15, 23, 42, 0.08),
+			0 0 0 1px rgba(96, 165, 250, 0.1);
+	}
+
+	.series-jump-item.is-current {
+		border-color: rgba(59, 130, 246, 0.34);
+		background:
+			linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(230, 244, 255, 0.88)),
+			radial-gradient(circle at top right, rgba(96, 165, 250, 0.16), transparent 10rem);
+		box-shadow:
+			0 24px 48px rgba(59, 130, 246, 0.12),
+			0 0 0 1px rgba(96, 165, 250, 0.12);
+	}
+
+	.series-jump-index {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 2.5rem;
+		height: 2.5rem;
+		padding: 0 0.55rem;
+		border-radius: 999px;
+		background: rgba(37, 99, 235, 0.1);
+		font-size: 0.86rem;
+		font-weight: 700;
+		color: rgba(29, 78, 216, 0.86);
+	}
+
+	.series-jump-item-copy {
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.32rem;
+	}
+
+	.series-jump-item-copy strong {
+		font-size: 0.98rem;
+		line-height: 1.45;
+		font-weight: 680;
+		color: rgba(15, 23, 42, 0.88);
+	}
+
+	.series-jump-item-copy span {
+		font-size: 0.8rem;
+		color: rgba(71, 85, 105, 0.7);
+	}
+
+	.series-jump-current {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.32rem 0.6rem;
+		border-radius: 999px;
+		background: rgba(37, 99, 235, 0.12);
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: rgba(29, 78, 216, 0.88);
+	}
+
+	.series-jump-chevron {
+		font-size: 1.5rem;
+		color: rgba(37, 99, 235, 0.72);
+	}
+
+	:root.dark .series-jump-shell {
+		border-color: rgba(118, 156, 255, 0.16);
+		background:
+			linear-gradient(180deg, rgba(16, 22, 33, 0.94), rgba(12, 18, 28, 0.84)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.16), transparent 12rem);
+		box-shadow:
+			0 24px 56px rgba(0, 0, 0, 0.24),
+			inset 0 1px 0 rgba(255, 255, 255, 0.06);
+	}
+
+	:root.dark .series-jump-eyebrow {
+		color: rgba(162, 195, 255, 0.82);
+	}
+
+	:root.dark .series-jump-title {
+		color: rgba(244, 247, 255, 0.92);
+	}
+
+	:root.dark .series-jump-description {
+		color: rgba(203, 213, 225, 0.74);
+	}
+
+	:root.dark .series-jump-progress {
+		border-color: rgba(118, 156, 255, 0.18);
+		background: rgba(14, 22, 34, 0.72);
+		box-shadow:
+			0 18px 40px rgba(0, 0, 0, 0.24),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+
+	:root.dark .series-jump-progress span {
+		color: rgba(191, 201, 219, 0.68);
+	}
+
+	:root.dark .series-jump-progress strong {
+		color: rgba(162, 195, 255, 0.9);
+	}
+
+	:root.dark .series-jump-item {
+		border-color: rgba(118, 156, 255, 0.12);
+		background:
+			linear-gradient(180deg, rgba(18, 25, 37, 0.88), rgba(13, 20, 31, 0.78));
+		box-shadow:
+			0 18px 38px rgba(0, 0, 0, 0.18),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	}
+
+	:root.dark .series-jump-item:hover {
+		border-color: rgba(118, 156, 255, 0.24);
+		box-shadow:
+			0 24px 46px rgba(0, 0, 0, 0.24),
+			0 0 0 1px rgba(118, 156, 255, 0.12);
+	}
+
+	:root.dark .series-jump-item.is-current {
+		border-color: rgba(118, 156, 255, 0.3);
+		background:
+			linear-gradient(180deg, rgba(20, 33, 52, 0.96), rgba(16, 26, 42, 0.88)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.14), transparent 10rem);
+		box-shadow:
+			0 26px 52px rgba(0, 0, 0, 0.26),
+			0 0 0 1px rgba(118, 156, 255, 0.14);
+	}
+
+	:root.dark .series-jump-index {
+		background: rgba(118, 156, 255, 0.14);
+		color: rgba(186, 210, 255, 0.92);
+	}
+
+	:root.dark .series-jump-item-copy strong {
+		color: rgba(241, 245, 249, 0.92);
+	}
+
+	:root.dark .series-jump-item-copy span {
+		color: rgba(191, 201, 219, 0.68);
+	}
+
+	:root.dark .series-jump-current {
+		background: rgba(118, 156, 255, 0.16);
+		color: rgba(186, 210, 255, 0.92);
+	}
+
+	:root.dark .series-jump-chevron {
+		color: rgba(162, 195, 255, 0.78);
+	}
+
+	@media (max-width: 720px) {
+		.series-jump-shell {
+			padding: 1rem;
+		}
+
+		.series-jump-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.series-jump-item {
+			padding: 0.9rem;
+		}
+	}
+</style>
