@@ -4,20 +4,52 @@ const DEFAULT_DIFY_API_BASE_URL = "https://api.dify.ai/v1";
 
 function compilePrompt(payload: {
 	message?: string;
-	context?: string;
 	currentPath?: string;
 	currentTitle?: string;
+	currentDescription?: string;
+	currentHeadings?: string[];
+	currentPageContent?: string;
 }) {
 	return [
-		"你是 Owen 博客里的助手“喵喵”。请优先基于提供的站内资料回答；如果资料不足，请明确说明，再给出一般性的解释。",
-		payload.context ? `【站内资料】\n${payload.context}` : "",
-		payload.currentTitle || payload.currentPath
-			? `【当前页面】\n${payload.currentTitle ? `标题：${payload.currentTitle}\n` : ""}${payload.currentPath ? `路径：${payload.currentPath}` : ""}`.trim()
+		"你是 Owen 博客里的陪读助手“喵喵”。",
+		"回答规则：1. 优先依据【当前页面正文】回答。2. 不要假装读过整站索引、其他页面或仓库里没有提供给你的内容。3. 如果当前页面信息不够，直接说明“这页里没有写到”或“当前页信息不够”，然后再补充通用解释。4. 除非用户明确要求，不要输出文件路径、检索清单或资料目录。",
+		payload.currentTitle || payload.currentPath || payload.currentDescription
+			? [
+					"【当前页面信息】",
+					payload.currentTitle ? `标题：${payload.currentTitle}` : "",
+					payload.currentPath ? `路径：${payload.currentPath}` : "",
+					payload.currentDescription ? `摘要：${payload.currentDescription}` : "",
+				]
+					.filter(Boolean)
+					.join("\n")
 			: "",
+		payload.currentHeadings?.length
+			? `【当前页面目录】\n${payload.currentHeadings.join("\n")}`
+			: "",
+		payload.currentPageContent ? `【当前页面正文】\n${payload.currentPageContent}` : "",
 		`【用户问题】\n${payload.message || ""}`,
 	]
 		.filter(Boolean)
 		.join("\n\n");
+}
+
+function sanitizeText(input: unknown, maxLength: number) {
+	return String(input || "")
+		.replace(/\r\n/g, "\n")
+		.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "")
+		.trim()
+		.slice(0, maxLength);
+}
+
+function sanitizeHeadings(input: unknown) {
+	if (!Array.isArray(input)) {
+		return [];
+	}
+
+	return input
+		.map((item) => sanitizeText(item, 120))
+		.filter(Boolean)
+		.slice(0, 12);
 }
 
 function json(body: unknown, status = 200) {
@@ -82,11 +114,8 @@ function parseStreamingChatResponse(raw: string) {
 }
 
 export const POST: APIRoute = async ({ request }) => {
-	const difyApiBase =
-		process.env.DIFY_API_BASE_URL ||
-		process.env.PUBLIC_DIFY_API_BASE_URL ||
-		DEFAULT_DIFY_API_BASE_URL;
-	const difyApiKey = process.env.DIFY_API_KEY || process.env.PUBLIC_DIFY_API_KEY || "";
+	const difyApiBase = process.env.DIFY_API_BASE_URL || DEFAULT_DIFY_API_BASE_URL;
+	const difyApiKey = process.env.DIFY_API_KEY || "";
 
 	if (!difyApiKey) {
 		return json(
@@ -110,6 +139,12 @@ export const POST: APIRoute = async ({ request }) => {
 		return json({ error: "message is required" }, 400);
 	}
 
+	const currentPath = sanitizeText(payload.currentPath, 240);
+	const currentTitle = sanitizeText(payload.currentTitle, 240);
+	const currentDescription = sanitizeText(payload.currentDescription, 500);
+	const currentHeadings = sanitizeHeadings(payload.currentHeadings);
+	const currentPageContent = sanitizeText(payload.currentPageContent, 12000);
+
 	try {
 		const response = await fetch(
 			`${String(difyApiBase).replace(/\/+$/, "")}/chat-messages`,
@@ -121,14 +156,18 @@ export const POST: APIRoute = async ({ request }) => {
 				},
 				body: JSON.stringify({
 					inputs: {
-						current_path: String(payload.currentPath || ""),
-						current_title: String(payload.currentTitle || ""),
+						current_path: currentPath,
+						current_title: currentTitle,
+						current_description: currentDescription,
+						current_headings: currentHeadings.join("\n"),
 					},
 					query: compilePrompt({
 						message,
-						context: String(payload.context || ""),
-						currentPath: String(payload.currentPath || ""),
-						currentTitle: String(payload.currentTitle || ""),
+						currentPath,
+						currentTitle,
+						currentDescription,
+						currentHeadings,
+						currentPageContent,
 					}),
 					response_mode: "streaming",
 					conversation_id: payload.conversationId || undefined,

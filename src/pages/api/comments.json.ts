@@ -33,27 +33,6 @@ function sanitizeMultiline(input: unknown, maxLength: number) {
 		.slice(0, maxLength);
 }
 
-function normalizeWebsite(input: unknown) {
-	const value = sanitizeText(input, 240);
-	if (!value) {
-		return "";
-	}
-
-	const withProtocol = /^https?:\/\//i.test(value)
-		? value
-		: `https://${value}`;
-
-	try {
-		const url = new URL(withProtocol);
-		if (!["http:", "https:"].includes(url.protocol)) {
-			return "";
-		}
-		return url.toString();
-	} catch {
-		return "";
-	}
-}
-
 export const GET: APIRoute = async ({ request }) => {
 	const url = new URL(request.url);
 	const path = normalizePathKey(url.searchParams.get("path") || "/");
@@ -77,7 +56,7 @@ export const POST: APIRoute = async ({ request }) => {
 	const path = normalizePathKey(String(payload.path || "/"));
 	const author = sanitizeText(payload.author, 32);
 	const content = sanitizeMultiline(payload.content, 2000);
-	const website = normalizeWebsite(payload.website);
+	const contact = sanitizeText(payload.contact, 120);
 	const visitorId = sanitizeVisitorId(String(payload.visitorId || ""));
 
 	if (!author) {
@@ -93,7 +72,7 @@ export const POST: APIRoute = async ({ request }) => {
 			path,
 			author,
 			content,
-			website: website || undefined,
+			contact: contact || undefined,
 			visitorId,
 		});
 		return json(result, 201);

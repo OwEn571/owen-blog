@@ -1,0 +1,22 @@
+[Unit]
+Description=Caddy for OwEn Blog
+After=network-online.target owen-blog.service
+Wants=network-online.target
+Requires=owen-blog.service
+
+[Service]
+Type=simple
+Environment=HOME=/var/lib/caddy
+Environment=XDG_CONFIG_HOME=/var/lib/caddy/config
+Environment=XDG_DATA_HOME=/var/lib/caddy/data
+ExecStartPre=/bin/mkdir -p /var/lib/caddy/config /var/lib/caddy/data
+ExecStart=/usr/local/bin/caddy run --config /home/ubuntu/owen/owen-blog/deploy/caddy/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /home/ubuntu/owen/owen-blog/deploy/caddy/Caddyfile
+Restart=always
+RestartSec=5
+TimeoutStartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -5,9 +5,6 @@ import { url } from "@/utils/url-utils";
 const miaomiaoUid = `miaomiao-chat-${Math.random().toString(36).slice(2, 10)}`;
 const miaomiaoPanelId = `${miaomiaoUid}-panel`;
 const miaomiaoButtonId = `${miaomiaoUid}-button`;
-const publicDifyApiBase =
-	import.meta.env.PUBLIC_DIFY_API_BASE_URL || "https://api.dify.ai/v1";
-const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 ---
 
 <div class="miaomiao-chat-shell" id={miaomiaoUid} data-miaomiao-chat>
@@ -23,7 +20,10 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 		<span class="miaomiao-chat-fab__icon">
 			<Icon name="mdi:cat" />
 		</span>
-		<span class="miaomiao-chat-fab__label">喵喵</span>
+		<span class="miaomiao-chat-fab__text">
+			<strong>喵喵</strong>
+			<span>Page Companion</span>
+		</span>
 	</button>
 
 	<section
@@ -36,10 +36,10 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 	>
 		<div class="miaomiao-chat-panel__header">
 			<div class="miaomiao-chat-panel__copy">
-				<p class="miaomiao-chat-panel__eyebrow">MiaoMiao Bot</p>
+				<p class="miaomiao-chat-panel__eyebrow">Page Companion</p>
 				<h3 class="miaomiao-chat-panel__title">喵喵</h3>
 				<p class="miaomiao-chat-panel__note">
-					会先检索站内文章与源码摘要，再把上下文交给你的 Dify bot。
+					我会先读你现在打开的这一页，再帮你梳理重点、解释难点，或者把内容讲得更白一点。
 				</p>
 			</div>
 			<button
@@ -52,35 +52,81 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 			</button>
 		</div>
 
+		<div class="miaomiao-chat-panel__reading">
+			<div class="miaomiao-chat-panel__reading-icon" aria-hidden="true">
+				<Icon name="material-symbols:auto-stories-outline-rounded" />
+			</div>
+			<div class="miaomiao-chat-panel__reading-copy">
+				<span class="miaomiao-chat-panel__reading-label">正在陪你读</span>
+				<strong class="miaomiao-chat-panel__reading-title" data-miaomiao-chat-page-title>
+					正在识别当前页面
+				</strong>
+				<span class="miaomiao-chat-panel__reading-path" data-miaomiao-chat-page-path>
+					/
+				</span>
+			</div>
+		</div>
+
+		<div class="miaomiao-chat-panel__quicklist">
+			<button
+				type="button"
+				class="miaomiao-chat-panel__quick"
+				data-miaomiao-chat-prompt="先帮我把这一页讲白，再提炼 3 个最重要的点。"
+			>
+				先讲白这页
+			</button>
+			<button
+				type="button"
+				class="miaomiao-chat-panel__quick"
+				data-miaomiao-chat-prompt="从当前页面里挑出最容易混淆的 3 个地方，分别解释。"
+			>
+				找容易混淆处
+			</button>
+			<button
+				type="button"
+				class="miaomiao-chat-panel__quick"
+				data-miaomiao-chat-prompt="如果我要把这一页的内容真的用起来，最该先记住什么？"
+			>
+				问怎么用
+			</button>
+		</div>
+
 		<div class="miaomiao-chat-panel__status" data-miaomiao-chat-status>
-			喵喵已待命，可以直接问博客内容、当前页面内容，或者站内实现细节。
+			喵喵会优先根据当前页面正文回答，如果这页信息不够，我会直接告诉你。
 		</div>
 
 		<div class="miaomiao-chat-panel__messages" data-miaomiao-chat-messages></div>
 
 		<form class="miaomiao-chat-panel__composer" data-miaomiao-chat-form>
-			<textarea
-				class="miaomiao-chat-panel__input"
-				data-miaomiao-chat-input
-				rows="3"
-				placeholder="例如：帮我总结 LangChain 里的 Tools、Memory 和 Agents 区别"
-				aria-label="给喵喵发送消息"
-			></textarea>
+			<label class="miaomiao-chat-panel__composer-shell">
+				<span class="miaomiao-chat-panel__composer-label">继续追问这页</span>
+				<textarea
+					class="miaomiao-chat-panel__input"
+					data-miaomiao-chat-input
+					rows="3"
+					placeholder="例如：这篇里最关键的概念是什么？如果我要写代码，先记住哪几件事？"
+					aria-label="给喵喵发送消息"
+				></textarea>
+			</label>
+
 			<div class="miaomiao-chat-panel__actions">
-				<button
-					type="button"
-					class="miaomiao-chat-panel__ghost"
-					data-miaomiao-chat-reset
-				>
-					新对话
-				</button>
-				<button
-					type="submit"
-					class="miaomiao-chat-panel__send"
-					data-miaomiao-chat-send
-				>
-					发送
-				</button>
+				<p class="miaomiao-chat-panel__hint">Ctrl/Cmd + Enter 发送。切换页面后，喵喵会自动跟着读新页面。</p>
+				<div class="miaomiao-chat-panel__buttons">
+					<button
+						type="button"
+						class="miaomiao-chat-panel__ghost"
+						data-miaomiao-chat-reset
+					>
+						新对话
+					</button>
+					<button
+						type="submit"
+						class="miaomiao-chat-panel__send"
+						data-miaomiao-chat-send
+					>
+						发送
+					</button>
+				</div>
 			</div>
 		</form>
 	</section>
@@ -100,60 +146,71 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
   .miaomiao-chat-fab
     display inline-flex
     align-items center
-    justify-content center
-    gap .55rem
-    min-width 3.5rem
-    height 3.5rem
-    padding 0 .95rem
-    border-radius 1.15rem
-    border 1px solid rgba(255, 184, 208, .26)
-    background linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,240,246,.62)), radial-gradient(circle at top right, rgba(255, 189, 214, .24), transparent 8rem)
-    box-shadow 0 24px 56px rgba(120, 82, 101, .16), inset 0 1px 0 rgba(255,255,255,.78)
-    backdrop-filter blur(18px) saturate(1.06)
-    -webkit-backdrop-filter blur(18px) saturate(1.06)
-    color rgba(116, 50, 81, .94)
+    gap .72rem
+    min-width 3.75rem
+    height 3.6rem
+    padding 0 1rem 0 .8rem
+    border-radius 1.2rem
+    border 1px solid rgba(255, 192, 216, .24)
+    background linear-gradient(180deg, rgba(255,255,255,.86), rgba(255,243,248,.72)), radial-gradient(circle at top right, rgba(255, 192, 216, .24), transparent 9rem), radial-gradient(circle at bottom left, rgba(118,156,255,.12), transparent 10rem)
+    box-shadow 0 28px 64px rgba(120, 82, 101, .16), inset 0 1px 0 rgba(255,255,255,.84)
+    backdrop-filter blur(18px) saturate(1.04)
+    -webkit-backdrop-filter blur(18px) saturate(1.04)
+    color rgba(88, 37, 62, .94)
     transition transform .22s ease, box-shadow .22s ease, border-color .22s ease
 
   .miaomiao-chat-fab:hover,
   .miaomiao-chat-fab:focus-visible
-    transform translateY(-2px) scale(1.02)
-    border-color rgba(255, 184, 208, .42)
-    box-shadow 0 28px 64px rgba(120, 82, 101, .2), 0 0 24px rgba(255, 189, 214, .14)
+    transform translateY(-2px)
+    border-color rgba(255, 192, 216, .4)
+    box-shadow 0 34px 72px rgba(120,82,101,.2), 0 0 28px rgba(255,192,216,.14)
 
   .miaomiao-chat-fab__icon
     display inline-flex
     align-items center
     justify-content center
-    width 1.95rem
-    height 1.95rem
+    width 2rem
+    height 2rem
     border-radius 999px
-    background rgba(255, 189, 214, .26)
-    font-size 1.1rem
+    background linear-gradient(135deg, rgba(255, 208, 225, .9), rgba(255, 183, 212, .8))
+    box-shadow inset 0 1px 0 rgba(255,255,255,.7)
 
-  .miaomiao-chat-fab__label
+  .miaomiao-chat-fab__text
+    display grid
+    gap .08rem
+    text-align left
+
+  .miaomiao-chat-fab__text strong
     font-family var(--owen-font-ui)
-    font-size .88rem
-    font-weight 700
+    font-size .86rem
+    font-weight 800
     letter-spacing .02em
+
+  .miaomiao-chat-fab__text span
+    font-family var(--owen-font-ui)
+    font-size .68rem
+    letter-spacing .14em
+    text-transform uppercase
+    color rgba(150, 77, 113, .68)
 
   .miaomiao-chat-panel
     position fixed
     left 1.4rem
-    bottom calc(3.75rem + 4.25rem)
+    bottom calc(3.75rem + 4.35rem)
     z-index 1450
-    width unquote("min(26rem, calc(100vw - 2rem))")
+    width unquote("min(28rem, calc(100vw - 2rem))")
     max-width unquote("calc(100vw - 2rem)")
-    height unquote("min(38rem, calc(100vh - 7rem))")
+    height unquote("min(41rem, calc(100vh - 7rem))")
     display grid
-    grid-template-rows auto auto minmax(0, 1fr) auto
-    gap .85rem
+    grid-template-rows auto auto auto auto minmax(0, 1fr) auto
+    gap .82rem
     padding 1rem
-    border-radius 1.45rem
-    border 1px solid rgba(255, 184, 208, .22)
-    background linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,245,249,.78)), radial-gradient(circle at top right, rgba(255, 189, 214, .18), transparent 16rem)
-    box-shadow 0 36px 88px rgba(120, 82, 101, .18), inset 0 1px 0 rgba(255,255,255,.84)
-    backdrop-filter blur(20px) saturate(1.05)
-    -webkit-backdrop-filter blur(20px) saturate(1.05)
+    border-radius 1.55rem
+    border 1px solid rgba(255, 192, 216, .22)
+    background linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,247,250,.8)), radial-gradient(circle at top right, rgba(255, 192, 216, .2), transparent 16rem), radial-gradient(circle at bottom left, rgba(118,156,255,.1), transparent 18rem)
+    box-shadow 0 38px 92px rgba(120,82,101,.18), inset 0 1px 0 rgba(255,255,255,.86)
+    backdrop-filter blur(22px) saturate(1.05)
+    -webkit-backdrop-filter blur(22px) saturate(1.05)
     overflow hidden
 
   .miaomiao-chat-panel[hidden]
@@ -171,22 +228,22 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
     font-weight 700
     letter-spacing .16em
     text-transform uppercase
-    color rgba(181, 87, 127, .86)
+    color rgba(181, 87, 127, .82)
 
   .miaomiao-chat-panel__title
-    margin-top .15rem
+    margin-top .16rem
     font-family var(--owen-font-display)
-    font-size 1.2rem
+    font-size 1.24rem
     font-weight 720
     letter-spacing -.04em
     color rgba(68, 28, 49, .96)
 
   .miaomiao-chat-panel__note
-    margin-top .24rem
+    margin-top .26rem
     font-family var(--owen-font-reading)
-    font-size .84rem
-    line-height 1.68
-    color rgba(95, 58, 76, .72)
+    font-size .86rem
+    line-height 1.72
+    color rgba(92, 55, 74, .72)
 
   .miaomiao-chat-panel__close
     display inline-flex
@@ -195,22 +252,99 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
     width 2.2rem
     height 2.2rem
     border-radius 999px
-    border 1px solid rgba(255, 184, 208, .22)
-    background rgba(255, 236, 244, .78)
-    color rgba(168, 74, 116, .88)
+    border 1px solid rgba(255, 192, 216, .22)
+    background rgba(255, 236, 244, .82)
+    color rgba(168, 74, 116, .9)
     transition transform .18s ease, box-shadow .18s ease
 
   .miaomiao-chat-panel__close:hover
     transform translateY(-1px)
-    box-shadow 0 10px 24px rgba(120, 82, 101, .14)
+    box-shadow 0 10px 24px rgba(120,82,101,.14)
+
+  .miaomiao-chat-panel__reading
+    display grid
+    grid-template-columns auto minmax(0, 1fr)
+    gap .85rem
+    align-items center
+    padding .9rem .95rem
+    border-radius 1.08rem
+    border 1px solid rgba(255, 192, 216, .16)
+    background linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,242,247,.58))
+    box-shadow inset 0 1px 0 rgba(255,255,255,.7)
+
+  .miaomiao-chat-panel__reading-icon
+    display inline-flex
+    align-items center
+    justify-content center
+    width 2.5rem
+    height 2.5rem
+    border-radius .9rem
+    background linear-gradient(135deg, rgba(255, 204, 223, .44), rgba(118, 156, 255, .18))
+    color rgba(143, 60, 99, .92)
+
+  .miaomiao-chat-panel__reading-copy
+    display grid
+    gap .18rem
+    min-width 0
+
+  .miaomiao-chat-panel__reading-label
+    font-family var(--owen-font-ui)
+    font-size .66rem
+    font-weight 700
+    letter-spacing .16em
+    text-transform uppercase
+    color rgba(158, 80, 117, .72)
+
+  .miaomiao-chat-panel__reading-title
+    font-family var(--owen-font-ui)
+    font-size .88rem
+    font-weight 700
+    color rgba(69, 31, 51, .94)
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+
+  .miaomiao-chat-panel__reading-path
+    font-family var(--owen-font-ui)
+    font-size .72rem
+    color rgba(121, 84, 103, .68)
+    white-space nowrap
+    overflow hidden
+    text-overflow ellipsis
+
+  .miaomiao-chat-panel__quicklist
+    display flex
+    flex-wrap wrap
+    gap .5rem
+
+  .miaomiao-chat-panel__quick
+    display inline-flex
+    align-items center
+    min-height 2rem
+    padding 0 .82rem
+    border-radius .95rem
+    border 1px solid rgba(255, 192, 216, .16)
+    background rgba(255,255,255,.72)
+    color rgba(129, 62, 96, .92)
+    font-family var(--owen-font-ui)
+    font-size .76rem
+    font-weight 700
+    letter-spacing .01em
+    transition transform .18s ease, box-shadow .18s ease, border-color .18s ease
+
+  .miaomiao-chat-panel__quick:hover,
+  .miaomiao-chat-panel__quick:focus-visible
+    transform translateY(-1px)
+    border-color rgba(255, 192, 216, .32)
+    box-shadow 0 12px 26px rgba(181, 87, 127, .12)
 
   .miaomiao-chat-panel__status
-    min-height 2.5rem
-    padding .78rem .9rem
+    min-height 2.45rem
+    padding .8rem .95rem
     border-radius 1rem
-    border 1px solid rgba(255, 184, 208, .18)
-    background rgba(255, 239, 246, .72)
-    color rgba(103, 61, 81, .78)
+    border 1px solid rgba(255, 192, 216, .16)
+    background rgba(255, 241, 247, .68)
+    color rgba(99, 59, 79, .78)
     font-family var(--owen-font-reading)
     font-size .82rem
     line-height 1.66
@@ -220,24 +354,54 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
     overflow auto
     display flex
     flex-direction column
-    gap .82rem
-    padding-right .2rem
+    gap .88rem
+    padding .2rem .15rem .1rem
+    border-radius 1.12rem
+    background linear-gradient(180deg, rgba(255,255,255,.32), rgba(255,244,248,.18))
 
   .miaomiao-chat-panel__messages::-webkit-scrollbar
     width .45rem
 
   .miaomiao-chat-panel__messages::-webkit-scrollbar-thumb
     border-radius 999px
-    background rgba(181, 87, 127, .24)
+    background rgba(181, 87, 127, .22)
 
   .miaomiao-chat-message
     display flex
-    flex-direction column
-    gap .38rem
     max-width 100%
 
-  .miaomiao-chat-message[data-role="user"]
-    align-items flex-end
+  .miaomiao-chat-message__row
+    display flex
+    align-items flex-start
+    gap .72rem
+    width 100%
+
+  .miaomiao-chat-message[data-role="user"] .miaomiao-chat-message__row
+    flex-direction row-reverse
+
+  .miaomiao-chat-message__avatar
+    display inline-flex
+    align-items center
+    justify-content center
+    width 2.1rem
+    height 2.1rem
+    border-radius 999px
+    background linear-gradient(135deg, rgba(255, 199, 220, .96), rgba(255, 174, 205, .86))
+    color rgba(93, 34, 60, .94)
+    font-family var(--owen-font-ui)
+    font-size .8rem
+    font-weight 800
+    box-shadow 0 12px 26px rgba(181, 87, 127, .14)
+
+  .miaomiao-chat-message[data-role="user"] .miaomiao-chat-message__avatar
+    background linear-gradient(135deg, rgba(191, 211, 255, .96), rgba(149, 177, 255, .86))
+    color rgba(38, 58, 112, .94)
+
+  .miaomiao-chat-message__content
+    display grid
+    gap .4rem
+    min-width 0
+    flex 1
 
   .miaomiao-chat-message__meta
     font-family var(--owen-font-ui)
@@ -249,62 +413,79 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 
   .miaomiao-chat-message__bubble
     max-width 100%
-    padding .85rem .95rem
-    border-radius 1.05rem
-    border 1px solid rgba(255, 184, 208, .16)
-    background rgba(255, 255, 255, .72)
-    color rgba(49, 27, 40, .88)
+    padding .92rem 1rem
+    border-radius 1.12rem
+    border 1px solid rgba(255, 192, 216, .14)
+    background rgba(255,255,255,.76)
+    color rgba(50, 28, 41, .9)
     font-family var(--owen-font-reading)
-    font-size .9rem
-    line-height 1.72
-    white-space pre-wrap
+    font-size .92rem
+    line-height 1.78
+    box-shadow 0 16px 34px rgba(120,82,101,.08)
     word-break break-word
-    box-shadow 0 16px 34px rgba(120, 82, 101, .08)
+
+  .miaomiao-chat-message__bubble p
+    margin 0
+
+  .miaomiao-chat-message__bubble p + p
+    margin-top .72rem
 
   .miaomiao-chat-message[data-role="user"] .miaomiao-chat-message__bubble
-    background linear-gradient(180deg, rgba(255, 230, 239, .92), rgba(255, 239, 245, .78))
-    color rgba(97, 41, 67, .94)
+    background linear-gradient(180deg, rgba(232, 241, 255, .94), rgba(244, 247, 255, .8))
+    border-color rgba(118, 156, 255, .16)
+    color rgba(45, 61, 110, .94)
 
-  .miaomiao-chat-message__refs
-    display flex
-    flex-wrap wrap
-    gap .45rem
+  .miaomiao-chat-message[data-tone="error"] .miaomiao-chat-message__bubble
+    background linear-gradient(180deg, rgba(255, 238, 243, .92), rgba(255, 244, 247, .8))
+    border-color rgba(223, 112, 149, .2)
+    color rgba(123, 45, 74, .92)
 
-  .miaomiao-chat-message__ref
+  .miaomiao-chat-message__typing
     display inline-flex
     align-items center
-    min-height 1.7rem
-    max-width 100%
-    padding 0 .72rem
+    gap .35rem
+
+  .miaomiao-chat-message__typing-dot
+    width .38rem
+    height .38rem
     border-radius 999px
-    border 1px solid rgba(255, 184, 208, .18)
-    background rgba(255, 241, 247, .72)
-    color rgba(149, 74, 110, .88)
-    font-family var(--owen-font-ui)
-    font-size .71rem
-    font-weight 650
-    letter-spacing .02em
-    text-decoration none
-    white-space nowrap
-    overflow hidden
-    text-overflow ellipsis
+    background rgba(181, 87, 127, .56)
+    animation miaomiaoTyping 1.2s infinite ease-in-out
+
+  .miaomiao-chat-message__typing-dot:nth-child(2)
+    animation-delay .15s
+
+  .miaomiao-chat-message__typing-dot:nth-child(3)
+    animation-delay .3s
 
   .miaomiao-chat-panel__composer
     display grid
     gap .72rem
 
+  .miaomiao-chat-panel__composer-shell
+    display grid
+    gap .5rem
+
+  .miaomiao-chat-panel__composer-label
+    font-family var(--owen-font-ui)
+    font-size .72rem
+    font-weight 700
+    letter-spacing .14em
+    text-transform uppercase
+    color rgba(163, 83, 119, .72)
+
   .miaomiao-chat-panel__input
-    min-height 5.5rem
+    min-height 6rem
     max-height 10rem
     resize vertical
-    padding .92rem 1rem
-    border-radius 1rem
-    border 1px solid rgba(255, 184, 208, .18)
-    background rgba(255, 255, 255, .76)
+    padding .95rem 1rem
+    border-radius 1.02rem
+    border 1px solid rgba(255, 192, 216, .16)
+    background rgba(255,255,255,.78)
     color rgba(61, 28, 46, .94)
     font-family var(--owen-font-reading)
     font-size .92rem
-    line-height 1.68
+    line-height 1.7
     box-shadow inset 0 1px 0 rgba(255,255,255,.74)
 
   .miaomiao-chat-panel__input:focus
@@ -314,27 +495,39 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 
   .miaomiao-chat-panel__actions
     display flex
-    align-items center
+    align-items flex-end
     justify-content space-between
-    gap .75rem
+    gap .8rem
+
+  .miaomiao-chat-panel__hint
+    margin 0
+    color rgba(124, 85, 104, .72)
+    font-family var(--owen-font-ui)
+    font-size .72rem
+    line-height 1.56
+
+  .miaomiao-chat-panel__buttons
+    display flex
+    align-items center
+    gap .6rem
 
   .miaomiao-chat-panel__ghost,
   .miaomiao-chat-panel__send
-    min-height 2.6rem
-    padding 0 .95rem
-    border-radius .95rem
+    min-height 2.65rem
+    padding 0 1rem
+    border-radius .98rem
     font-family var(--owen-font-ui)
     font-size .84rem
     font-weight 700
-    transition transform .18s ease, box-shadow .18s ease
+    transition transform .18s ease, box-shadow .18s ease, opacity .18s ease
 
   .miaomiao-chat-panel__ghost
-    border 1px solid rgba(255, 184, 208, .16)
-    background rgba(255, 239, 246, .7)
+    border 1px solid rgba(255, 192, 216, .16)
+    background rgba(255, 240, 246, .72)
     color rgba(149, 74, 110, .88)
 
   .miaomiao-chat-panel__send
-    border 1px solid rgba(255, 184, 208, .22)
+    border 1px solid rgba(255, 192, 216, .22)
     background linear-gradient(180deg, rgba(255, 201, 221, .98), rgba(252, 183, 209, .92))
     color rgba(82, 31, 55, .96)
     box-shadow 0 18px 34px rgba(181, 87, 127, .18)
@@ -343,53 +536,90 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
   .miaomiao-chat-panel__send:hover
     transform translateY(-1px)
 
+  .miaomiao-chat-panel__quick:disabled,
+  .miaomiao-chat-panel__ghost:disabled,
+  .miaomiao-chat-panel__send:disabled
+    opacity .62
+    cursor not-allowed
+    transform none
+
+  @keyframes miaomiaoTyping
+    0%, 80%, 100%
+      transform translateY(0) scale(.92)
+      opacity .42
+    40%
+      transform translateY(-2px) scale(1.04)
+      opacity 1
+
   :root.dark .miaomiao-chat-fab
     border-color rgba(255, 193, 216, .2)
-    background linear-gradient(180deg, rgba(33, 17, 30, .86), rgba(21, 10, 20, .72)), radial-gradient(circle at top right, rgba(255, 169, 201, .18), transparent 10rem)
-    box-shadow 0 28px 66px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255,255,255,.08)
+    background linear-gradient(180deg, rgba(33, 17, 30, .88), rgba(21, 10, 20, .74)), radial-gradient(circle at top right, rgba(255, 169, 201, .18), transparent 10rem), radial-gradient(circle at bottom left, rgba(118,156,255,.14), transparent 12rem)
+    box-shadow 0 28px 66px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255,255,255,.08)
     color rgba(255, 224, 236, .94)
 
   :root.dark .miaomiao-chat-fab__icon
     background rgba(255, 169, 201, .18)
     color rgba(255, 213, 229, .94)
 
+  :root.dark .miaomiao-chat-fab__text span
+    color rgba(255, 214, 230, .62)
+
   :root.dark .miaomiao-chat-panel
     border-color rgba(255, 193, 216, .18)
-    background linear-gradient(180deg, rgba(22, 12, 21, .9), rgba(11, 7, 13, .8)), radial-gradient(circle at top right, rgba(255, 169, 201, .16), transparent 16rem)
+    background linear-gradient(180deg, rgba(22, 12, 21, .92), rgba(11, 7, 13, .82)), radial-gradient(circle at top right, rgba(255, 169, 201, .16), transparent 16rem), radial-gradient(circle at bottom left, rgba(118,156,255,.12), transparent 18rem)
     box-shadow 0 36px 92px rgba(0, 0, 0, .36), inset 0 1px 0 rgba(255,255,255,.08)
 
-  :root.dark .miaomiao-chat-panel__title
+  :root.dark .miaomiao-chat-panel__title,
+  :root.dark .miaomiao-chat-panel__reading-title
     color rgba(255, 242, 247, .96)
 
   :root.dark .miaomiao-chat-panel__note,
-  :root.dark .miaomiao-chat-panel__status
+  :root.dark .miaomiao-chat-panel__status,
+  :root.dark .miaomiao-chat-panel__hint,
+  :root.dark .miaomiao-chat-panel__reading-path
     color rgba(244, 221, 231, .72)
 
-  :root.dark .miaomiao-chat-panel__status
-    background rgba(255, 255, 255, .04)
-
-  :root.dark .miaomiao-chat-message__bubble
-    border-color rgba(255, 193, 216, .12)
-    background rgba(255, 255, 255, .05)
-    color rgba(246, 236, 241, .9)
-
-  :root.dark .miaomiao-chat-message[data-role="user"] .miaomiao-chat-message__bubble
-    background linear-gradient(180deg, rgba(90, 32, 60, .52), rgba(56, 22, 41, .68))
-
-  :root.dark .miaomiao-chat-message__ref
-    border-color rgba(255, 193, 216, .14)
-    background rgba(255, 255, 255, .05)
-    color rgba(255, 212, 228, .88)
-
-  :root.dark .miaomiao-chat-panel__input
-    border-color rgba(255, 193, 216, .14)
-    background rgba(255, 255, 255, .05)
-    color rgba(248, 238, 243, .94)
-
+  :root.dark .miaomiao-chat-panel__reading,
+  :root.dark .miaomiao-chat-panel__quick,
+  :root.dark .miaomiao-chat-panel__status,
+  :root.dark .miaomiao-chat-message__bubble,
+  :root.dark .miaomiao-chat-panel__input,
   :root.dark .miaomiao-chat-panel__ghost
     border-color rgba(255, 193, 216, .14)
     background rgba(255, 255, 255, .05)
-    color rgba(255, 215, 230, .88)
+
+  :root.dark .miaomiao-chat-panel__reading-label,
+  :root.dark .miaomiao-chat-panel__composer-label,
+  :root.dark .miaomiao-chat-panel__eyebrow,
+  :root.dark .miaomiao-chat-message__meta
+    color rgba(255, 214, 230, .74)
+
+  :root.dark .miaomiao-chat-panel__messages
+    background linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01))
+
+  :root.dark .miaomiao-chat-message__avatar
+    background linear-gradient(135deg, rgba(255, 174, 205, .28), rgba(203, 101, 147, .34))
+    color rgba(255, 234, 244, .96)
+
+  :root.dark .miaomiao-chat-message[data-role="user"] .miaomiao-chat-message__avatar
+    background linear-gradient(135deg, rgba(118, 156, 255, .26), rgba(82, 119, 225, .34))
+    color rgba(230, 239, 255, .96)
+
+  :root.dark .miaomiao-chat-message__bubble
+    color rgba(246, 236, 241, .9)
+
+  :root.dark .miaomiao-chat-message[data-role="user"] .miaomiao-chat-message__bubble
+    border-color rgba(118, 156, 255, .18)
+    background linear-gradient(180deg, rgba(59, 77, 131, .42), rgba(39, 54, 98, .5))
+    color rgba(231, 239, 255, .94)
+
+  :root.dark .miaomiao-chat-message[data-tone="error"] .miaomiao-chat-message__bubble
+    border-color rgba(223, 112, 149, .18)
+    background linear-gradient(180deg, rgba(95, 34, 58, .48), rgba(66, 24, 42, .56))
+    color rgba(255, 220, 232, .92)
+
+  :root.dark .miaomiao-chat-panel__input
+    color rgba(248, 238, 243, .94)
 
   :root.dark .miaomiao-chat-panel__send
     border-color rgba(255, 193, 216, .2)
@@ -404,8 +634,9 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
     .miaomiao-chat-fab
       width 3.5rem
       padding 0
+      justify-content center
 
-    .miaomiao-chat-fab__label
+    .miaomiao-chat-fab__text
       display none
 
     .miaomiao-chat-panel
@@ -413,7 +644,17 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
       right 1rem
       width auto
       bottom calc(5.75rem + 4.2rem)
-      height unquote("min(34rem, calc(100vh - 8rem))")
+      height unquote("min(37rem, calc(100vh - 8rem))")
+
+    .miaomiao-chat-panel__reading
+      grid-template-columns 1fr
+
+    .miaomiao-chat-panel__actions
+      flex-direction column
+      align-items stretch
+
+    .miaomiao-chat-panel__buttons
+      justify-content space-between
 </style>
 
 <script
@@ -421,10 +662,7 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 	define:vars={{
 		MIAOMIAO_CHAT_SCRIPT_URL: url("/scripts/miaomiao-chat.js"),
 		MIAOMIAO_CHAT_UID: miaomiaoUid,
-		MIAOMIAO_KNOWLEDGE_URL: url("/api/miaomiao-knowledge.json"),
 		MIAOMIAO_PROXY_URL: "/api/miaomiao-chat/",
-		MIAOMIAO_PUBLIC_DIFY_API_BASE: publicDifyApiBase,
-		MIAOMIAO_PUBLIC_DIFY_API_KEY: publicDifyApiKey,
 	}}
 >
 	(() => {
@@ -438,10 +676,7 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 		const boot = () => {
 			if (typeof window.__owenInitMiaoMiaoChat === "function") {
 				window.__owenInitMiaoMiaoChat(root, {
-					knowledgeUrl: MIAOMIAO_KNOWLEDGE_URL,
 					proxyUrl: MIAOMIAO_PROXY_URL,
-					publicApiBase: MIAOMIAO_PUBLIC_DIFY_API_BASE,
-					publicApiKey: MIAOMIAO_PUBLIC_DIFY_API_KEY,
 				});
 				return;
 			}
@@ -458,10 +693,7 @@ const publicDifyApiKey = import.meta.env.PUBLIC_DIFY_API_KEY || "";
 				"load",
 				() => {
 					window.__owenInitMiaoMiaoChat?.(root, {
-						knowledgeUrl: MIAOMIAO_KNOWLEDGE_URL,
 						proxyUrl: MIAOMIAO_PROXY_URL,
-						publicApiBase: MIAOMIAO_PUBLIC_DIFY_API_BASE,
-						publicApiKey: MIAOMIAO_PUBLIC_DIFY_API_KEY,
 					});
 				},
 				{ once: true },

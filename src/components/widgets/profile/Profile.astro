@@ -93,7 +93,7 @@ import { i18n } from "../../../i18n/translation";
             }
 
             const pageViews = stats.pageviews || 0;
-            const visits = stats.visits || 0;
+            const visits = stats.visitors || stats.visits || 0;
 
             // 数据为 0 时隐藏
             if (pageViews === 0 && visits === 0) {

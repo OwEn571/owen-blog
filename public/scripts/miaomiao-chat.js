@@ -1,21 +1,82 @@
 (function () {
-	const STORAGE_KEY = "owen-miaomiao-chat-state-v1";
+	const STORAGE_KEY = "owen-miaomiao-chat-state-v2";
 	const VISITOR_KEY = "owen-miaomiao-chat-visitor-v1";
-	let knowledgePromise = null;
+	const REMOVE_SELECTORS = [
+		"script",
+		"style",
+		"noscript",
+		"svg",
+		"button",
+		"input",
+		"textarea",
+		"select",
+		"form",
+		"nav",
+		"aside",
+		"footer",
+		".footer",
+		".owen-comments",
+		"[data-miaomiao-chat]",
+		".miaomiao-chat-shell",
+		".python-lab-shell",
+		".floating-utility-rail",
+		".post-reading-strip",
+		".post-metadata-shell",
+		"#share-component",
+		"#license-component",
+		".license-container",
+		".post-support-card",
+		"#toc-container",
+		"#toc-wrapper",
+		"table-of-contents",
+		"[data-pagefind-ignore]",
+	].join(",");
+	const CONTENT_CANDIDATES = [
+		["#decrypted-content", 2600],
+		["#post-container", 2400],
+		[".post-markdown-flow", 2100],
+		[".markdown-content", 1900],
+		[".custom-md", 1700],
+		["article", 900],
+		["main", 400],
+	];
 
-	function createVisitorId() {
-		const existing = window.localStorage.getItem(VISITOR_KEY);
+	function safeStorageGet(storage, key) {
+		try {
+			return storage.getItem(key);
+		} catch {
+			return null;
+		}
+	}
+
+	function safeStorageSet(storage, key, value) {
+		try {
+			storage.setItem(key, value);
+		} catch {
+			// Ignore storage failures in private browsing and restricted contexts.
+		}
+	}
+
+	function createRandomId(prefix) {
+		if (window.crypto && typeof window.crypto.randomUUID === "function") {
+			return `${prefix}${window.crypto.randomUUID().replace(/-/g, "")}`;
+		}
+		return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+	}
+
+	function getVisitorId() {
+		const existing = safeStorageGet(window.localStorage, VISITOR_KEY);
 		if (existing) {
 			return existing;
 		}
 
-		const nextId = `miaomiao-${Math.random().toString(36).slice(2, 10)}`;
-		window.localStorage.setItem(VISITOR_KEY, nextId);
-		return nextId;
+		const next = createRandomId("miaomiao-");
+		safeStorageSet(window.localStorage, VISITOR_KEY, next);
+		return next;
 	}
 
 	function escapeHtml(value) {
-		return String(value)
+		return String(value || "")
 			.replaceAll("&", "&amp;")
 			.replaceAll("<", "&lt;")
 			.replaceAll(">", "&gt;")
@@ -29,193 +90,157 @@
 			.replace(/\u00a0/g, " ")
 			.replace(/[ \t]+\n/g, "\n")
 			.replace(/\n{3,}/g, "\n\n")
+			.replace(/[ \t]{2,}/g, " ")
 			.trim();
 	}
 
-	function tokenizeQuery(query) {
-		const normalized = normalizeText(query).toLowerCase();
-		if (!normalized) {
-			return [];
+	function limitText(value, maxLength) {
+		const text = normalizeText(value);
+		if (!text || text.length <= maxLength) {
+			return text;
 		}
-
-		const groups = normalized.match(/[\p{Script=Han}]+|[\p{L}\p{N}_-]{2,}/gu) || [];
-		const tokens = new Set();
-
-		for (const group of groups) {
-			tokens.add(group);
-			if (/[\p{Script=Han}]/u.test(group) && group.length <= 6) {
-				for (const char of Array.from(group)) {
-					tokens.add(char);
-				}
-			}
-		}
-
-		return Array.from(tokens);
+		return `${text.slice(0, maxLength).trimEnd()}…`;
 	}
 
-	function scoreEntry(entry, query, tokens) {
-		const title = String(entry.title || "").toLowerCase();
-		const path = String(entry.path || "").toLowerCase();
-		const text = String(entry.text || "").toLowerCase();
-		const haystack = `${title}\n${path}\n${text}`;
-		const needle = normalizeText(query).toLowerCase();
+	function renderMessageHtml(value) {
+		const blocks = normalizeText(value)
+			.split(/\n{2,}/)
+			.map((block) => block.trim())
+			.filter(Boolean);
 
-		let score = 0;
-		if (needle && title.includes(needle)) {
-			score += 80;
-		} else if (needle && path.includes(needle)) {
-			score += 52;
-		} else if (needle && text.includes(needle)) {
-			score += 32;
+		if (!blocks.length) {
+			return "<p></p>";
 		}
 
-		for (const token of tokens) {
-			if (title.includes(token)) {
-				score += 18;
-			} else if (path.includes(token)) {
-				score += 10;
-			} else if (text.includes(token)) {
-				score += 5;
-			}
-		}
-
-		if (entry.kind === "post") {
-			score += 4;
-		}
-
-		return score;
+		return blocks
+			.map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`)
+			.join("");
 	}
 
-	function buildSnippet(text, query, tokens, maxLength = 260) {
-		const normalized = normalizeText(text);
-		if (!normalized) {
+	function getVisibleText(element) {
+		if (!(element instanceof Element)) {
 			return "";
 		}
 
-		const candidates = [normalizeText(query), ...tokens].filter(Boolean);
-		let hitIndex = -1;
-		let hitLength = 0;
-		const lower = normalized.toLowerCase();
+		const clone = element.cloneNode(true);
+		if (!(clone instanceof Element)) {
+			return normalizeText(element.textContent || "");
+		}
 
-		for (const candidate of candidates) {
-			const currentIndex = lower.indexOf(candidate.toLowerCase());
-			if (currentIndex !== -1) {
-				hitIndex = currentIndex;
-				hitLength = candidate.length;
-				break;
+		clone.querySelectorAll(REMOVE_SELECTORS).forEach((node) => node.remove());
+		return normalizeText(clone.textContent || "");
+	}
+
+	function getPageTitle() {
+		const titleCandidate = document.querySelector(
+			".post-article-title, [data-pagefind-meta='title'], h1",
+		);
+		const explicitTitle = normalizeText(titleCandidate?.textContent || "");
+		if (explicitTitle) {
+			return explicitTitle.slice(0, 160);
+		}
+
+		const rawTitle = normalizeText(document.title || "");
+		return rawTitle.replace(/\s*[|｜·-]\s*.+$/, "").trim() || "当前页面";
+	}
+
+	function getPageDescription() {
+		const lead = document.querySelector(".post-description-lead");
+		const leadText = normalizeText(lead?.textContent || "");
+		if (leadText) {
+			return leadText.slice(0, 260);
+		}
+
+		const metaDescription = document.querySelector('meta[name="description"]');
+		return normalizeText(metaDescription?.getAttribute("content") || "").slice(0, 260);
+	}
+
+	function getHeadings(root) {
+		if (!(root instanceof Element)) {
+			return [];
+		}
+
+		const seen = new Set();
+		const headings = [];
+
+		root.querySelectorAll("h1, h2, h3").forEach((heading) => {
+			const text = limitText(heading.textContent || "", 120);
+			if (!text || seen.has(text)) {
+				return;
 			}
-		}
+			seen.add(text);
+			headings.push(text);
+		});
 
-		if (hitIndex === -1) {
-			return normalized.slice(0, maxLength);
-		}
-
-		const start = Math.max(0, hitIndex - Math.floor((maxLength - hitLength) / 2));
-		const end = Math.min(normalized.length, start + maxLength);
-		const snippet = normalized.slice(start, end);
-
-		return `${start > 0 ? "…" : ""}${snippet}${end < normalized.length ? "…" : ""}`;
+		return headings.slice(0, 12);
 	}
 
-	function highlightText(text, query, tokens) {
-		const normalized = String(text || "");
-		const candidates = [normalizeText(query), ...tokens]
-			.filter(Boolean)
-			.sort((left, right) => right.length - left.length);
+	function findBestContentRoot() {
+		let best = null;
 
-		let result = escapeHtml(normalized);
-		for (const candidate of candidates) {
-			const pattern = new RegExp(candidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-			result = result.replace(pattern, (match) => `<mark>${match}</mark>`);
-		}
-		return result;
-	}
-
-	async function loadKnowledge(knowledgeUrl) {
-		if (!knowledgePromise) {
-			knowledgePromise = fetch(knowledgeUrl, { credentials: "same-origin" })
-				.then(async (response) => {
-					if (!response.ok) {
-						throw new Error(`Knowledge index request failed with ${response.status}`);
-					}
-					return response.json();
-				})
-				.catch((error) => {
-					console.warn("[MiaoMiao] Failed to load knowledge index:", error);
-					return { entries: [] };
-				});
-		}
-
-		return knowledgePromise;
-	}
-
-	function rankEntries(entries, query, currentPath) {
-		const tokens = tokenizeQuery(query);
-		const currentPathNormalized = String(currentPath || "").replace(/\/+$/, "") || "/";
-		return entries
-			.map((entry) => {
-				let score = scoreEntry(entry, query, tokens);
-				if (entry.url && entry.url.replace(/\/+$/, "") === currentPathNormalized) {
-					score += 22;
+		for (const [selector, bonus] of CONTENT_CANDIDATES) {
+			document.querySelectorAll(selector).forEach((node) => {
+				if (!(node instanceof Element)) {
+					return;
 				}
-				return { entry, score };
-			})
-			.filter((item) => item.score > 0)
-			.sort((left, right) => right.score - left.score)
-			.slice(0, 5);
+
+				if (node.closest("[data-miaomiao-chat]")) {
+					return;
+				}
+
+				const text = getVisibleText(node);
+				if (text.length < 120) {
+					return;
+				}
+
+				const score = text.length + bonus;
+				if (!best || score > best.score) {
+					best = { node, text, score };
+				}
+			});
+		}
+
+		return best?.node || null;
 	}
 
-	function buildContextBundle(entries, query, currentPath, currentTitle) {
-		const ranked = rankEntries(entries, query, currentPath);
-		const tokens = tokenizeQuery(query);
-		const references = ranked.map(({ entry }) => ({
-			title: entry.title,
-			url: entry.url || "",
-			path: entry.path,
-		}));
-
-		const sections = [];
-		if (currentTitle || currentPath) {
-			sections.push(
-				["当前页面", currentTitle ? `标题：${currentTitle}` : "", currentPath ? `路径：${currentPath}` : ""]
-					.filter(Boolean)
-					.join("\n"),
-			);
-		}
-
-		if (ranked.length > 0) {
-			const related = ranked
-				.map(({ entry }, index) => {
-					const heading = `资料 ${index + 1}｜${entry.kind === "post" ? "博客文章" : entry.kind === "doc" ? "文档" : "源码"}｜${entry.title}`;
-					const location = entry.url ? `链接：${entry.url}` : `路径：${entry.path}`;
-					const snippet = buildSnippet(entry.text, query, tokens);
-					return `${heading}\n${location}\n${snippet}`;
-				})
-				.join("\n\n");
-			sections.push(`站内相关资料\n${related}`);
-		}
+	function extractCurrentPageContext() {
+		const path = window.location.pathname || "/";
+		const title = getPageTitle();
+		const description = getPageDescription();
+		const contentRoot = findBestContentRoot();
+		const bodyText = limitText(contentRoot ? getVisibleText(contentRoot) : "", 6500);
+		const headings = contentRoot ? getHeadings(contentRoot) : [];
 
 		return {
-			context: sections.join("\n\n"),
-			references,
+			path,
+			title,
+			description,
+			headings,
+			content: bodyText,
 		};
+	}
+
+	function createWelcomeMessage(context) {
+		return `喵，我先陪你读《${context.title || "这一页"}》。你可以让我总结这页、把难点讲白，或者直接追问卡住的地方。`;
 	}
 
 	function persistState(state) {
 		const snapshot = {
+			path: state.currentPath,
 			conversationId: state.conversationId,
 			visitorId: state.visitorId,
 			messages: state.messages.slice(-20),
 		};
-		window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+		safeStorageSet(window.sessionStorage, STORAGE_KEY, JSON.stringify(snapshot));
 	}
 
 	function hydrateState() {
+		const raw = safeStorageGet(window.sessionStorage, STORAGE_KEY);
+		if (!raw) {
+			return null;
+		}
+
 		try {
-			const raw = window.sessionStorage.getItem(STORAGE_KEY);
-			if (!raw) {
-				return null;
-			}
 			const parsed = JSON.parse(raw);
 			if (!parsed || !Array.isArray(parsed.messages)) {
 				return null;
@@ -226,30 +251,80 @@
 		}
 	}
 
+	function syncPageContext(state) {
+		const context = extractCurrentPageContext();
+		state.currentContext = context;
+		state.currentPath = context.path;
+
+		if (state.pageTitleEl instanceof HTMLElement) {
+			state.pageTitleEl.textContent = context.title || "当前页面";
+		}
+
+		if (state.pagePathEl instanceof HTMLElement) {
+			state.pagePathEl.textContent = context.path || "/";
+		}
+
+		return context;
+	}
+
+	function setComposerBusy(state, busy) {
+		state.isSending = busy;
+		state.inputEl.readOnly = busy;
+
+		if (state.sendButton instanceof HTMLButtonElement) {
+			state.sendButton.disabled = busy;
+			state.sendButton.textContent = busy ? "发送中..." : "发送";
+		}
+
+		if (state.resetButton instanceof HTMLButtonElement) {
+			state.resetButton.disabled = busy;
+		}
+
+		state.promptButtons.forEach((button) => {
+			button.disabled = busy;
+		});
+	}
+
 	function renderMessages(state) {
-		state.messagesEl.innerHTML = state.messages
-			.map((message) => {
-				const refs = Array.isArray(message.references) && message.references.length > 0
-					? `<div class="miaomiao-chat-message__refs">${message.references
-							.map((reference) => {
-								if (reference.url) {
-									return `<a class="miaomiao-chat-message__ref" href="${escapeHtml(reference.url)}" data-no-swup>${escapeHtml(reference.title)}</a>`;
-								}
-								return `<span class="miaomiao-chat-message__ref">${escapeHtml(reference.title || reference.path)}</span>`;
-							})
-							.join("")}</div>`
-					: "";
+		const items = state.messages.map((message) => {
+			const label = message.role === "assistant" ? "喵喵" : "你";
+			const avatar = message.role === "assistant" ? "喵" : "你";
+			const tone = message.tone || "default";
 
-				return `
-					<div class="miaomiao-chat-message" data-role="${escapeHtml(message.role)}">
-						<div class="miaomiao-chat-message__meta">${message.role === "assistant" ? "喵喵" : "你"}</div>
-						<div class="miaomiao-chat-message__bubble">${highlightText(message.content, state.lastQuery, tokenizeQuery(state.lastQuery))}</div>
-						${refs}
+			return `
+				<div class="miaomiao-chat-message" data-role="${escapeHtml(message.role)}" data-tone="${escapeHtml(tone)}">
+					<div class="miaomiao-chat-message__row">
+						<div class="miaomiao-chat-message__avatar">${avatar}</div>
+						<div class="miaomiao-chat-message__content">
+							<div class="miaomiao-chat-message__meta">${label}</div>
+							<div class="miaomiao-chat-message__bubble">${renderMessageHtml(message.content)}</div>
+						</div>
 					</div>
-				`;
-			})
-			.join("");
+				</div>
+			`;
+		});
 
+		if (state.isSending) {
+			items.push(`
+				<div class="miaomiao-chat-message miaomiao-chat-message--pending" data-role="assistant">
+					<div class="miaomiao-chat-message__row">
+						<div class="miaomiao-chat-message__avatar">喵</div>
+						<div class="miaomiao-chat-message__content">
+							<div class="miaomiao-chat-message__meta">喵喵</div>
+							<div class="miaomiao-chat-message__bubble">
+								<span class="miaomiao-chat-message__typing" aria-hidden="true">
+									<span class="miaomiao-chat-message__typing-dot"></span>
+									<span class="miaomiao-chat-message__typing-dot"></span>
+									<span class="miaomiao-chat-message__typing-dot"></span>
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			`);
+		}
+
+		state.messagesEl.innerHTML = items.join("");
 		state.messagesEl.scrollTop = state.messagesEl.scrollHeight;
 	}
 
@@ -262,6 +337,7 @@
 		state.toggleButton.setAttribute("aria-expanded", String(nextOpen));
 		state.panel.hidden = !nextOpen;
 		state.panel.setAttribute("aria-hidden", String(!nextOpen));
+
 		if (nextOpen) {
 			requestAnimationFrame(() => {
 				state.inputEl.focus();
@@ -277,60 +353,22 @@
 			},
 			body: JSON.stringify(payload),
 		});
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(errorText || `Proxy request failed with ${response.status}`);
+
+		let data = null;
+		try {
+			data = await response.json();
+		} catch {
+			data = null;
 		}
-		return response.json();
-	}
-
-	async function callDifyDirect(config, payload) {
-		if (!config.publicApiKey) {
-			throw new Error("Dify API key is not configured.");
-		}
-
-		const compiledQuery = [
-			"你是 Owen 博客里的助手“喵喵”。优先根据提供的站内资料回答；如果资料不足，请明确说明，再给出一般性解释。",
-			payload.context ? `【站内资料】\n${payload.context}` : "",
-			payload.currentTitle || payload.currentPath
-				? `【当前页面】\n${payload.currentTitle ? `标题：${payload.currentTitle}\n` : ""}${payload.currentPath ? `路径：${payload.currentPath}` : ""}`.trim()
-				: "",
-			`【用户问题】\n${payload.message}`,
-		]
-			.filter(Boolean)
-			.join("\n\n");
-
-		const response = await fetch(
-			`${String(config.publicApiBase || "https://api.dify.ai/v1").replace(/\/+$/, "")}/chat-messages`,
-			{
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${config.publicApiKey}`,
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					inputs: {
-						current_path: payload.currentPath || "",
-						current_title: payload.currentTitle || "",
-					},
-					query: compiledQuery,
-					response_mode: "blocking",
-					conversation_id: payload.conversationId || undefined,
-					user: payload.visitorId,
-				}),
-			},
-		);
 
 		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(errorText || `Dify request failed with ${response.status}`);
+			const message =
+				(data && typeof data.error === "string" && data.error) ||
+				`Proxy request failed with ${response.status}`;
+			throw new Error(message);
 		}
 
-		const data = await response.json();
-		return {
-			answer: data.answer || "喵喵这次没有拿到回答。",
-			conversationId: data.conversation_id || payload.conversationId || "",
-		};
+		return data || {};
 	}
 
 	async function sendMessage(state) {
@@ -339,66 +377,88 @@
 			return;
 		}
 
-		state.isSending = true;
-		state.lastQuery = message;
+		const pageContext = syncPageContext(state);
+
+		setComposerBusy(state, true);
 		state.inputEl.value = "";
 		state.messages.push({ role: "user", content: message });
 		renderMessages(state);
-		setStatus(state, "喵喵正在检索站内资料并组织上下文…");
+		setStatus(
+			state,
+			pageContext.content
+				? "我先读一遍这一页，再组织回答..."
+				: "这一页正文没抓到太多内容，我先按眼前信息试着回答...",
+		);
 
 		try {
-			const knowledgePayload = await loadKnowledge(state.config.knowledgeUrl);
-			const bundle = buildContextBundle(
-				Array.isArray(knowledgePayload.entries) ? knowledgePayload.entries : [],
-				message,
-				window.location.pathname,
-				document.title,
-			);
-
-			setStatus(state, "喵喵正在和 Dify 对话…");
-
-			const payload = {
+			const responseData = await callProxy(state.config.proxyUrl, {
 				message,
 				conversationId: state.conversationId,
 				visitorId: state.visitorId,
-				currentPath: window.location.pathname,
-				currentTitle: document.title,
-				context: bundle.context,
-			};
+				currentPath: pageContext.path,
+				currentTitle: pageContext.title,
+				currentDescription: pageContext.description,
+				currentHeadings: pageContext.headings,
+				currentPageContent: pageContext.content,
+			});
 
-			let responseData;
-			try {
-				responseData = await callProxy(state.config.proxyUrl, payload);
-			} catch (proxyError) {
-				console.warn("[MiaoMiao] Proxy request failed, trying direct mode:", proxyError);
-				responseData = await callDifyDirect(state.config, payload);
-			}
-
-			state.conversationId = responseData.conversationId || state.conversationId;
+			state.conversationId = responseData.conversationId || state.conversationId || "";
 			state.messages.push({
 				role: "assistant",
 				content: normalizeText(responseData.answer || "喵喵这次没有拿到回答。"),
-				references: bundle.references,
 			});
-			setStatus(state, "资料检索与对话已完成。");
-			persistState(state);
-			renderMessages(state);
+			setStatus(
+				state,
+				pageContext.content
+					? "这次回答已经结合当前页面正文。"
+					: "这次回答主要按通用理解组织，因为当前页正文不够完整。",
+			);
 		} catch (error) {
 			console.error("[MiaoMiao] send failed:", error);
 			const messageText =
 				error instanceof Error && error.message
 					? error.message
-					: "喵喵暂时没有接通成功。";
+					: "暂时没有接通成功。";
 			state.messages.push({
 				role: "assistant",
-				content:
-					`喵喵这次没有成功连上。\n\n${messageText}\n\n如果你现在是本地开发环境，可以启用 PUBLIC_DIFY_API_KEY 直连；如果你在服务器上运行博客，请配置 DIFY_API_KEY，让 /api/miaomiao-chat/ 走服务端代理。`,
+				tone: "error",
+				content: `这次没有连上喵。\n\n${messageText}\n\n你可以稍后再试，我会继续优先围绕当前页面回答。`,
 			});
-			setStatus(state, "喵喵暂时掉线了，请稍后再试。");
-			renderMessages(state);
+			setStatus(state, "喵喵刚才掉线了，稍后再试一次。");
 		} finally {
-			state.isSending = false;
+			persistState(state);
+			setComposerBusy(state, false);
+			renderMessages(state);
 		}
+	}
+
+	function resetConversation(state, copy) {
+		state.conversationId = "";
+		state.messages = [
+			{
+				role: "assistant",
+				content: copy || createWelcomeMessage(state.currentContext),
+			},
+		];
+		persistState(state);
+		renderMessages(state);
+	}
+
+	function handlePageChange(state) {
+		const previousPath = state.currentPath;
+		const nextContext = syncPageContext(state);
+
+		if (previousPath && previousPath !== nextContext.path) {
+			resetConversation(
+				state,
+				`我们已经切到《${nextContext.title || "新页面"}》。我会先按这页正文来回答，你可以继续追问。`,
+			);
+			setStatus(state, "已经跟到新页面，会先读这页。");
+			return;
+		}
+
+		persistState(state);
+		renderMessages(state);
 	}
 
 	window.__owenInitMiaoMiaoChat = function initMiaoMiaoChat(root, config) {
@@ -414,6 +474,12 @@
 		const form = root.querySelector("[data-miaomiao-chat-form]");
 		const inputEl = root.querySelector("[data-miaomiao-chat-input]");
 		const resetButton = root.querySelector("[data-miaomiao-chat-reset]");
+		const sendButton = root.querySelector("[data-miaomiao-chat-send]");
+		const pageTitleEl = root.querySelector("[data-miaomiao-chat-page-title]");
+		const pagePathEl = root.querySelector("[data-miaomiao-chat-page-path]");
+		const promptButtons = Array.from(
+			root.querySelectorAll("[data-miaomiao-chat-prompt]"),
+		).filter((button) => button instanceof HTMLButtonElement);
 
 		if (
 			!(toggleButton instanceof HTMLButtonElement) ||
@@ -423,14 +489,21 @@
 			!(messagesEl instanceof HTMLElement) ||
 			!(form instanceof HTMLFormElement) ||
 			!(inputEl instanceof HTMLTextAreaElement) ||
-			!(resetButton instanceof HTMLButtonElement)
+			!(resetButton instanceof HTMLButtonElement) ||
+			!(sendButton instanceof HTMLButtonElement)
 		) {
 			return;
 		}
 
 		root.dataset.miaomiaoReady = "true";
 
+		const initialContext = extractCurrentPageContext();
 		const hydrated = hydrateState();
+		const messages =
+			hydrated?.path === initialContext.path && Array.isArray(hydrated.messages) && hydrated.messages.length
+				? hydrated.messages
+				: [{ role: "assistant", content: createWelcomeMessage(initialContext) }];
+
 		const state = {
 			root,
 			config,
@@ -442,34 +515,25 @@
 			form,
 			inputEl,
 			resetButton,
+			sendButton,
+			pageTitleEl,
+			pagePathEl,
+			promptButtons,
+			currentContext: initialContext,
+			currentPath: initialContext.path,
 			isOpen: false,
 			isSending: false,
-			lastQuery: "",
-			visitorId: hydrated?.visitorId || createVisitorId(),
-			conversationId: hydrated?.conversationId || "",
-			messages:
-				hydrated?.messages?.length > 0
-					? hydrated.messages
-					: [
-							{
-								role: "assistant",
-								content:
-									"喵，我是喵喵。现在我会先检索博客里的文章、文档和站内源码摘要，再把相关内容带去和 Dify 对话。你可以直接问当前页面，也可以问整个站点。",
-							},
-						],
+			visitorId: hydrated?.visitorId || getVisitorId(),
+			conversationId:
+				hydrated?.path === initialContext.path ? hydrated?.conversationId || "" : "",
+			messages,
 		};
 
+		syncPageContext(state);
+		setComposerBusy(state, false);
 		renderMessages(state);
-		setStatus(state, "喵喵已待命，可以直接开始问。");
+		setStatus(state, "喵喵会优先依据当前页面正文回答。");
 		persistState(state);
-
-		const openPanel = () => {
-			setPanelOpen(state, true);
-		};
-
-		const closePanel = () => {
-			setPanelOpen(state, false);
-		};
 
 		toggleButton.addEventListener("click", (event) => {
 			event.preventDefault();
@@ -479,21 +543,23 @@
 
 		closeButton.addEventListener("click", (event) => {
 			event.preventDefault();
-			closePanel();
+			setPanelOpen(state, false);
 		});
 
 		resetButton.addEventListener("click", () => {
-			state.conversationId = "";
-			state.messages = [
-				{
-					role: "assistant",
-					content:
-						"新对话已经开始。你可以继续问当前页面、博客文章，或者站内实现细节。",
-				},
-			];
-			setStatus(state, "已开始新的对话。");
-			persistState(state);
-			renderMessages(state);
+			resetConversation(state);
+			setStatus(state, "已经开始新的对话。");
+		});
+
+		promptButtons.forEach((button) => {
+			button.addEventListener("click", async () => {
+				const prompt = button.dataset.miaomiaoChatPrompt || "";
+				if (!prompt || state.isSending) {
+					return;
+				}
+				state.inputEl.value = prompt;
+				await sendMessage(state);
+			});
 		});
 
 		form.addEventListener("submit", async (event) => {
@@ -512,30 +578,31 @@
 			if (!state.isOpen) {
 				return;
 			}
+
 			const target = event.target;
 			if (!(target instanceof Element)) {
 				return;
 			}
+
 			if (target.closest("[data-miaomiao-chat]")) {
 				return;
 			}
-			closePanel();
+
+			setPanelOpen(state, false);
 		});
 
 		document.addEventListener("keydown", (event) => {
 			if (event.key === "Escape" && state.isOpen) {
-				closePanel();
+				setPanelOpen(state, false);
 			}
 		});
 
 		window.addEventListener("pageshow", () => {
-			renderMessages(state);
+			handlePageChange(state);
 		});
 
-		loadKnowledge(config.knowledgeUrl).then(() => {
-			if (!state.isSending) {
-				setStatus(state, "喵喵的站内资料索引已加载完成。");
-			}
+		document.addEventListener("owen-blog:page:loaded", () => {
+			handlePageChange(state);
 		});
 	};
 })();

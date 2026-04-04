@@ -6,22 +6,24 @@ interface Props {
 const commentsPath = Astro.props.path;
 ---
 
-<div class="owen-internal-comments" data-owen-comments data-path={commentsPath}>
-	<div class="owen-internal-comments__header">
-		<div>
-			<p class="owen-internal-comments__eyebrow">Comments</p>
-			<h3 class="owen-internal-comments__title">站内评论区</h3>
+<section class="owen-comments" data-owen-comments data-path={commentsPath}>
+	<div class="owen-comments__header">
+		<div class="owen-comments__copy">
+			<p class="owen-comments__eyebrow">留言区</p>
+			<h3 class="owen-comments__title">留言</h3>
+			<p class="owen-comments__lead">
+				欢迎纠错、补充、交流。昵称和评论内容必填，联系方式完全可选。
+			</p>
 		</div>
-		<span class="owen-internal-comments__count" data-comments-count>0</span>
+		<div class="owen-comments__count">
+			<strong data-comments-count>0</strong>
+			<span>条</span>
+		</div>
 	</div>
 
-	<p class="owen-internal-comments__note">
-		现在这套评论直接保存在博客服务器上，不依赖外部评论服务。
-	</p>
-
-	<form class="owen-internal-comments__form" data-comments-form>
-		<div class="owen-internal-comments__grid">
-			<label class="owen-internal-comments__field">
+	<form class="owen-comments__form" data-comments-form>
+		<div class="owen-comments__grid">
+			<label class="owen-comments__field">
 				<span>昵称</span>
 				<input
 					type="text"
@@ -32,30 +34,30 @@ const commentsPath = Astro.props.path;
 				/>
 			</label>
 
-			<label class="owen-internal-comments__field">
-				<span>主页</span>
+			<label class="owen-comments__field">
+				<span>联系方式</span>
 				<input
-					type="url"
-					name="website"
-					maxlength="240"
-					placeholder="可选，例如 https://example.com"
+					type="text"
+					name="contact"
+					maxlength="120"
+					placeholder="邮箱 / 微信 / GitHub / 网站（可选）"
 				/>
 			</label>
 
-			<label class="owen-internal-comments__field owen-internal-comments__field--full">
+			<label class="owen-comments__field owen-comments__field--full">
 				<span>评论内容</span>
 				<textarea
 					name="content"
 					rows="5"
 					maxlength="2000"
 					required
-					placeholder="想法、反馈、补充都可以留在这里。"
+					placeholder="可以写想法、纠错、补充或者一句简单反馈。"
 				></textarea>
 			</label>
 		</div>
 
 		<input
-			class="owen-internal-comments__honeypot"
+			class="owen-comments__honeypot"
 			type="text"
 			name="company"
 			tabindex="-1"
@@ -63,18 +65,19 @@ const commentsPath = Astro.props.path;
 			aria-hidden="true"
 		/>
 
-		<div class="owen-internal-comments__actions">
-			<p class="owen-internal-comments__status" data-comments-status>
-				正在加载评论...
-			</p>
-			<button type="submit" class="owen-internal-comments__submit" data-comments-submit>
-				发送评论
+		<div class="owen-comments__actions">
+			<div class="owen-comments__status-wrap">
+				<p class="owen-comments__status" data-comments-status>正在加载评论...</p>
+				<span class="owen-comments__length" data-comments-length>0 / 2000</span>
+			</div>
+			<button type="submit" class="owen-comments__submit" data-comments-submit>
+				发布留言
 			</button>
 		</div>
 	</form>
 
-	<div class="owen-internal-comments__list" data-comments-list></div>
-</div>
+	<div class="owen-comments__list" data-comments-list></div>
+</section>
 
 <script is:inline define:vars={{ commentsApiUrl: "/api/comments.json" }}>
 	(() => {
@@ -109,7 +112,7 @@ const commentsPath = Astro.props.path;
 				const next = createVisitorId();
 				localStorage.setItem(VISITOR_KEY, next);
 				return next;
-			} catch (_error) {
+			} catch {
 				return createVisitorId();
 			}
 		}
@@ -120,7 +123,7 @@ const commentsPath = Astro.props.path;
 					dateStyle: "medium",
 					timeStyle: "short",
 				}).format(new Date(value));
-			} catch (_error) {
+			} catch {
 				return value;
 			}
 		}
@@ -132,6 +135,16 @@ const commentsPath = Astro.props.path;
 			}
 		}
 
+		function updateDraftLength(root) {
+			const textarea = root.querySelector('textarea[name="content"]');
+			const counter = root.querySelector("[data-comments-length]");
+			if (!(textarea instanceof HTMLTextAreaElement) || !(counter instanceof HTMLElement)) {
+				return;
+			}
+
+			counter.textContent = `${textarea.value.length} / ${textarea.maxLength || 2000}`;
+		}
+
 		function updateCount(root, count) {
 			const countEl = root.querySelector("[data-comments-count]");
 			if (countEl instanceof HTMLElement) {
@@ -139,36 +152,86 @@ const commentsPath = Astro.props.path;
 			}
 		}
 
-		function createCommentCard(comment) {
-			const article = document.createElement("article");
-			article.className = "owen-internal-comments__item";
+		function getAvatarLabel(name) {
+			const normalized = String(name || "").trim().replace(/\s+/g, "");
+			const [first = "匿"] = Array.from(normalized || "匿");
+			return first.toUpperCase();
+		}
 
-			const meta = document.createElement("div");
-			meta.className = "owen-internal-comments__item-meta";
-
-			const author = document.createElement(
-				comment.website ? "a" : "span",
-			);
-			author.className = "owen-internal-comments__item-author";
-			author.textContent = comment.author || "匿名访客";
-			if (author instanceof HTMLAnchorElement && comment.website) {
-				author.href = comment.website;
-				author.target = "_blank";
-				author.rel = "noreferrer";
+		function resolveContactLink(contact) {
+			const value = String(contact || "").trim();
+			if (!value) {
+				return null;
 			}
 
+			if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+				return { href: `mailto:${value}`, label: value };
+			}
+
+			if (/^(https?:\/\/|www\.)/i.test(value)) {
+				return {
+					href: /^https?:\/\//i.test(value) ? value : `https://${value}`,
+					label: value,
+				};
+			}
+
+			return null;
+		}
+
+		function createCommentCard(comment) {
+			const article = document.createElement("article");
+			article.className = "owen-comments__item";
+
+			const avatar = document.createElement("div");
+			avatar.className = "owen-comments__avatar";
+			avatar.textContent = getAvatarLabel(comment.author);
+
+			const body = document.createElement("div");
+			body.className = "owen-comments__item-body";
+
+			const head = document.createElement("div");
+			head.className = "owen-comments__item-head";
+
+			const authorGroup = document.createElement("div");
+			authorGroup.className = "owen-comments__item-author-group";
+
+			const author = document.createElement("strong");
+			author.className = "owen-comments__item-author";
+			author.textContent = comment.author || "匿名访客";
+
+			const meta = document.createElement("div");
+			meta.className = "owen-comments__item-meta";
+
 			const time = document.createElement("time");
-			time.className = "owen-internal-comments__item-time";
+			time.className = "owen-comments__item-time";
 			time.dateTime = comment.createdAt;
 			time.textContent = formatDate(comment.createdAt);
+			meta.append(time);
 
-			meta.append(author, time);
+			if (comment.contact) {
+				const contactLink = resolveContactLink(comment.contact);
+				const contactEl = document.createElement(
+					contactLink ? "a" : "span",
+				);
+				contactEl.className = "owen-comments__item-contact";
+				contactEl.textContent = comment.contact;
+				if (contactEl instanceof HTMLAnchorElement && contactLink) {
+					contactEl.href = contactLink.href;
+					contactEl.target = "_blank";
+					contactEl.rel = "noreferrer";
+				}
+				meta.append(contactEl);
+			}
+
+			authorGroup.append(author, meta);
 
 			const content = document.createElement("p");
-			content.className = "owen-internal-comments__item-content";
+			content.className = "owen-comments__item-content";
 			content.textContent = comment.content;
 
-			article.append(meta, content);
+			head.append(authorGroup);
+			body.append(head, content);
+			article.append(avatar, body);
 			return article;
 		}
 
@@ -183,9 +246,9 @@ const commentsPath = Astro.props.path;
 
 			if (!items.length) {
 				const empty = document.createElement("div");
-				empty.className = "owen-internal-comments__empty";
+				empty.className = "owen-comments__empty";
 				empty.innerHTML =
-					"<strong>还没有评论</strong><span>这块空间已经准备好，来留下第一条反馈吧。</span>";
+					"<strong>还没有留言</strong><span>这篇文章的评论区已经打开了，欢迎留下第一条反馈。</span>";
 				list.append(empty);
 				return;
 			}
@@ -196,9 +259,7 @@ const commentsPath = Astro.props.path;
 		}
 
 		async function requestComments(path) {
-			const response = await fetch(
-				`${commentsApiUrl}?path=${encodeURIComponent(path)}`,
-			);
+			const response = await fetch(`${commentsApiUrl}?path=${encodeURIComponent(path)}`);
 			const payload = await response.json().catch(() => ({ items: [] }));
 			if (!response.ok) {
 				throw new Error(payload.error || "评论加载失败。");
@@ -206,7 +267,7 @@ const commentsPath = Astro.props.path;
 			return payload;
 		}
 
-		async function submitComment(path, payload) {
+		async function submitComment(payload) {
 			const response = await fetch(commentsApiUrl, {
 				method: "POST",
 				headers: {
@@ -229,10 +290,16 @@ const commentsPath = Astro.props.path;
 			root.dataset.commentsReady = "true";
 			const form = root.querySelector("[data-comments-form]");
 			const submitButton = root.querySelector("[data-comments-submit]");
+			const textarea = root.querySelector('textarea[name="content"]');
 			const path = normalizePath(root.dataset.path || window.location.pathname);
 
 			if (!(form instanceof HTMLFormElement) || !(submitButton instanceof HTMLButtonElement)) {
 				return;
+			}
+
+			if (textarea instanceof HTMLTextAreaElement) {
+				updateDraftLength(root);
+				textarea.addEventListener("input", () => updateDraftLength(root));
 			}
 
 			const loadComments = async () => {
@@ -242,15 +309,10 @@ const commentsPath = Astro.props.path;
 					renderComments(root, Array.isArray(data.items) ? data.items : []);
 					setStatus(
 						root,
-						data.items?.length
-							? "欢迎继续留言交流。"
-							: "评论区已经准备好。",
+						data.items?.length ? "欢迎继续留言交流。" : "评论区已经准备好。",
 					);
 				} catch (error) {
-					setStatus(
-						root,
-						error instanceof Error ? error.message : "评论加载失败。",
-					);
+					setStatus(root, error instanceof Error ? error.message : "评论加载失败。");
 				}
 			};
 
@@ -258,7 +320,7 @@ const commentsPath = Astro.props.path;
 				event.preventDefault();
 				const formData = new FormData(form);
 				const author = String(formData.get("author") || "").trim();
-				const website = String(formData.get("website") || "").trim();
+				const contact = String(formData.get("contact") || "").trim();
 				const content = String(formData.get("content") || "").trim();
 				const company = String(formData.get("company") || "").trim();
 
@@ -268,25 +330,23 @@ const commentsPath = Astro.props.path;
 				}
 
 				submitButton.disabled = true;
-				setStatus(root, "评论发送中...");
+				setStatus(root, "正在发布留言...");
 
 				try {
-					const data = await submitComment(path, {
+					const data = await submitComment({
 						path,
 						author,
-						website,
+						contact,
 						content,
 						company,
 						visitorId: getVisitorId(),
 					});
 					renderComments(root, Array.isArray(data.items) ? data.items : []);
 					form.reset();
-					setStatus(root, "评论发送成功，已经显示在下方。");
+					updateDraftLength(root);
+					setStatus(root, "留言已发布。");
 				} catch (error) {
-					setStatus(
-						root,
-						error instanceof Error ? error.message : "评论发送失败。",
-					);
+					setStatus(root, error instanceof Error ? error.message : "评论发送失败。");
 				} finally {
 					submitButton.disabled = false;
 				}
@@ -302,9 +362,7 @@ const commentsPath = Astro.props.path;
 		}
 
 		if (document.readyState === "loading") {
-			document.addEventListener("DOMContentLoaded", mountComments, {
-				once: true,
-			});
+			document.addEventListener("DOMContentLoaded", mountComments, { once: true });
 		} else {
 			mountComments();
 		}
@@ -315,104 +373,112 @@ const commentsPath = Astro.props.path;
 </script>
 
 <style>
-	.owen-internal-comments {
+	.owen-comments {
 		display: grid;
 		gap: 1rem;
 	}
 
-	.owen-internal-comments__header {
+	.owen-comments__header {
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
-		gap: 0.8rem;
+		gap: 1rem;
 	}
 
-	.owen-internal-comments__eyebrow {
+	.owen-comments__copy {
+		display: grid;
+		gap: 0.4rem;
+	}
+
+	.owen-comments__eyebrow {
 		margin: 0;
-		font-size: 0.74rem;
-		font-weight: 650;
+		font-size: 0.72rem;
+		font-weight: 700;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: rgba(190, 92, 132, 0.74);
 	}
 
-	:global(.dark) .owen-internal-comments__eyebrow {
-		color: rgba(166, 196, 255, 0.74);
-	}
-
-	.owen-internal-comments__title {
-		margin: 0.32rem 0 0;
+	.owen-comments__title {
+		margin: 0;
 		font-family: var(--owen-font-display);
-		font-size: 1.14rem;
+		font-size: 1.15rem;
 		font-weight: 700;
 		letter-spacing: -0.03em;
 		color: var(--text-normal);
 	}
 
-	.owen-internal-comments__count {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 2rem;
-		height: 2rem;
-		padding: 0 0.7rem;
-		border-radius: 999px;
-		border: 1px solid rgba(118, 156, 255, 0.16);
-		background: rgba(118, 156, 255, 0.1);
-		color: var(--primary);
-		font-size: 0.82rem;
-		font-weight: 700;
-	}
-
-	.owen-internal-comments__note {
+	.owen-comments__lead {
 		margin: 0;
+		max-width: 38rem;
 		line-height: 1.75;
 		color: var(--text-secondary);
 	}
 
-	.owen-internal-comments__form {
-		display: grid;
-		gap: 0.9rem;
-		padding: 1rem;
-		border-radius: 1.2rem;
+	.owen-comments__count {
+		display: inline-grid;
+		place-items: center;
+		min-width: 3.4rem;
+		padding: 0.55rem 0.8rem;
+		border-radius: 1rem;
 		border: 1px solid rgba(118, 156, 255, 0.12);
 		background:
-			linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(247, 250, 255, 0.42)),
-			radial-gradient(circle at top right, rgba(118, 156, 255, 0.09), transparent 10rem);
+			linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(247, 250, 255, 0.52)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.1), transparent 10rem);
+		box-shadow:
+			0 14px 32px rgba(15, 23, 42, 0.05),
+			inset 0 1px 0 rgba(255, 255, 255, 0.82);
 	}
 
-	:global(.dark) .owen-internal-comments__form {
-		border-color: rgba(255, 255, 255, 0.08);
-		background:
-			linear-gradient(180deg, rgba(10, 14, 22, 0.56), rgba(5, 8, 14, 0.38)),
-			radial-gradient(circle at top right, rgba(118, 156, 255, 0.12), transparent 10rem);
+	.owen-comments__count strong {
+		font-size: 1rem;
+		color: var(--text-normal);
 	}
 
-	.owen-internal-comments__grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.9rem;
-	}
-
-	.owen-internal-comments__field {
-		display: grid;
-		gap: 0.4rem;
-		font-size: 0.85rem;
+	.owen-comments__count span {
+		font-size: 0.72rem;
 		color: var(--text-secondary);
 	}
 
-	.owen-internal-comments__field--full {
+	.owen-comments__form {
+		display: grid;
+		gap: 1rem;
+		padding: 1rem 1.05rem;
+		border-radius: 1.3rem;
+		border: 1px solid rgba(118, 156, 255, 0.12);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(247, 250, 255, 0.44)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.1), transparent 12rem);
+		box-shadow:
+			0 18px 42px rgba(15, 23, 42, 0.05),
+			inset 0 1px 0 rgba(255, 255, 255, 0.8);
+	}
+
+	.owen-comments__grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.85rem;
+	}
+
+	.owen-comments__field {
+		display: grid;
+		gap: 0.4rem;
+		font-size: 0.84rem;
+		color: var(--text-secondary);
+	}
+
+	.owen-comments__field--full {
 		grid-column: 1 / -1;
 	}
 
-	.owen-internal-comments__field input,
-	.owen-internal-comments__field textarea {
+	.owen-comments__field input,
+	.owen-comments__field textarea {
 		width: 100%;
-		border-radius: 0.95rem;
+		border-radius: 1rem;
 		border: 1px solid rgba(118, 156, 255, 0.12);
-		background: rgba(255, 255, 255, 0.72);
+		background: rgba(255, 255, 255, 0.74);
+		padding: 0.86rem 0.95rem;
 		color: var(--text-normal);
-		padding: 0.82rem 0.9rem;
 		outline: none;
 		transition:
 			border-color 0.18s ease,
@@ -420,48 +486,51 @@ const commentsPath = Astro.props.path;
 			transform 0.18s ease;
 	}
 
-	:global(.dark) .owen-internal-comments__field input,
-	:global(.dark) .owen-internal-comments__field textarea {
-		border-color: rgba(255, 255, 255, 0.08);
-		background: rgba(15, 23, 42, 0.7);
-	}
-
-	.owen-internal-comments__field input:focus,
-	.owen-internal-comments__field textarea:focus {
-		border-color: rgba(118, 156, 255, 0.26);
-		box-shadow: 0 0 0 3px rgba(118, 156, 255, 0.12);
+	.owen-comments__field input:focus,
+	.owen-comments__field textarea:focus {
+		border-color: rgba(118, 156, 255, 0.28);
+		box-shadow: 0 0 0 4px rgba(118, 156, 255, 0.12);
 		transform: translateY(-1px);
 	}
 
-	.owen-internal-comments__honeypot {
+	.owen-comments__honeypot {
 		position: absolute;
 		left: -9999px;
 		opacity: 0;
 		pointer-events: none;
 	}
 
-	.owen-internal-comments__actions {
+	.owen-comments__actions {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.8rem;
+		gap: 1rem;
 	}
 
-	.owen-internal-comments__status {
+	.owen-comments__status-wrap {
+		display: grid;
+		gap: 0.24rem;
+	}
+
+	.owen-comments__status {
 		margin: 0;
-		font-size: 0.85rem;
-		line-height: 1.6;
+		font-size: 0.84rem;
 		color: var(--text-secondary);
 	}
 
-	.owen-internal-comments__submit {
+	.owen-comments__length {
+		font-size: 0.74rem;
+		color: rgba(109, 122, 145, 0.8);
+	}
+
+	.owen-comments__submit {
 		border: none;
-		border-radius: 999px;
-		padding: 0.78rem 1.15rem;
+		border-radius: 1rem;
+		padding: 0.82rem 1.18rem;
 		font-weight: 700;
 		color: white;
 		background: linear-gradient(135deg, rgba(104, 126, 255, 0.96), rgba(181, 87, 127, 0.92));
-		box-shadow: 0 18px 36px rgba(104, 126, 255, 0.2);
+		box-shadow: 0 18px 36px rgba(104, 126, 255, 0.18);
 		cursor: pointer;
 		transition:
 			transform 0.18s ease,
@@ -469,103 +538,200 @@ const commentsPath = Astro.props.path;
 			box-shadow 0.18s ease;
 	}
 
-	.owen-internal-comments__submit:hover:not(:disabled) {
+	.owen-comments__submit:hover:not(:disabled) {
 		transform: translateY(-1px);
-		box-shadow: 0 22px 42px rgba(104, 126, 255, 0.26);
+		box-shadow: 0 22px 42px rgba(104, 126, 255, 0.24);
 	}
 
-	.owen-internal-comments__submit:disabled {
-		opacity: 0.65;
+	.owen-comments__submit:disabled {
+		opacity: 0.62;
 		cursor: progress;
 	}
 
-	.owen-internal-comments__list {
+	.owen-comments__list {
 		display: grid;
 		gap: 0.9rem;
 	}
 
-	.owen-internal-comments__empty,
-	.owen-internal-comments__item {
-		border-radius: 1.1rem;
+	.owen-comments__empty,
+	.owen-comments__item {
+		border-radius: 1.28rem;
 		border: 1px solid rgba(118, 156, 255, 0.12);
 		background:
-			linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(247, 250, 255, 0.4)),
-			radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 10rem);
+			linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(247, 250, 255, 0.42)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 12rem);
+		box-shadow:
+			0 16px 36px rgba(15, 23, 42, 0.05),
+			inset 0 1px 0 rgba(255, 255, 255, 0.78);
+	}
+
+	.owen-comments__empty {
+		display: grid;
+		gap: 0.35rem;
+		padding: 1.1rem;
+		text-align: center;
+		color: var(--text-secondary);
+	}
+
+	.owen-comments__empty strong {
+		color: var(--text-normal);
+	}
+
+	.owen-comments__item {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: 0.9rem;
 		padding: 1rem 1.05rem;
 	}
 
-	:global(.dark) .owen-internal-comments__empty,
-	:global(.dark) .owen-internal-comments__item {
+	.owen-comments__avatar {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.7rem;
+		height: 2.7rem;
+		border-radius: 999px;
+		background:
+			linear-gradient(135deg, rgba(255, 198, 218, 0.96), rgba(120, 165, 255, 0.88));
+		color: white;
+		font-size: 0.94rem;
+		font-weight: 800;
+		box-shadow: 0 12px 28px rgba(118, 156, 255, 0.16);
+	}
+
+	.owen-comments__item-body {
+		display: grid;
+		gap: 0.7rem;
+		min-width: 0;
+	}
+
+	.owen-comments__item-head {
+		display: flex;
+		align-items: start;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.owen-comments__item-author-group {
+		display: grid;
+		gap: 0.34rem;
+		min-width: 0;
+	}
+
+	.owen-comments__item-author {
+		font-size: 0.95rem;
+		color: var(--text-normal);
+	}
+
+	.owen-comments__item-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.45rem 0.55rem;
+	}
+
+	.owen-comments__item-time,
+	.owen-comments__item-contact {
+		display: inline-flex;
+		align-items: center;
+		min-height: 1.7rem;
+		padding: 0 0.68rem;
+		border-radius: 999px;
+		font-size: 0.72rem;
+	}
+
+	.owen-comments__item-time {
+		background: rgba(118, 156, 255, 0.08);
+		color: rgba(87, 101, 125, 0.88);
+	}
+
+	.owen-comments__item-contact {
+		border: 1px solid rgba(255, 191, 214, 0.22);
+		background: rgba(255, 241, 247, 0.76);
+		color: rgba(162, 77, 116, 0.88);
+		text-decoration: none;
+		transition:
+			transform 0.18s ease,
+			border-color 0.18s ease,
+			box-shadow 0.18s ease;
+	}
+
+	.owen-comments__item-contact:hover {
+		transform: translateY(-1px);
+		border-color: rgba(255, 191, 214, 0.34);
+		box-shadow: 0 10px 24px rgba(181, 87, 127, 0.1);
+	}
+
+	.owen-comments__item-content {
+		margin: 0;
+		padding: 0.95rem 1rem;
+		border-radius: 1rem;
+		border: 1px solid rgba(118, 156, 255, 0.1);
+		background: rgba(255, 255, 255, 0.76);
+		line-height: 1.84;
+		white-space: pre-wrap;
+		color: var(--text-normal);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+	}
+
+	:global(.dark) .owen-comments__eyebrow {
+		color: rgba(255, 205, 224, 0.76);
+	}
+
+	:global(.dark) .owen-comments__count,
+	:global(.dark) .owen-comments__form,
+	:global(.dark) .owen-comments__empty,
+	:global(.dark) .owen-comments__item {
 		border-color: rgba(255, 255, 255, 0.08);
 		background:
-			linear-gradient(180deg, rgba(10, 14, 22, 0.56), rgba(5, 8, 14, 0.38)),
-			radial-gradient(circle at top right, rgba(118, 156, 255, 0.12), transparent 10rem);
+			linear-gradient(180deg, rgba(12, 16, 24, 0.72), rgba(6, 9, 16, 0.48)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.12), transparent 12rem);
+		box-shadow:
+			0 20px 42px rgba(0, 0, 0, 0.2),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
-	.owen-internal-comments__empty {
-		display: grid;
-		gap: 0.35rem;
-		color: var(--text-secondary);
-		text-align: center;
+	:global(.dark) .owen-comments__field input,
+	:global(.dark) .owen-comments__field textarea,
+	:global(.dark) .owen-comments__item-content {
+		border-color: rgba(255, 255, 255, 0.08);
+		background: rgba(255, 255, 255, 0.05);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 	}
 
-	.owen-internal-comments__empty strong {
-		font-size: 0.96rem;
-		color: var(--text-normal);
+	:global(.dark) .owen-comments__item-time {
+		background: rgba(255, 255, 255, 0.06);
+		color: rgba(220, 230, 248, 0.7);
 	}
 
-	.owen-internal-comments__item {
-		display: grid;
-		gap: 0.72rem;
+	:global(.dark) .owen-comments__item-contact {
+		border-color: rgba(255, 255, 255, 0.1);
+		background: rgba(255, 255, 255, 0.05);
+		color: rgba(255, 216, 232, 0.84);
 	}
 
-	.owen-internal-comments__item-meta {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-	}
-
-	.owen-internal-comments__item-author {
-		font-size: 0.92rem;
-		font-weight: 700;
-		color: var(--text-normal);
-		text-decoration: none;
-	}
-
-	.owen-internal-comments__item-author:hover {
-		color: var(--primary);
-	}
-
-	.owen-internal-comments__item-time {
-		font-size: 0.78rem;
-		color: var(--text-secondary);
-	}
-
-	.owen-internal-comments__item-content {
-		margin: 0;
-		white-space: pre-wrap;
-		line-height: 1.82;
-		color: var(--text-secondary);
+	:global(.dark) .owen-comments__length {
+		color: rgba(221, 229, 244, 0.56);
 	}
 
 	@media (max-width: 720px) {
-		.owen-internal-comments__grid {
-			grid-template-columns: 1fr;
-		}
-
-		.owen-internal-comments__actions {
+		.owen-comments__header,
+		.owen-comments__actions,
+		.owen-comments__item-head {
 			flex-direction: column;
 			align-items: stretch;
 		}
 
-		.owen-internal-comments__submit {
-			width: 100%;
+		.owen-comments__item {
+			grid-template-columns: 1fr;
 		}
 
-		.owen-internal-comments__item-meta {
-			flex-direction: column;
-			align-items: flex-start;
+		.owen-comments__grid {
+			grid-template-columns: 1fr;
+		}
+
+		.owen-comments__submit {
+			width: 100%;
 		}
 	}
 </style>

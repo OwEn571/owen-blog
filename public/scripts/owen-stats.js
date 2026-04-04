@@ -2,7 +2,7 @@
 	const API_URL = "/api/stats.json";
 	const VISITOR_KEY = "owen-site-stats-visitor-v1";
 	const HIT_KEY_PREFIX = "owen-site-stats-hit:";
-	const HIT_DEDUPE_MS = 10000;
+	const HIT_DEDUPE_MS = 30 * 60 * 1000;
 	const bundleCache = new Map();
 
 	function normalizePath(input) {
@@ -56,11 +56,11 @@
 		const now = Date.now();
 
 		try {
-			const previousValue = Number(sessionStorage.getItem(storageKey) || "0");
+			const previousValue = Number(localStorage.getItem(storageKey) || "0");
 			if (previousValue && now - previousValue < HIT_DEDUPE_MS) {
 				return false;
 			}
-			sessionStorage.setItem(storageKey, String(now));
+			localStorage.setItem(storageKey, String(now));
 			return true;
 		} catch (_error) {
 			return true;
@@ -118,11 +118,11 @@
 		},
 		getPageStats: async function (path) {
 			const bundle = await loadBundle(path);
-			return bundle.page || { pageviews: 0, visits: 0 };
+			return bundle.page || { pageviews: 0, visits: 0, visitors: 0 };
 		},
 		getSiteStats: async function (path) {
 			const bundle = await loadBundle(path);
-			return bundle.site || { pageviews: 0, visits: 0 };
+			return bundle.site || { pageviews: 0, visits: 0, visitors: 0 };
 		},
 	};
 })();

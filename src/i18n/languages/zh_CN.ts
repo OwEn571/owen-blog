@@ -329,7 +329,7 @@ export const zh_CN: Translation = {
 	// 个人资料
 	[Key.profileStatsLoading]: "统计加载中...",
 	[Key.profileStatsPageViews]: "浏览量",
-	[Key.profileStatsVisits]: "访问次数",
+	[Key.profileStatsVisits]: "访客数",
 	[Key.profileStatsUnavailable]: "统计不可用",
 
 	// 页面访问量统计

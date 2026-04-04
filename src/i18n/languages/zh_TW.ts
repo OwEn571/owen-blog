@@ -331,7 +331,7 @@ export const zh_TW: Translation = {
 	// 個人資料統計
 	[Key.profileStatsLoading]: "統計載入中...",
 	[Key.profileStatsPageViews]: "瀏覽次數",
-	[Key.profileStatsVisits]: "造訪次數",
+	[Key.profileStatsVisits]: "訪客數",
 	[Key.profileStatsUnavailable]: "統計不可用",
 
 	// 頁面瀏覽統計

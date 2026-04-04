@@ -1,0 +1,8 @@
+www.owen571.top {
+	redir https://owen571.top{uri} 308
+}
+
+owen571.top {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:4321
+}

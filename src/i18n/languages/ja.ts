@@ -345,7 +345,7 @@ export const ja: Translation = {
 	// プロフィールの統計
 	[Key.profileStatsLoading]: "統計を読み込み中...",
 	[Key.profileStatsPageViews]: "ページの閲覧",
-	[Key.profileStatsVisits]: "訪問",
+	[Key.profileStatsVisits]: "訪問者数",
 	[Key.profileStatsUnavailable]: "統計は利用できません",
 
 	// ページビューの統計

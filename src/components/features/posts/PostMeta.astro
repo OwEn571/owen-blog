@@ -148,7 +148,7 @@ const {
             }
 
             const pageViews = stats.pageviews || 0;
-            const visits = stats.visits || 0;
+            const visits = stats.visitors || stats.visits || 0;
 
             if (pageViews === 0 && visits === 0) {
                 container.classList.add('hidden');
