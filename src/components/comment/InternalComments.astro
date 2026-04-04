@@ -12,7 +12,7 @@ const commentsPath = Astro.props.path;
 			<p class="owen-comments__eyebrow">留言区</p>
 			<h3 class="owen-comments__title">留言</h3>
 			<p class="owen-comments__lead">
-				欢迎纠错、补充、交流。昵称和评论内容必填，联系方式完全可选。
+				欢迎纠错、补充、交流。昵称和评论内容必填；如果你愿意，也可以留下联系方式，仅站主可见。
 			</p>
 		</div>
 		<div class="owen-comments__count">
@@ -40,7 +40,7 @@ const commentsPath = Astro.props.path;
 					type="text"
 					name="contact"
 					maxlength="120"
-					placeholder="邮箱 / 微信 / GitHub / 网站（可选）"
+					placeholder="邮箱 / 微信 / GitHub / 网站（可选，仅站主可见）"
 				/>
 			</label>
 
@@ -81,8 +81,6 @@ const commentsPath = Astro.props.path;
 
 <script is:inline define:vars={{ commentsApiUrl: "/api/comments.json" }}>
 	(() => {
-		const VISITOR_KEY = "owen-internal-comment-visitor-v1";
-
 		function normalizePath(input) {
 			let value = String(input || "").trim() || "/";
 			value = value.split("?")[0].split("#")[0] || "/";
@@ -94,27 +92,6 @@ const commentsPath = Astro.props.path;
 				value = `${value}/`;
 			}
 			return value || "/";
-		}
-
-		function createVisitorId() {
-			if (window.crypto && typeof window.crypto.randomUUID === "function") {
-				return window.crypto.randomUUID().replace(/-/g, "");
-			}
-			return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
-		}
-
-		function getVisitorId() {
-			try {
-				const current = localStorage.getItem(VISITOR_KEY);
-				if (current) {
-					return current;
-				}
-				const next = createVisitorId();
-				localStorage.setItem(VISITOR_KEY, next);
-				return next;
-			} catch {
-				return createVisitorId();
-			}
 		}
 
 		function formatDate(value) {
@@ -158,26 +135,6 @@ const commentsPath = Astro.props.path;
 			return first.toUpperCase();
 		}
 
-		function resolveContactLink(contact) {
-			const value = String(contact || "").trim();
-			if (!value) {
-				return null;
-			}
-
-			if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-				return { href: `mailto:${value}`, label: value };
-			}
-
-			if (/^(https?:\/\/|www\.)/i.test(value)) {
-				return {
-					href: /^https?:\/\//i.test(value) ? value : `https://${value}`,
-					label: value,
-				};
-			}
-
-			return null;
-		}
-
 		function createCommentCard(comment) {
 			const article = document.createElement("article");
 			article.className = "owen-comments__item";
@@ -207,21 +164,6 @@ const commentsPath = Astro.props.path;
 			time.dateTime = comment.createdAt;
 			time.textContent = formatDate(comment.createdAt);
 			meta.append(time);
-
-			if (comment.contact) {
-				const contactLink = resolveContactLink(comment.contact);
-				const contactEl = document.createElement(
-					contactLink ? "a" : "span",
-				);
-				contactEl.className = "owen-comments__item-contact";
-				contactEl.textContent = comment.contact;
-				if (contactEl instanceof HTMLAnchorElement && contactLink) {
-					contactEl.href = contactLink.href;
-					contactEl.target = "_blank";
-					contactEl.rel = "noreferrer";
-				}
-				meta.append(contactEl);
-			}
 
 			authorGroup.append(author, meta);
 
@@ -339,7 +281,6 @@ const commentsPath = Astro.props.path;
 						contact,
 						content,
 						company,
-						visitorId: getVisitorId(),
 					});
 					renderComments(root, Array.isArray(data.items) ? data.items : []);
 					form.reset();

@@ -67,6 +67,18 @@ const miaomiaoButtonId = `${miaomiaoUid}-button`;
 			</div>
 		</div>
 
+		<label class="miaomiao-chat-panel__privacy">
+			<input
+				type="checkbox"
+				class="miaomiao-chat-panel__privacy-toggle"
+				data-miaomiao-chat-share-toggle
+			/>
+			<span class="miaomiao-chat-panel__privacy-copy">
+				<strong>允许发送当前页摘要</strong>
+				<span>关闭时只发送标题和页面基础信息；打开后才会把当前页摘要发给 Dify。</span>
+			</span>
+		</label>
+
 		<div class="miaomiao-chat-panel__quicklist">
 			<button
 				type="button"
@@ -311,6 +323,37 @@ const miaomiaoButtonId = `${miaomiaoUid}-button`;
     white-space nowrap
     overflow hidden
     text-overflow ellipsis
+
+  .miaomiao-chat-panel__privacy
+    display grid
+    grid-template-columns auto minmax(0, 1fr)
+    gap .75rem
+    align-items start
+    padding .86rem .95rem
+    border-radius 1rem
+    border 1px solid rgba(118, 156, 255, .14)
+    background linear-gradient(180deg, rgba(246, 249, 255, .84), rgba(255,255,255,.72))
+
+  .miaomiao-chat-panel__privacy-toggle
+    margin-top .16rem
+    width 1rem
+    height 1rem
+    accent-color rgb(166, 76, 115)
+
+  .miaomiao-chat-panel__privacy-copy
+    display grid
+    gap .18rem
+
+  .miaomiao-chat-panel__privacy-copy strong
+    font-family var(--owen-font-ui)
+    font-size .82rem
+    color rgba(72, 35, 54, .94)
+
+  .miaomiao-chat-panel__privacy-copy span
+    font-family var(--owen-font-reading)
+    font-size .76rem
+    line-height 1.64
+    color rgba(96, 61, 80, .72)
 
   .miaomiao-chat-panel__quicklist
     display flex
@@ -580,6 +623,7 @@ const miaomiaoButtonId = `${miaomiaoUid}-button`;
     color rgba(244, 221, 231, .72)
 
   :root.dark .miaomiao-chat-panel__reading,
+  :root.dark .miaomiao-chat-panel__privacy,
   :root.dark .miaomiao-chat-panel__quick,
   :root.dark .miaomiao-chat-panel__status,
   :root.dark .miaomiao-chat-message__bubble,
@@ -593,6 +637,12 @@ const miaomiaoButtonId = `${miaomiaoUid}-button`;
   :root.dark .miaomiao-chat-panel__eyebrow,
   :root.dark .miaomiao-chat-message__meta
     color rgba(255, 214, 230, .74)
+
+  :root.dark .miaomiao-chat-panel__privacy-copy strong
+    color rgba(255, 241, 247, .94)
+
+  :root.dark .miaomiao-chat-panel__privacy-copy span
+    color rgba(244, 221, 231, .72)
 
   :root.dark .miaomiao-chat-panel__messages
     background linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01))

@@ -4,6 +4,7 @@ const DEFAULT_DIFY_API_BASE_URL = "https://api.dify.ai/v1";
 
 function compilePrompt(payload: {
 	message?: string;
+	shareCurrentPage?: boolean;
 	currentPath?: string;
 	currentTitle?: string;
 	currentDescription?: string;
@@ -12,7 +13,9 @@ function compilePrompt(payload: {
 }) {
 	return [
 		"你是 Owen 博客里的陪读助手“喵喵”。",
-		"回答规则：1. 优先依据【当前页面正文】回答。2. 不要假装读过整站索引、其他页面或仓库里没有提供给你的内容。3. 如果当前页面信息不够，直接说明“这页里没有写到”或“当前页信息不够”，然后再补充通用解释。4. 除非用户明确要求，不要输出文件路径、检索清单或资料目录。",
+		payload.shareCurrentPage
+			? "回答规则：1. 优先依据【当前页面正文】回答。2. 不要假装读过整站索引、其他页面或仓库里没有提供给你的内容。3. 如果当前页面信息不够，直接说明“这页里没有写到”或“当前页信息不够”，然后再补充通用解释。4. 除非用户明确要求，不要输出文件路径、检索清单或资料目录。"
+			: "回答规则：1. 当前没有提供页面正文，只能依据标题、页面信息和用户问题回答。2. 不要假装读过页面全文、整站索引或仓库其他内容。3. 如果信息不够，直接说明“当前没有收到这页正文”或“信息不够”，然后再补充一般性解释。",
 		payload.currentTitle || payload.currentPath || payload.currentDescription
 			? [
 					"【当前页面信息】",
@@ -26,7 +29,9 @@ function compilePrompt(payload: {
 		payload.currentHeadings?.length
 			? `【当前页面目录】\n${payload.currentHeadings.join("\n")}`
 			: "",
-		payload.currentPageContent ? `【当前页面正文】\n${payload.currentPageContent}` : "",
+		payload.shareCurrentPage && payload.currentPageContent
+			? `【当前页面正文】\n${payload.currentPageContent}`
+			: "",
 		`【用户问题】\n${payload.message || ""}`,
 	]
 		.filter(Boolean)
@@ -142,8 +147,11 @@ export const POST: APIRoute = async ({ request }) => {
 	const currentPath = sanitizeText(payload.currentPath, 240);
 	const currentTitle = sanitizeText(payload.currentTitle, 240);
 	const currentDescription = sanitizeText(payload.currentDescription, 500);
-	const currentHeadings = sanitizeHeadings(payload.currentHeadings);
-	const currentPageContent = sanitizeText(payload.currentPageContent, 12000);
+	const shareCurrentPage = payload.shareCurrentPage === true;
+	const currentHeadings = shareCurrentPage ? sanitizeHeadings(payload.currentHeadings) : [];
+	const currentPageContent = shareCurrentPage
+		? sanitizeText(payload.currentPageContent, 12000)
+		: "";
 
 	try {
 		const response = await fetch(
@@ -161,11 +169,12 @@ export const POST: APIRoute = async ({ request }) => {
 						current_description: currentDescription,
 						current_headings: currentHeadings.join("\n"),
 					},
-					query: compilePrompt({
-						message,
-						currentPath,
-						currentTitle,
-						currentDescription,
+						query: compilePrompt({
+							message,
+							shareCurrentPage,
+							currentPath,
+							currentTitle,
+							currentDescription,
 						currentHeadings,
 						currentPageContent,
 					}),

@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { getRuntimeDataDir } from "./runtime-env";
+
 type StatsEntry = {
 	pageviews: number;
 	visitorSketch: number[];
@@ -42,7 +44,6 @@ export type PublicComment = {
 	path: string;
 	author: string;
 	content: string;
-	contact?: string;
 	createdAt: string;
 };
 
@@ -66,14 +67,11 @@ const COMMENT_THROTTLE_MS = 45_000;
 const COMMENT_DAILY_LIMIT = 8;
 const LOCK_STALE_MS = 30_000;
 const LOCK_RETRY_MS = 80;
-const DEFAULT_DATA_DIR = path.join(process.cwd(), ".runtime");
-
-const DATA_DIR = path.resolve(process.env.BLOG_DATA_DIR || DEFAULT_DATA_DIR);
+const DATA_DIR = getRuntimeDataDir();
 const STATS_FILE = path.join(DATA_DIR, "stats.json");
 const COMMENTS_FILE = path.join(DATA_DIR, "comments.json");
 
 let writeQueue: Promise<unknown> = Promise.resolve();
-let didWarnAboutDefaultDataDir = false;
 
 function createEmptySketch() {
 	return Array.from({ length: HLL_REGISTERS }, () => 0);
@@ -100,19 +98,7 @@ function createEmptyComments(): CommentsData {
 	};
 }
 
-function maybeWarnAboutDefaultDataDir() {
-	if (didWarnAboutDefaultDataDir || process.env.BLOG_DATA_DIR) {
-		return;
-	}
-
-	didWarnAboutDefaultDataDir = true;
-	console.warn(
-		`[owen-blog] BLOG_DATA_DIR is not set. Runtime data is being written to ${DATA_DIR}. Set BLOG_DATA_DIR to a persistent path before production deploys.`,
-	);
-}
-
 async function ensureDataDir() {
-	maybeWarnAboutDefaultDataDir();
 	await mkdir(DATA_DIR, { recursive: true });
 }
 
@@ -318,7 +304,6 @@ function toPublicComment(comment: StoredComment): PublicComment {
 		path: comment.path,
 		author: comment.author,
 		content: comment.content,
-		contact: comment.contact || comment.website || undefined,
 		createdAt: comment.createdAt,
 	};
 }

@@ -4,15 +4,16 @@ import {
 	createComment,
 	listComments,
 	normalizePathKey,
-	sanitizeVisitorId,
 } from "../../server/runtime-store";
+import { resolveTrustedVisitor } from "../../server/trusted-visitor";
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
 			"Cache-Control": "no-store",
+			...(extraHeaders || {}),
 		},
 	});
 }
@@ -57,7 +58,7 @@ export const POST: APIRoute = async ({ request }) => {
 	const author = sanitizeText(payload.author, 32);
 	const content = sanitizeMultiline(payload.content, 2000);
 	const contact = sanitizeText(payload.contact, 120);
-	const visitorId = sanitizeVisitorId(String(payload.visitorId || ""));
+	const trustedVisitor = await resolveTrustedVisitor(request);
 
 	if (!author) {
 		return json({ error: "author is required" }, 400);
@@ -73,9 +74,17 @@ export const POST: APIRoute = async ({ request }) => {
 			author,
 			content,
 			contact: contact || undefined,
-			visitorId,
+			visitorId: trustedVisitor.visitorId,
 		});
-		return json(result, 201);
+		return json(
+			result,
+			201,
+			trustedVisitor.setCookie
+				? {
+						"Set-Cookie": trustedVisitor.setCookie,
+					}
+				: undefined,
+		);
 	} catch (error) {
 		if (
 			typeof error === "object" &&

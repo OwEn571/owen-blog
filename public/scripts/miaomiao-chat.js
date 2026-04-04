@@ -1,6 +1,7 @@
-(function () {
-	const STORAGE_KEY = "owen-miaomiao-chat-state-v2";
-	const VISITOR_KEY = "owen-miaomiao-chat-visitor-v1";
+	(function () {
+		const STORAGE_KEY = "owen-miaomiao-chat-state-v2";
+		const SHARE_PAGE_KEY = "owen-miaomiao-share-page-v1";
+		const VISITOR_KEY = "owen-miaomiao-chat-visitor-v1";
 	const REMOVE_SELECTORS = [
 		"script",
 		"style",
@@ -31,15 +32,14 @@
 		"table-of-contents",
 		"[data-pagefind-ignore]",
 	].join(",");
-	const CONTENT_CANDIDATES = [
-		["#decrypted-content", 2600],
-		["#post-container", 2400],
-		[".post-markdown-flow", 2100],
-		[".markdown-content", 1900],
-		[".custom-md", 1700],
-		["article", 900],
-		["main", 400],
-	];
+		const CONTENT_CANDIDATES = [
+			[".post-markdown-flow", 2100],
+			[".markdown-content", 1900],
+			[".custom-md", 1700],
+			["#post-container", 1400],
+			["article", 900],
+			["main", 400],
+		];
 
 	function safeStorageGet(storage, key) {
 		try {
@@ -203,12 +203,21 @@
 		return best?.node || null;
 	}
 
-	function extractCurrentPageContext() {
+	function extractCurrentPageContext(shareDetailedContent) {
 		const path = window.location.pathname || "/";
 		const title = getPageTitle();
 		const description = getPageDescription();
+		if (!shareDetailedContent) {
+			return {
+				path,
+				title,
+				description,
+				headings: [],
+				content: "",
+			};
+		}
 		const contentRoot = findBestContentRoot();
-		const bodyText = limitText(contentRoot ? getVisibleText(contentRoot) : "", 6500);
+		const bodyText = limitText(contentRoot ? getVisibleText(contentRoot) : "", 2800);
 		const headings = contentRoot ? getHeadings(contentRoot) : [];
 
 		return {
@@ -218,6 +227,14 @@
 			headings,
 			content: bodyText,
 		};
+	}
+
+	function persistSharePreference(value) {
+		safeStorageSet(window.localStorage, SHARE_PAGE_KEY, value ? "true" : "false");
+	}
+
+	function hydrateSharePreference() {
+		return safeStorageGet(window.localStorage, SHARE_PAGE_KEY) === "true";
 	}
 
 	function createWelcomeMessage(context) {
@@ -252,7 +269,7 @@
 	}
 
 	function syncPageContext(state) {
-		const context = extractCurrentPageContext();
+		const context = extractCurrentPageContext(state.sharePageContext);
 		state.currentContext = context;
 		state.currentPath = context.path;
 
@@ -395,11 +412,12 @@
 				message,
 				conversationId: state.conversationId,
 				visitorId: state.visitorId,
+				shareCurrentPage: state.sharePageContext,
 				currentPath: pageContext.path,
 				currentTitle: pageContext.title,
 				currentDescription: pageContext.description,
-				currentHeadings: pageContext.headings,
-				currentPageContent: pageContext.content,
+				currentHeadings: state.sharePageContext ? pageContext.headings : [],
+				currentPageContent: state.sharePageContext ? pageContext.content : "",
 			});
 
 			state.conversationId = responseData.conversationId || state.conversationId || "";
@@ -411,7 +429,9 @@
 				state,
 				pageContext.content
 					? "这次回答已经结合当前页面正文。"
-					: "这次回答主要按通用理解组织，因为当前页正文不够完整。",
+					: state.sharePageContext
+						? "这次回答主要按通用理解组织，因为当前页正文不够完整。"
+						: "这次没有发送页面正文，只按标题和基础信息帮你整理。",
 			);
 		} catch (error) {
 			console.error("[MiaoMiao] send failed:", error);
@@ -477,6 +497,7 @@
 		const sendButton = root.querySelector("[data-miaomiao-chat-send]");
 		const pageTitleEl = root.querySelector("[data-miaomiao-chat-page-title]");
 		const pagePathEl = root.querySelector("[data-miaomiao-chat-page-path]");
+		const shareToggle = root.querySelector("[data-miaomiao-chat-share-toggle]");
 		const promptButtons = Array.from(
 			root.querySelectorAll("[data-miaomiao-chat-prompt]"),
 		).filter((button) => button instanceof HTMLButtonElement);
@@ -490,14 +511,16 @@
 			!(form instanceof HTMLFormElement) ||
 			!(inputEl instanceof HTMLTextAreaElement) ||
 			!(resetButton instanceof HTMLButtonElement) ||
-			!(sendButton instanceof HTMLButtonElement)
+			!(sendButton instanceof HTMLButtonElement) ||
+			!(shareToggle instanceof HTMLInputElement)
 		) {
 			return;
 		}
 
 		root.dataset.miaomiaoReady = "true";
 
-		const initialContext = extractCurrentPageContext();
+		const sharePageContext = hydrateSharePreference();
+		const initialContext = extractCurrentPageContext(sharePageContext);
 		const hydrated = hydrateState();
 		const messages =
 			hydrated?.path === initialContext.path && Array.isArray(hydrated.messages) && hydrated.messages.length
@@ -518,9 +541,11 @@
 			sendButton,
 			pageTitleEl,
 			pagePathEl,
+			shareToggle,
 			promptButtons,
 			currentContext: initialContext,
 			currentPath: initialContext.path,
+			sharePageContext,
 			isOpen: false,
 			isSending: false,
 			visitorId: hydrated?.visitorId || getVisitorId(),
@@ -530,9 +555,15 @@
 		};
 
 		syncPageContext(state);
+		state.shareToggle.checked = state.sharePageContext;
 		setComposerBusy(state, false);
 		renderMessages(state);
-		setStatus(state, "喵喵会优先依据当前页面正文回答。");
+		setStatus(
+			state,
+			state.sharePageContext
+				? "喵喵会结合当前页摘要回答。"
+				: "默认不会发送页面正文，只用标题和基础信息回答。",
+		);
 		persistState(state);
 
 		toggleButton.addEventListener("click", (event) => {
@@ -549,6 +580,19 @@
 		resetButton.addEventListener("click", () => {
 			resetConversation(state);
 			setStatus(state, "已经开始新的对话。");
+		});
+
+		shareToggle.addEventListener("change", () => {
+			state.sharePageContext = shareToggle.checked;
+			persistSharePreference(state.sharePageContext);
+			syncPageContext(state);
+			setStatus(
+				state,
+				state.sharePageContext
+					? "已允许发送当前页摘要给喵喵。"
+					: "已关闭页面摘要外发，喵喵只会收到标题和基础信息。",
+			);
+			persistState(state);
 		});
 
 		promptButtons.forEach((button) => {

@@ -4,15 +4,16 @@ import {
 	getStatsSnapshot,
 	normalizePathKey,
 	recordPageView,
-	sanitizeVisitorId,
 } from "../../server/runtime-store";
+import { resolveTrustedVisitor } from "../../server/trusted-visitor";
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: {
 			"Content-Type": "application/json; charset=utf-8",
 			"Cache-Control": "no-store",
+			...(extraHeaders || {}),
 		},
 	});
 }
@@ -34,7 +35,15 @@ export const POST: APIRoute = async ({ request }) => {
 	}
 
 	const path = normalizePathKey(String(payload.path || "/"));
-	const visitorId = sanitizeVisitorId(String(payload.visitorId || ""));
-	const snapshot = await recordPageView(path, visitorId);
-	return json(snapshot);
+	const trustedVisitor = await resolveTrustedVisitor(request);
+	const snapshot = await recordPageView(path, trustedVisitor.visitorId);
+	return json(
+		snapshot,
+		200,
+		trustedVisitor.setCookie
+			? {
+					"Set-Cookie": trustedVisitor.setCookie,
+				}
+			: undefined,
+	);
 };

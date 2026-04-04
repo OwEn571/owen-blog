@@ -1,6 +1,5 @@
 (function () {
 	const API_URL = "/api/stats.json";
-	const VISITOR_KEY = "owen-site-stats-visitor-v1";
 	const HIT_KEY_PREFIX = "owen-site-stats-hit:";
 	const HIT_DEDUPE_MS = 30 * 60 * 1000;
 	const bundleCache = new Map();
@@ -27,28 +26,6 @@
 		}
 
 		return value || "/";
-	}
-
-	function createVisitorId() {
-		if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
-			return globalThis.crypto.randomUUID().replace(/-/g, "");
-		}
-
-		return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
-	}
-
-	function getVisitorId() {
-		try {
-			const current = localStorage.getItem(VISITOR_KEY);
-			if (current) {
-				return current;
-			}
-			const next = createVisitorId();
-			localStorage.setItem(VISITOR_KEY, next);
-			return next;
-		} catch (_error) {
-			return createVisitorId();
-		}
 	}
 
 	function shouldRecordHit(path) {
@@ -98,7 +75,6 @@
 					},
 					body: JSON.stringify({
 						path: normalizedPath,
-						visitorId: getVisitorId(),
 					}),
 				})
 			: requestJson(`${API_URL}?path=${encodeURIComponent(normalizedPath)}`)).catch(

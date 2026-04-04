@@ -12,7 +12,13 @@ if [[ -f "${ENV_FILE}" ]]; then
 fi
 
 cd "${ROOT_DIR}"
-mkdir -p "${BLOG_DATA_DIR:-${ROOT_DIR}/.runtime}"
+
+if [[ -z "${BLOG_DATA_DIR:-}" ]]; then
+  echo "BLOG_DATA_DIR is required in production runtime."
+  exit 1
+fi
+
+mkdir -p "${BLOG_DATA_DIR}"
 
 export HOME="/home/ubuntu/owen"
 export NODE_ENV="${NODE_ENV:-production}"
