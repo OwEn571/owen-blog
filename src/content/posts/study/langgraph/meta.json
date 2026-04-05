@@ -1,0 +1,9 @@
+{
+  "title": "LangGraph",
+  "eyebrow": "Orchestration",
+  "description": "把 LangGraph 的学习顺序收成一条更适合系统理解的路径：先建图，再进入持久化、durable execution、流式与中断。",
+  "size": "wide",
+  "accent": "138 124 255",
+  "icon": "mdi:graph-outline",
+  "order": 25
+}

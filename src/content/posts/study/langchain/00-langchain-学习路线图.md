@@ -1,7 +1,7 @@
 ---
-title: LangChain 学习路线图：先组件，后 Agents
+title: LangChain 学习路线图：先组件，后 Agents，再回看 Middleware
 published: 2026-03-29
-description: 把原本偏“查询式”的官方文档重排成一条更适合系统学习的路径，先建立基础心智，再回到 Agents。
+description: 把原本偏“查询式”的官方文档重排成一条更适合系统学习的路径，先建立基础心智，再回到 Agents 与 Middleware。
 tags: [LangChain, 学习路线, Agent]
 category: LangChain
 draft: false
@@ -10,7 +10,7 @@ priority: 1
 comment: false
 ---
 
-这组文章来自我自己阅读 LangChain 官方文档时做的整理。原始笔记一共有 1 到 9 篇，但官方文档的组织方式更像“方便查 API”，不完全像“方便学习一门框架”。
+这组文章来自我自己阅读 LangChain 官方文档时做的整理。原始笔记目前已经写到 10 篇，但官方文档的组织方式更像“方便查 API”，不完全像“方便学习一门框架”。
 
 我读下来的几个不适感，基本就是这三点：
 
@@ -46,6 +46,9 @@ comment: false
 
 9. `Agents`
 最后再回到 Agent，把前面的组件重新装回一台能运行的机器里。
+
+10. `Middleware`
+最后再回头看 middleware。因为它其实是对整个 agent loop 的“运行时切面控制”，不先理解 Agents，很难真正看懂它拦在哪里、为什么好用。
 
 这样读的好处是：  
 先把“零件”摸透，再去理解“整机”；先懂模型、消息、工具、记忆这些底层块，再回头看 `create_agent()`，很多原本觉得跳跃的地方就会顺下来。

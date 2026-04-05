@@ -1,7 +1,7 @@
 {
   "title": "LangChain",
   "eyebrow": "Framework",
-  "description": "把 LangChain 官方文档按更适合学习的顺序重排：先模型与消息，再工具、记忆、流式、结构化输出，最后回到 Agents。",
+  "description": "把 LangChain 官方文档按更适合学习的顺序重排：先模型与消息，再工具、记忆、流式、结构化输出，最后回到 Agents 与 Middleware。",
   "size": "wide",
   "accent": "118 166 255",
   "icon": "mdi:link-variant",
