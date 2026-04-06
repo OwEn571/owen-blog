@@ -29,7 +29,7 @@ LangChain 实现了一套流式传输系统，用于呈现实时更新。
 
 ### (1) update与Agent进程
 
-带工具的Agent的信息流动，可以简化为经过三次update。首先。LLM node会返回带有工具调用的AIMessage，然后Tool Node会返回带有工具执行结果的ToolMessage，最后LLM node再做最终的AI response：
+带工具的Agent的信息流动，可以简化为经过三次update。首先。LLM node会返回带有工具调用的AIMessage，然后Tool Node会返回带有工具执行结果的ToolMessage（当然，这里也可以是Command，详细的信息我们在后面的ToolNode再学），最后LLM node再做最终的AI response：
 ```python
 from langchain.agents import create_agent
 

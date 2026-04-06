@@ -332,8 +332,84 @@ ToolNode是一个预构建节点，用于在 LangGraph 工作流中执行工具�
 
 由于这部分主要是LangGraph的内容，所以我将暂时跳过。
 
-## 5. Prebuilt tools
+## 5. Tools的返回值
+
+自定义工具@tool后，可以为工具选择不同的返回值：
+- 返回string，用于生成人类可读的结果。
+- 返回object，用于生成模型需要解析的结构化结果。
+- 返回Command（可附带消息），用于需要写入状态的场景。
+
+### (1) String返回值
+
+```python
+from langchain.tools import tool
+
+
+@tool
+def get_weather(city: str) -> str:
+    """Get weather for a city."""
+    return f"It is currently sunny in {city}."
+```
+
+- 返回值会被转换为ToolMessage。
+- 模型会读取该文本并决定下一步操作。
+- 除非模型或其他工具后续修改，否则不会更改任何智能体状态字段。
+
+如果结果是人类可阅读的样子，应该选择此种返回。
+
+### (2) Object返回值
+
+```python
+from langchain.tools import tool
+
+
+@tool
+def get_weather_data(city: str) -> dict:
+    """Get structured weather data for a city."""
+    return {
+        "city": city,
+        "temperature_c": 22,
+        "conditions": "sunny",
+    }
+```
+- 该对象会被序列化后作为工具输出返回。
+- 模型可读取特定字段并基于这些字段进行推理。
+- 与字符串返回值类似，此操作不会直接更新图状态。
+
+当下游推理可从显式字段而非自由格式文本中获益时，使用此方式。
+
+### (3) Command返回值
+```python
+from langchain.messages import ToolMessage
+from langchain.tools import ToolRuntime, tool
+from langgraph.types import Command
+
+
+@tool
+def set_language(language: str, runtime: ToolRuntime) -> Command:
+    """Set the preferred response language."""
+    return Command(
+        update={
+            "preferred_language": language,
+            "messages": [
+                ToolMessage(
+                    content=f"Language set to {language}.",
+                    tool_call_id=runtime.tool_call_id,
+                )
+            ],
+        }
+    )
+```
+
+- 该命令通过update更新状态。
+- 更新后的状态可在同一次运行的后续步骤中使用。
+- 对于可能被并行工具调用更新的字段，请使用 reducer。
+
+当工具不仅返回数据，还会修改智能体状态时使用此方法。
+
+
+## 6. Prebuilt tools
 LangChain 提供了大量适用于网络搜索、代码解析、数据库访问等常见任务的预制工具与工具包。这些开箱即用的工具可直接集成到你的Agent中，无需编写自定义代码。详见[这里](https://docs.langchain.com/oss/python/integrations/tools)。
 
-## 6. Server-side tool use
+## 7. Server-side tool use
 部分聊天模型具备由模型提供商在服务器端运行的内置工具。这些工具包括网络搜索、代码解释器等功能，你无需自行定义或托管工具逻辑。详见[这里](https://docs.langchain.com/oss/python/integrations/providers/overview)和这里[这里](https://docs.langchain.com/oss/python/langchain/models#server-side-tool-use)。

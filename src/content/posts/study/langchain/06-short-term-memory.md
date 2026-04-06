@@ -41,6 +41,35 @@ agent.invoke(
 )
 ```
 
+如果要使用记忆，我们必须要定义好一个线程。如果，我们要生成随机线程号，可以用`{"configurable": {"thread_id": str(uuid.uuid4())}}`，uuid.uuid4()是生成一个新的随机的UUID再转成字符串。
+
+在持久化场景中，configurable最常用的就是thread_id，此外也是有其他键的，也可以自己定义业务参数：
+```json
+config = {
+    "configurable": {
+        "thread_id": "thread-1",
+        "user_id": "owen",
+        "lang": "zh",
+        "tenant_id": "school-a"
+    }
+}
+```
+
+再往深盘一下，config的完整结果如下：
+```json
+config = {
+    "configurable": {
+        # 运行逻辑要用的参数
+        "thread_id": "...",
+        "user_id": "...",
+        "lang": "zh",
+    },
+    # 观测/追踪用
+    "tags": [...],
+    "metadata": {...},
+}
+```
+
 而在生产环境中，往往使用数据库支持的检查点保存器，如使用langgraph提供的和Postgres结合的包：
 ```python
 pip install langgraph-checkpoint-postgres

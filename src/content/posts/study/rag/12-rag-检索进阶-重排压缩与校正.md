@@ -102,7 +102,7 @@ ColBERT（Contextualized Late Interaction over BERT）是一种创新的重排�
 2. 文档过滤：完全丢弃那些虽然被初步召回，但经过更精细判断后认为不相关的整个文档。
 
 ## 1. ContextualCompressionRetriever
-LangChain 提供了一个强大的组件 ContextualCompressionRetriever 来实现上下文压缩4。它像一个包装器，包裹在基础的检索器（如 FAISS.as_retriever()）之上。当基础检索器返回文档后，ContextualCompressionRetriever 会使用一个指定的 DocumentCompressor 对这些文档进行处理，然后再返回给调用者。
+LangChain 提供了一个强大的组件 ContextualCompressionRetriever 来实现上下文压缩。它像一个包装器，包裹在基础的检索器（如 FAISS.as_retriever()）之上。当基础检索器返回文档后，ContextualCompressionRetriever 会使用一个指定的 DocumentCompressor 对这些文档进行处理，然后再返回给调用者。
 
 LangChain 内置了多种 DocumentCompressor：
 
