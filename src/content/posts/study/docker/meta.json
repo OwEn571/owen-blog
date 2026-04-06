@@ -1,0 +1,9 @@
+{
+  "title": "Docker",
+  "eyebrow": "DevOps",
+  "description": "从镜像、容器、数据卷、网络到 Dockerfile 与 Compose 的完整入门主线。",
+  "size": "wide",
+  "accent": "255 176 128",
+  "icon": "mdi:docker",
+  "order": 22
+}

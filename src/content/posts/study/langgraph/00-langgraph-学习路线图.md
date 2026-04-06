@@ -1,7 +1,7 @@
 ---
 title: LangGraph 学习路线图：先建图，再进入持久化与中断
 published: 2026-04-05
-description: 这组笔记从 LangGraph 入门开始，顺着 StateGraph、持久化、durable execution、流式与 interrupts 这条主线往下走，尽量把概念放回一条连续工作流里。
+description: 这组笔记从 LangGraph 入门开始，沿着 StateGraph、持久化、durable execution、流式与 interrupts 走主线，再补上 time-travel、memory、subgraphs 与典型 agent 模式。
 tags: [LangGraph, 学习路线, Agent]
 category: LangGraph
 draft: false
@@ -35,7 +35,20 @@ LangGraph 的官方材料很强，但也有一个和 LangChain 类似的问题�
 5. `Interrupts：人类介入、审批流与恢复执行`
 把中断真正放回工作流里看，理解它为什么是 LangGraph 里最重要的能力之一。
 
-目前我已经把手头写完的 1 到 5 篇整理进来了；后面的 `Time-travel` 和 `Memory`，暂时更像单独展开的备忘与补充，等笔记写得更完整后再单开文。
+6. `Time-travel：重放与分叉`
+用检查点回溯历史，做调试、回放与分叉试验。
+
+7. `Memory：短期与长期记忆`
+搞清楚短期 checkpoint 和记忆 Store 的职责边界，以及如何管理上下文膨胀。
+
+8. `Subgraphs：子图复用与持久化策略`
+让复杂图变成可组合的模块，同时掌握子图的命名空间与持久化模式。
+
+9. `从流程到 Agent：建图思路`
+先画流程，再拆节点与 state，最后才落到可运行的图。
+
+10. `典型工作模式：Prompt Chaining / Parallel / Routing / Orchestrator / Evaluator`
+把常见结构收成模板，方便以后按需套用或组合。
 
 如果是第一次系统学 LangGraph，建议按这里的顺序一路往下读：
-先学“怎么建图”，再学“怎么让图能恢复、能暂停、能观测”，最后再回头看更复杂的 agent 编排，理解会顺很多。
+先学“怎么建图”，再学“怎么让图能恢复、能暂停、能观测”，最后再补齐 time-travel、memory 与 agent 模式，理解会顺很多。
