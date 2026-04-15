@@ -208,7 +208,7 @@
 
 <button
 	onclick={togglePanel}
-	aria-label="Table of Contents"
+	aria-label="文章目录"
 	id="mobile-toc-switch"
 	class="btn-plain scale-animation rounded-lg h-11 w-11 active:scale-90 lg:!hidden theme-switch-btn"
 >
@@ -225,7 +225,7 @@
 		</h3>
 		<button
 			onclick={togglePanel}
-			aria-label="Close TOC"
+			aria-label="关闭目录"
 			class="btn-plain rounded-lg h-8 w-8 active:scale-90 theme-switch-btn"
 		>
 			<Icon icon="material-symbols:close" class="text-[1rem]" />

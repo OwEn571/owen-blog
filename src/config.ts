@@ -27,10 +27,10 @@ const SITE_URL = (process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL).endsWith("/")
 	: `${process.env.PUBLIC_SITE_URL || DEFAULT_SITE_URL}/`;
 
 export const siteConfig: SiteConfig = {
-	title: "我的博客",
-	subtitle: "记录思考、项目与生活",
+	title: "OwEn",
+	subtitle: "AI、项目与学习记录",
 	siteURL: SITE_URL, // 生产环境默认使用 owen.top，可通过 PUBLIC_SITE_URL 覆盖
-	keywords: ["博客", "个人网站", "文章", "记录"],
+	keywords: ["AI", "Agent", "项目", "学习记录", "个人网站"],
 	siteStartDate: "2026-03-20", // 站点开始运行日期，用于站点统计组件计算运行天数
 
 	timeZone: SITE_TIMEZONE,
@@ -40,6 +40,19 @@ export const siteConfig: SiteConfig = {
 	themeColor: {
 		hue: 226, // 主题色的默认色相，范围从 0 到 360。例如：红色：0，青色：200，蓝绿色：250，粉色：345
 		fixed: true, // 固定主题色，隐藏已弃用的调色盘面板
+	},
+
+	performance: {
+		presentationMode: true, // 展示期优先流畅度，降低动效与毛玻璃开销
+		showMiaomiaoChat: false, // 暂时关闭喵喵 AI 悬浮入口
+		showFloatingPythonLab: false, // 暂时关闭 Python Lab 悬浮入口
+		immersive: {
+			enableVideoBackground: true, // 恢复内页沉浸视频背景，但使用轻量版素材
+			enablePreloadGate: false, // 暂时关闭沉浸页预载门禁，避免首屏卡顿
+		},
+		splash: {
+			enableVideoBackground: true, // 恢复首页开屏动态背景，但使用轻量版视频素材
+		},
 	},
 
 	// 历史特色页兼容开关：当前博客实际启用的是 Study / Lab / Lounge / Archive 四个主分区
@@ -149,9 +162,9 @@ export const siteConfig: SiteConfig = {
 
 		homeText: {
 			enable: false, // 在主页显示自定义文本
-			title: "欢迎来到我的博客", // 主页横幅主标题
+			title: "OwEn", // 主页横幅主标题
 
-			subtitle: ["这里会放你的文章、项目与想法"],
+			subtitle: ["AI、项目与学习记录"],
 			typewriter: {
 				enable: true, // 启用副标题打字机效果
 
@@ -164,7 +177,7 @@ export const siteConfig: SiteConfig = {
 		credit: {
 			enable: false, // 显示横幅图片来源文本
 
-			text: "Describe", // 要显示的来源文本
+			text: "Visual Credit", // 要显示的来源文本
 			url: "", // （可选）原始艺术品或艺术家页面的 URL 链接
 		},
 

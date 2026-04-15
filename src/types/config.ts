@@ -1,6 +1,7 @@
 import type {
 	DARK_MODE,
 	LIGHT_MODE,
+	SYSTEM_MODE,
 	WALLPAPER_BANNER,
 	WALLPAPER_FULLSCREEN,
 	WALLPAPER_NONE,
@@ -55,6 +56,19 @@ export interface SiteConfig {
 	themeColor: {
 		hue: number;
 		fixed: boolean;
+	};
+
+	performance?: {
+		presentationMode?: boolean; // 展示优先模式：降低全站动画与毛玻璃强度
+		showMiaomiaoChat?: boolean; // 是否显示喵喵 AI 悬浮入口
+		showFloatingPythonLab?: boolean; // 是否显示 Python Lab 悬浮入口
+		immersive?: {
+			enableVideoBackground?: boolean; // 是否启用沉浸页视频背景
+			enablePreloadGate?: boolean; // 是否启用沉浸页预载门禁
+		};
+		splash?: {
+			enableVideoBackground?: boolean; // 是否启用首页开屏视频背景
+		};
 	};
 
 	// 特色页面开关配置
@@ -280,7 +294,10 @@ interface TwikooConfig {
 	lang?: string;
 }
 
-export type LIGHT_DARK_MODE = typeof LIGHT_MODE | typeof DARK_MODE;
+export type LIGHT_DARK_MODE =
+	| typeof LIGHT_MODE
+	| typeof DARK_MODE
+	| typeof SYSTEM_MODE;
 
 export type WALLPAPER_MODE =
 	| typeof WALLPAPER_BANNER

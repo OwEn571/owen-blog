@@ -34,7 +34,7 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 	<button
 		id={floatingTocButtonId}
 		class="floating-toc-btn btn-card"
-		aria-label="Table of Contents"
+		aria-label="文章目录"
 		aria-controls={floatingTocPanelId}
 		aria-expanded="false"
 	>
@@ -59,17 +59,17 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 		</div>
 	</button>
 	<div id={floatingTocPanelId} class="floating-toc-panel">
-		<div class="floating-toc-panel-shell">
-			<div class="floating-toc-panel-header">
-				<div class="floating-toc-panel-title-group">
-					<p class="floating-toc-panel-kicker">On This Page</p>
-					<h3 class="floating-toc-panel-title">文章目录</h3>
-					<p class="floating-toc-panel-current" data-floating-toc-current>当前章节将在这里显示</p>
+			<div class="floating-toc-panel-shell">
+				<div class="floating-toc-panel-header">
+					<div class="floating-toc-panel-title-group">
+						<p class="floating-toc-panel-kicker">阅读导航</p>
+						<h3 class="floating-toc-panel-title">文章目录</h3>
+						<p class="floating-toc-panel-current" data-floating-toc-current>当前阅读位置将在这里显示</p>
+					</div>
+					<p id={floatingTocMetaId} class="floating-toc-panel-meta">0 节</p>
 				</div>
-				<p id={floatingTocMetaId} class="floating-toc-panel-meta">0 sections</p>
+				<div class="floating-toc-panel-content" id={floatingTocContentId}></div>
 			</div>
-			<div class="floating-toc-panel-content" id={floatingTocContentId}></div>
-		</div>
 	</div>
 	<div id={floatingTocBackdropId} class="floating-toc-backdrop" aria-hidden="true"></div>
 </div>
@@ -568,10 +568,7 @@ const floatingTocMetaId = `${floatingTocUid}-meta`;
 <script>
 import { findTOCGroupParentId, groupTOCItems } from "./utils/toc-groups";
 import { findActiveHeadingIndex } from "./hooks/useTocHighlight";
-import {
-	throttle,
-	updateProgressRing,
-} from "./hooks/useTocScroll";
+import { updateProgressRing } from "./hooks/useTocScroll";
 import {
 	generateTOCItems,
 	getTOCConfig,
@@ -597,6 +594,9 @@ interface FloatingTOCState {
 	backdrop: HTMLElement | null;
 	content: HTMLElement | null;
 	wrapper: HTMLElement | null;
+	circle: SVGCircleElement | null;
+	currentLabel: HTMLElement | null;
+	linkElements: HTMLAnchorElement[];
 	isOpen: boolean;
 	observer: MutationObserver | null;
 	headings: HTMLElement[];
@@ -609,10 +609,22 @@ interface FloatingTOCState {
 class FloatingTOC {
 	state: FloatingTOCState;
 	navbarOffset = 80;
-	handleScroll = throttle(() => {
+	scrollFrame: number | null = null;
+	lastActiveIndex = -1;
+	lastProgress = -1;
+	handleScroll = () => {
+		if (this.scrollFrame !== null) {
+			return;
+		}
+
+		this.scrollFrame = window.requestAnimationFrame(() => {
+			this.scrollFrame = null;
 			this.updateProgress();
-			this.updateActiveHeading();
-		}, 50);
+			if (this.state.isOpen) {
+				this.updateActiveHeading();
+			}
+		});
+	};
 		handleDocumentClick = (e: Event) => {
 			if (
 				this.state.isOpen &&
@@ -637,6 +649,9 @@ class FloatingTOC {
 		const panel = wrapper?.querySelector(".floating-toc-panel") ?? null;
 		const backdrop = wrapper?.querySelector(".floating-toc-backdrop") ?? null;
 		const content = panel?.querySelector(".floating-toc-panel-content") ?? null;
+		const circle = button?.querySelector(".progress-ring-circle") ?? null;
+		const currentLabel =
+			panel?.querySelector("[data-floating-toc-current]") ?? null;
 
 		this.state = {
 			btn: button instanceof HTMLElement ? button : null,
@@ -644,6 +659,9 @@ class FloatingTOC {
 			backdrop: backdrop instanceof HTMLElement ? backdrop : null,
 			content: content instanceof HTMLElement ? content : null,
 			wrapper: wrapper instanceof HTMLElement ? wrapper : null,
+			circle: circle instanceof SVGCircleElement ? circle : null,
+			currentLabel: currentLabel instanceof HTMLElement ? currentLabel : null,
+			linkElements: [],
 			isOpen: false,
 			observer: null,
 			headings: [],
@@ -745,9 +763,7 @@ class FloatingTOC {
 	}
 
 	updateProgress() {
-		const circle = this.state.btn?.querySelector(
-			".progress-ring-circle"
-		) as SVGCircleElement | null;
+		const circle = this.state.circle;
 		if (!circle) {return;}
 
 		const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -755,45 +771,51 @@ class FloatingTOC {
 			document.documentElement.scrollHeight -
 			document.documentElement.clientHeight;
 		const progress = docHeight > 0 ? scrollTop / docHeight : 0;
+		const roundedProgress = Math.round(progress * 1000) / 1000;
+		if (roundedProgress === this.lastProgress) {return;}
+
+		this.lastProgress = roundedProgress;
 		updateProgressRing(circle, progress);
 	}
 
-	updateActiveHeading() {
-		const { content, headings } = this.state;
-		if (!content || headings.length === 0) {return;}
+	updateActiveHeading(force = false) {
+		const { content, currentLabel, headings, linkElements } = this.state;
+		if (!content || headings.length === 0 || linkElements.length === 0) {return;}
 
 		const activeIndex = findActiveHeadingIndex(headings, window.scrollY, 150);
+		if (!force && activeIndex === this.lastActiveIndex) {return;}
+
+		this.lastActiveIndex = activeIndex;
 		const activeHeading = headings[activeIndex];
-		const currentLabel = this.state.panel?.querySelector("[data-floating-toc-current]");
 		if (currentLabel instanceof HTMLElement) {
-			currentLabel.textContent = activeHeading?.textContent?.trim() || "当前章节将在这里显示";
+			currentLabel.textContent = activeHeading?.textContent?.trim() || "当前阅读位置将在这里显示";
 		}
 		if (activeHeading?.id) {
 			this.syncAutoExpandedGroup(activeHeading.id);
 		} else {
 			this.setAutoExpandedGroup(null);
 		}
-		const links = Array.from(
-			content.querySelectorAll(".floating-toc-item")
-		) as HTMLAnchorElement[];
-
-		links.forEach((link, index) => {
-			if (index === activeIndex) {
-				link.classList.add("active");
-				if (this.state.isOpen) {
-					const panelRect = content.getBoundingClientRect();
-					const linkRect = link.getBoundingClientRect();
-					if (
-						linkRect.top < panelRect.top ||
-						linkRect.bottom > panelRect.bottom
-					) {
-						link.scrollIntoView({ block: "nearest" });
-					}
-				}
-			} else {
-				link.classList.remove("active");
-			}
+		linkElements.forEach((link, index) => {
+			link.classList.toggle("active", index === activeIndex);
 		});
+
+		if (!this.state.isOpen) {
+			return;
+		}
+
+		const activeLink = linkElements[activeIndex];
+		if (!(activeLink instanceof HTMLAnchorElement)) {
+			return;
+		}
+
+		const panelRect = content.getBoundingClientRect();
+		const linkRect = activeLink.getBoundingClientRect();
+		if (
+			linkRect.top < panelRect.top ||
+			linkRect.bottom > panelRect.bottom
+		) {
+			activeLink.scrollIntoView({ block: "nearest" });
+		}
 	}
 
 	updateMeta() {
@@ -808,7 +830,7 @@ class FloatingTOC {
 			0,
 		);
 		const total = parentCount + childCount;
-		meta.textContent = total === 1 ? "1 section" : `${total} sections`;
+		meta.textContent = `${total} 节`;
 	}
 
 	syncAutoExpandedGroup(headingId: string) {
@@ -873,6 +895,8 @@ class FloatingTOC {
 		if (!container) {
 			wrapper?.classList.remove("active-toc");
 			wrapper?.classList.add("no-toc");
+			this.state.linkElements = [];
+			this.lastActiveIndex = -1;
 			return;
 		}
 
@@ -884,6 +908,8 @@ class FloatingTOC {
 			wrapper?.classList.remove("active-toc");
 			wrapper?.classList.add("no-toc");
 			this.state.headings = [];
+			this.state.linkElements = [];
+			this.lastActiveIndex = -1;
 			return;
 		}
 
@@ -915,10 +941,14 @@ class FloatingTOC {
 
 		if (this.state.content) {
 			this.state.content.innerHTML = html;
+			this.state.linkElements = Array.from(
+				this.state.content.querySelectorAll<HTMLAnchorElement>(".floating-toc-item")
+			);
 		}
+		this.lastActiveIndex = -1;
 		this.updateMeta();
 		this.syncExpandedGroups();
-		this.updateActiveHeading();
+		this.updateActiveHeading(true);
 	}
 
 	bindEvents() {
@@ -1023,6 +1053,7 @@ class FloatingTOC {
 		this.state.btn?.classList.add("active");
 		this.state.btn?.setAttribute("aria-expanded", "true");
 		this.state.wrapper?.classList.add("active");
+		this.updateActiveHeading(true);
 	}
 
 	close() {
@@ -1039,6 +1070,8 @@ class FloatingTOC {
 			this.state.observer.disconnect();
 		}
 		this.close();
+		this.lastActiveIndex = -1;
+		this.lastProgress = -1;
 		this.generateTOC();
 		this.observeContent();
 		this.updateProgress();
@@ -1046,6 +1079,10 @@ class FloatingTOC {
 
 	destroy() {
 		this.state.observer?.disconnect();
+		if (this.scrollFrame !== null) {
+			window.cancelAnimationFrame(this.scrollFrame);
+			this.scrollFrame = null;
+		}
 		window.removeEventListener("scroll", this.handleScroll);
 		window.removeEventListener("resize", this.handleScroll);
 		document.removeEventListener("pointerdown", this.handleDocumentClick, true);

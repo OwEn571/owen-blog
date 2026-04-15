@@ -22,6 +22,15 @@ export class BackToTopHandler {
 	private bannerEnabled: boolean;
 	private scrollHandler: () => void;
 	private resizeHandler: () => void;
+	private pageViewHandler: () => void;
+	private layoutChangeHandler: () => void;
+	private bannerHeightPx = 0;
+	private showBackToTopThreshold = 0;
+	private navbarHideThreshold = 0;
+	private lastBackToTopVisible: boolean | null = null;
+	private lastTOCVisible: boolean | null = null;
+	private lastNavbarHidden: boolean | null = null;
+	private pendingFrame: number | null = null;
 
 	constructor(bannerEnabled: boolean) {
 		this.bannerEnabled = bannerEnabled;
@@ -30,6 +39,8 @@ export class BackToTopHandler {
 			SCROLL_CONFIG.throttleInterval
 		);
 		this.resizeHandler = this.handleResize.bind(this);
+		this.pageViewHandler = this.handlePageView.bind(this);
+		this.layoutChangeHandler = this.handleLayoutChange.bind(this);
 	}
 
 	/**
@@ -37,7 +48,9 @@ export class BackToTopHandler {
 	 */
 	init(): void {
 		this.cacheElements();
+		this.updateMetrics();
 		this.bindEvents();
+		this.syncVisibility();
 	}
 
 	/**
@@ -59,26 +72,23 @@ export class BackToTopHandler {
 	private bindEvents(): void {
 		window.removeEventListener('scroll', this.scrollHandler);
 		window.removeEventListener('resize', this.resizeHandler);
+		window.removeEventListener('wallpaper-mode-change', this.layoutChangeHandler);
+		document.removeEventListener('swup:page:view', this.pageViewHandler);
 		window.addEventListener('scroll', this.scrollHandler, { passive: true });
 		window.addEventListener('resize', this.resizeHandler, { passive: true });
+		window.addEventListener('wallpaper-mode-change', this.layoutChangeHandler);
+		document.addEventListener('swup:page:view', this.pageViewHandler);
 	}
 
 	/**
 	 * 处理滚动事件
 	 */
 	private handleScroll(): void {
-		const scrollTop = document.documentElement.scrollTop;
-		const bannerHeight =
-			window.innerHeight * (BANNER_HEIGHT / 100);
+		if (this.pendingFrame !== null) {return;}
 
-		// 计算返回顶部按钮显示阈值
-		const showBackToTopThreshold = this.calculateShowThreshold(scrollTop);
-
-		// 批量处理 DOM 操作
-		requestAnimationFrame(() => {
-			this.updateBackToTopButton(scrollTop, showBackToTopThreshold);
-			this.updateTOCVisibility(scrollTop, bannerHeight);
-			this.updateNavbarVisibility(scrollTop);
+		this.pendingFrame = requestAnimationFrame(() => {
+			this.pendingFrame = null;
+			this.syncVisibility();
 		});
 	}
 
@@ -103,40 +113,62 @@ export class BackToTopHandler {
 	}
 
 	/**
+	 * 更新滚动相关阈值，避免在滚动过程中反复触发布局测量
+	 */
+	private updateMetrics(): void {
+		const scrollTop = document.documentElement.scrollTop || window.scrollY || 0;
+		const isHome =
+			document.body.classList.contains('lg:is-home') &&
+			window.innerWidth >= 1280;
+		const currentBannerHeight = isHome
+			? BANNER_HEIGHT_HOME
+			: BANNER_HEIGHT;
+
+		this.bannerHeightPx = window.innerHeight * (BANNER_HEIGHT / 100);
+		this.showBackToTopThreshold = this.calculateShowThreshold(scrollTop);
+		this.navbarHideThreshold =
+			window.innerHeight * (currentBannerHeight / 100) -
+			SCROLL_CONFIG.navbarHideOffset;
+	}
+
+	/**
+	 * 同步按钮、TOC 和 Navbar 的可见状态
+	 */
+	private syncVisibility(): void {
+		const scrollTop = document.documentElement.scrollTop || window.scrollY || 0;
+
+		this.updateBackToTopButton(scrollTop);
+		this.updateTOCVisibility(scrollTop);
+		this.updateNavbarVisibility(scrollTop);
+	}
+
+	/**
 	 * 更新返回顶部按钮可见性
 	 */
-	private updateBackToTopButton(
-		scrollTop: number,
-		threshold: number
-	): void {
+	private updateBackToTopButton(scrollTop: number): void {
 		if (!this.backToTopBtn) {return;}
 
-		if (scrollTop > threshold) {
-			this.backToTopBtn.classList.remove('hide');
-		} else {
-			this.backToTopBtn.classList.add('hide');
-		}
+		const shouldShow = scrollTop > this.showBackToTopThreshold;
+		if (this.lastBackToTopVisible === shouldShow) {return;}
+
+		this.backToTopBtn.classList.toggle('hide', !shouldShow);
+		this.lastBackToTopVisible = shouldShow;
 	}
 
 	/**
 	 * 更新 TOC 可见性
 	 */
-	private updateTOCVisibility(scrollTop: number, bannerHeight: number): void {
+	private updateTOCVisibility(scrollTop: number): void {
 		if (!this.bannerEnabled || !this.toc) {return;}
 
 		const isBannerMode =
 			document.body.classList.contains('enable-banner');
+		const shouldShow = !isBannerMode || scrollTop > this.bannerHeightPx;
 
-		if (isBannerMode) {
-			if (scrollTop > bannerHeight) {
-				this.toc.classList.remove('toc-hide');
-			} else {
-				this.toc.classList.add('toc-hide');
-			}
-		} else {
-			// Fullscreen 或 None 模式下始终显示 TOC
-			this.toc.classList.remove('toc-hide');
-		}
+		if (this.lastTOCVisible === shouldShow) {return;}
+
+		this.toc.classList.toggle('toc-hide', !shouldShow);
+		this.lastTOCVisible = shouldShow;
 	}
 
 	/**
@@ -145,22 +177,11 @@ export class BackToTopHandler {
 	private updateNavbarVisibility(scrollTop: number): void {
 		if (!this.bannerEnabled || !this.navbar) {return;}
 
-		const isHome =
-			document.body.classList.contains('lg:is-home') &&
-			window.innerWidth >= 1280;
-		const currentBannerHeight = isHome
-			? BANNER_HEIGHT_HOME
-			: BANNER_HEIGHT;
+		const shouldHide = scrollTop >= this.navbarHideThreshold;
+		if (this.lastNavbarHidden === shouldHide) {return;}
 
-		const threshold =
-			window.innerHeight * (currentBannerHeight / 100) -
-			SCROLL_CONFIG.navbarHideOffset;
-
-		if (scrollTop >= threshold) {
-			this.navbar.classList.add('navbar-hidden');
-		} else {
-			this.navbar.classList.remove('navbar-hidden');
-		}
+		this.navbar.classList.toggle('navbar-hidden', shouldHide);
+		this.lastNavbarHidden = shouldHide;
 	}
 
 	/**
@@ -177,6 +198,37 @@ export class BackToTopHandler {
 			'--banner-height-extend',
 			`${offset}px`
 		);
+
+		this.updateMetrics();
+		this.syncVisibility();
+	}
+
+	/**
+	 * 处理 Swup 页面切换后的重新计算
+	 */
+	private handlePageView(): void {
+		this.bannerEnabled = !!document.getElementById(
+			SWUP_SELECTORS.bannerWrapper.slice(1)
+		);
+		this.cacheElements();
+		this.lastBackToTopVisible = null;
+		this.lastTOCVisible = null;
+		this.lastNavbarHidden = null;
+
+		requestAnimationFrame(() => {
+			this.updateMetrics();
+			this.syncVisibility();
+		});
+	}
+
+	/**
+	 * 处理布局模式切换后的阈值刷新
+	 */
+	private handleLayoutChange(): void {
+		requestAnimationFrame(() => {
+			this.updateMetrics();
+			this.syncVisibility();
+		});
 	}
 
 	/**
@@ -185,6 +237,12 @@ export class BackToTopHandler {
 	destroy(): void {
 		window.removeEventListener('scroll', this.scrollHandler);
 		window.removeEventListener('resize', this.resizeHandler);
+		window.removeEventListener('wallpaper-mode-change', this.layoutChangeHandler);
+		document.removeEventListener('swup:page:view', this.pageViewHandler);
+		if (this.pendingFrame !== null) {
+			cancelAnimationFrame(this.pendingFrame);
+			this.pendingFrame = null;
+		}
 		this.backToTopBtn = null;
 		this.toc = null;
 		this.navbar = null;
@@ -195,6 +253,8 @@ export class BackToTopHandler {
 	 */
 	setBannerEnabled(enabled: boolean): void {
 		this.bannerEnabled = enabled;
+		this.updateMetrics();
+		this.syncVisibility();
 	}
 }
 

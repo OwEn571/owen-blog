@@ -1,0 +1,9 @@
+{
+  "title": "AIOS Newsroom",
+  "eyebrow": "Agent System",
+  "description": "把 AIOS kernel、news workflow、dashboard、workflow memory 和动态 agent registry 接成一套真正在线运行的 agent ecosystem，并持续补充项目文章、复盘与设计记录。",
+  "size": "wide",
+  "accent": "86 168 255",
+  "icon": "mdi:hub-outline",
+  "order": 1
+}

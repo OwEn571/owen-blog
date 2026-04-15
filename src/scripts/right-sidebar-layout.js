@@ -1,24 +1,42 @@
 // 右侧边栏布局管理器
 // 用于在网格模式下隐藏右侧边栏
 
-/**
- * 初始化页面布局
- * @param {string} pageType - 页面类型（projects, skills等）
- */
-function initPageLayout(pageType) {
-	// 获取布局配置
-	const defaultPostListLayout =
-		localStorage.getItem("postListLayout") || "list";
+const layoutWindow = typeof window !== "undefined" ? window : null;
+const layoutDocument = typeof document !== "undefined" ? document : null;
+const layoutState =
+	layoutWindow?.__owenRightSidebarLayoutState ||
+	(layoutWindow
+		? (layoutWindow.__owenRightSidebarLayoutState = {
+				listenersBound: false,
+			})
+		: {
+				listenersBound: false,
+			});
 
-	// 如果默认布局是网格模式，则隐藏右侧边栏
-	if (defaultPostListLayout === "grid") {
+function getPreferredLayout() {
+	try {
+		return localStorage.getItem("postListLayout") || "list";
+	} catch {
+		return "list";
+	}
+}
+
+function applyStoredLayout() {
+	if (getPreferredLayout() === "grid") {
 		hideRightSidebar();
-	} else {
-		showRightSidebar();
+		return;
 	}
 
-	// 监听布局切换事件
-	window.addEventListener("layoutChange", (event) => {
+	showRightSidebar();
+}
+
+function bindGlobalListeners() {
+	if (!layoutWindow || !layoutDocument || layoutState.listenersBound) {
+		return;
+	}
+
+	layoutState.listenersBound = true;
+	layoutWindow.addEventListener("layoutChange", (event) => {
 		const layout = event.detail.layout;
 		if (layout === "grid") {
 			hideRightSidebar();
@@ -27,42 +45,32 @@ function initPageLayout(pageType) {
 		}
 	});
 
-	// 监听本地存储变化（用于跨标签页同步）
-	window.addEventListener("storage", (event) => {
+	layoutWindow.addEventListener("storage", (event) => {
 		if (event.key === "postListLayout") {
-			if (event.newValue === "grid") {
-				hideRightSidebar();
-			} else {
-				showRightSidebar();
-			}
+			applyStoredLayout();
 		}
 	});
 
-	// 监听页面导航事件
-	document.addEventListener("astro:page-load", () => {
-		setTimeout(() => {
-			const currentLayout =
-				localStorage.getItem("postListLayout") || "list";
-			if (currentLayout === "grid") {
-				hideRightSidebar();
-			} else {
-				showRightSidebar();
-			}
+	const scheduleApplyStoredLayout = () => {
+		layoutWindow.setTimeout(() => {
+			applyStoredLayout();
 		}, 100);
-	});
+	};
 
-	// 监听SWUP导航事件
-	document.addEventListener("swup:contentReplaced", () => {
-		setTimeout(() => {
-			const currentLayout =
-				localStorage.getItem("postListLayout") || "list";
-			if (currentLayout === "grid") {
-				hideRightSidebar();
-			} else {
-				showRightSidebar();
-			}
-		}, 100);
-	});
+	layoutDocument.addEventListener("astro:page-load", scheduleApplyStoredLayout);
+	layoutDocument.addEventListener("swup:contentReplaced", scheduleApplyStoredLayout);
+	layoutDocument.addEventListener("swup:page:view", scheduleApplyStoredLayout);
+	layoutDocument.addEventListener("owen-blog:page:loaded", scheduleApplyStoredLayout);
+}
+
+/**
+ * 初始化页面布局
+ * @param {string} pageType - 页面类型（projects, skills等）
+ */
+function initPageLayout(pageType) {
+	void pageType;
+	applyStoredLayout();
+	bindGlobalListeners();
 }
 
 /**

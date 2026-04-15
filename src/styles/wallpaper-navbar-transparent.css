@@ -22,6 +22,12 @@
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.18);
 }
 
+body.performance-priority #navbar {
+  --nav-blur: none;
+  --panel-blur: none;
+  --nav-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
 /* --- 滚动透明度控制 (Dynamic Transparent) --- */
 
 /* Semi (毛玻璃) */
@@ -103,8 +109,16 @@ body.wallpaper-transparent #navbar[data-transparent-mode="semifull"].scrolled {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body.performance-priority #navbar > div {
+  will-change: auto;
+  transition:
+    background 0.22s ease,
+    box-shadow 0.22s ease,
+    border-radius 0.22s ease;
+}
+
 /* 子组件样式 (Sub-Components) */
-:is(.dropdown-content, #nav-menu-panel, #mobile-toc-panel, #display-setting, #search-panel, .float-panel) {
+:is(.dropdown-content, #nav-menu-panel, #mobile-toc-panel, #display-setting, .float-panel) {
   /* 使用面板专用变量 */
   background: var(--panel-bg);
   backdrop-filter: var(--panel-blur);
@@ -119,10 +133,10 @@ body.wallpaper-transparent #navbar[data-transparent-mode="semifull"].scrolled {
 
 /* Banner 模式下的特殊增强 */
 @media (min-width: 1280px) {
-  body.wallpaper-transparent :is(.dropdown-content, #display-setting, #search-panel) {
+  body.wallpaper-transparent :is(.dropdown-content, #display-setting) {
     background: rgba(255, 255, 255, 0.85);
   }
-  :root.dark body.wallpaper-transparent :is(.dropdown-content, #display-setting, #search-panel) {
+  :root.dark body.wallpaper-transparent :is(.dropdown-content, #display-setting) {
     background: rgba(24, 25, 38, 0.85);
   }
 }
@@ -136,16 +150,8 @@ body.wallpaper-transparent #navbar[data-transparent-mode="semifull"].scrolled {
     max-width: none;
   }
 
-  /* 搜索框内部颜色处理 */
-  body:has(#navbar[data-dynamic-transparent="none"]) #search-panel #search-bar-inside {
-    background: rgba(0, 0, 0, 0.08);
-  }
-  :root.dark body:has(#navbar[data-dynamic-transparent="none"]) #search-panel #search-bar-inside {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
   /* 非首页时，移动端各个弹出面板不透明 */
-  #navbar:not([data-is-home="true"]) :is(#nav-menu-panel, #mobile-toc-panel, #search-panel, #display-setting) {
+  #navbar:not([data-is-home="true"]) :is(#nav-menu-panel, #mobile-toc-panel, #display-setting) {
     background: var(--card-bg);
     backdrop-filter: none;
   }

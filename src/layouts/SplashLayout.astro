@@ -18,6 +18,7 @@ const pageTitle = title
 		? `${siteConfig.title} - ${siteConfig.subtitle}`
 		: siteConfig.title;
 const siteLang = (lang || siteConfig.lang).replace("_", "-");
+const enablePresentationMode = siteConfig.performance?.presentationMode ?? false;
 ---
 
 <!doctype html>
@@ -36,7 +37,12 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 			href={`${Astro.site}rss.xml`}
 		/>
 	</head>
-	<body data-overlayscrollbars-initialize>
+	<body
+		class:list={{
+			"performance-priority": enablePresentationMode,
+		}}
+		data-overlayscrollbars-initialize
+	>
 		<div
 			id="theme-transition-overlay"
 			class="theme-transition-overlay"
@@ -60,6 +66,24 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 				if (!(overlay instanceof HTMLElement)) {
 					return;
 				}
+				const SYSTEM_THEME = "system";
+				const resolveThemeDark = (theme) => {
+					if (theme === "light") {
+						return false;
+					}
+					if (theme === "dark") {
+						return true;
+					}
+					return window.matchMedia("(prefers-color-scheme: dark)").matches;
+				};
+				const readStoredTheme = () => {
+					try {
+						return localStorage.getItem("theme") || SYSTEM_THEME;
+					} catch {
+						return SYSTEM_THEME;
+					}
+				};
+				const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 				let hideTimer = 0;
 				let safetyTimer = 0;
@@ -101,7 +125,7 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 				});
 
 				window.__owenApplyTheme = (theme) => {
-					const dark = theme === "dark";
+					const dark = resolveThemeDark(theme);
 					localStorage.setItem("theme", theme);
 					document.documentElement.classList.add("is-theme-transitioning");
 					window.dispatchEvent(
@@ -132,6 +156,28 @@ const siteLang = (lang || siteConfig.lang).replace("_", "-");
 						);
 					}, 1040);
 				};
+
+				if (!(window).__owenSystemThemeSyncBound) {
+					(window).__owenSystemThemeSyncBound = true;
+					const syncSystemTheme = () => {
+						if (readStoredTheme() !== SYSTEM_THEME) {
+							return;
+						}
+						window.__owenApplyTheme?.(SYSTEM_THEME);
+					};
+
+					if (typeof systemThemeQuery.addEventListener === "function") {
+						systemThemeQuery.addEventListener("change", syncSystemTheme);
+					} else {
+						systemThemeQuery.onchange = syncSystemTheme;
+					}
+
+					document.addEventListener("visibilitychange", () => {
+						if (document.visibilityState === "visible") {
+							syncSystemTheme();
+						}
+					});
+				}
 
 				window.addEventListener("pageshow", resetTransitionState);
 				window.addEventListener("load", resetTransitionState, { once: true });

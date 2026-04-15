@@ -71,6 +71,7 @@ export const THEME_CONFIG = {
 	hueStorageKey: 'hue',
 
 	// 主题值
+	systemMode: 'system',
 	lightMode: 'light',
 	darkMode: 'dark',
 

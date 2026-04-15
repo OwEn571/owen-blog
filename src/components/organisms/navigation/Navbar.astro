@@ -96,51 +96,6 @@ const iconSrc = rawIcon.match(/^(http|https|\/\/)/) ? rawIcon : url(rawIcon);
 </div>
 
 <script>
-	const searchContainer = document.getElementById("search-container");
-	const navbarLinksContainer = document.getElementById("navbar-links-container");
-
-	if (searchContainer && navbarLinksContainer) {
-		// 鼠标移入/触摸开始时隐藏导航链接
-		const hideLinks = () => {
-			if (window.matchMedia("(min-width: 1280px)").matches && window.matchMedia("(hover: hover)").matches) {
-				navbarLinksContainer.style.opacity = "0";
-			}
-		};
-
-		// 鼠标移出/触摸结束时显示导航链接
-		const showLinks = () => {
-			const navbar = document.getElementById("navbar");
-			if (navbar && !navbar.classList.contains("is-searching")) {
-				navbarLinksContainer.style.opacity = "1";
-			}
-		};
-
-		searchContainer.addEventListener("mouseenter", hideLinks);
-		searchContainer.addEventListener("mouseleave", showLinks);
-
-		// 移动端/触摸屏支持
-		searchContainer.addEventListener("touchstart", hideLinks, { passive: true });
-		searchContainer.addEventListener("touchend", showLinks);
-
-		// 监听 navbar 的 class 变化，当搜索框折叠时确保链接显示
-		const navbar = document.getElementById("navbar");
-		if (navbar) {
-			const observer = new MutationObserver((mutations) => {
-				mutations.forEach((mutation) => {
-					if (mutation.type === "attributes" && mutation.attributeName === "class") {
-						if (!navbar.classList.contains("is-searching")) {
-							// 搜索框已折叠，如果此时鼠标不在搜索容器内，强制显示链接
-							if (!searchContainer.matches(':hover')) {
-								showLinks();
-							}
-						}
-					}
-				});
-			});
-			observer.observe(navbar, { attributes: true });
-		}
-	}
-
 	const togglePanel = (panelId: string) => {
 		const runtimeToggle = window["__owenToggleFloatPanel"];
 		if (typeof runtimeToggle === "function") {

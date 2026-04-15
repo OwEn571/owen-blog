@@ -6,5 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 "${ROOT_DIR}/scripts/prod-build.sh"
 sudo systemctl daemon-reload
 sudo systemctl enable owen-blog.service
+sudo systemctl enable caddy-owen-blog.service
 sudo systemctl restart owen-blog.service
-sudo systemctl --no-pager --full status owen-blog.service
+sudo systemctl restart caddy-owen-blog.service
+sudo systemctl --no-pager --full status owen-blog.service caddy-owen-blog.service

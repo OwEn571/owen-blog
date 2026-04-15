@@ -36,6 +36,9 @@ interface Props {
 let { title, banner, description, lang, setOGTypeArticle, postSlug } =
 	Astro.props;
 const bodyClass = Astro.props.bodyClass;
+const performanceConfig = siteConfig.performance ?? {};
+const enablePresentationMode = performanceConfig.presentationMode ?? false;
+const shouldRenderMiaomiaoChat = performanceConfig.showMiaomiaoChat ?? true;
 
 // apply a class to the body element to decide the height of the banner, only used for initial page load
 // Swup can update the body for each page visit, but it's after the page transition, causing a delay for banner height change
@@ -199,7 +202,11 @@ if (siteConfig.font) {
 		class="min-h-screen"
 		class:list={[
 			bodyClass,
-			{ "lg:is-home": isHomePage, "enable-banner": enableBanner },
+			{
+				"lg:is-home": isHomePage,
+				"enable-banner": enableBanner,
+				"performance-priority": enablePresentationMode,
+			},
 		]}
 		style={bodyFontFamily ? `font-family: ${bodyFontFamily};` : ""}
 		data-overlayscrollbars-initialize
@@ -235,7 +242,7 @@ if (siteConfig.font) {
 				<p class="theme-transition-overlay__title">正在切换昼夜氛围</p>
 			</div>
 		</div>
-		<FloatingMiaoMiaoChat />
+		{shouldRenderMiaomiaoChat && <FloatingMiaoMiaoChat />}
 		<slot />
 		<script
 			is:inline
@@ -365,11 +372,28 @@ if (siteConfig.font) {
 					return;
 				}
 				(window).__owenControlFallbackBound = true;
+				const SYSTEM_THEME = "system";
+				const resolveThemeDark = (theme) => {
+					if (theme === "light") {
+						return false;
+					}
+					if (theme === "dark") {
+						return true;
+					}
+					return window.matchMedia("(prefers-color-scheme: dark)").matches;
+				};
+				const readStoredTheme = () => {
+					try {
+						return localStorage.getItem("theme") || SYSTEM_THEME;
+					} catch {
+						return SYSTEM_THEME;
+					}
+				};
+				const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 				const FLOAT_PANELS = [
 					"display-setting",
 					"nav-menu-panel",
-					"search-panel",
 					"mobile-toc-panel",
 					"wallpaper-mode-panel",
 				];
@@ -429,7 +453,7 @@ if (siteConfig.font) {
 				window.__owenToggleFloatPanel = toggleFloatPanel;
 				window.__owenApplyTheme = (theme) => {
 					localStorage.setItem("theme", theme);
-					const dark = theme === "dark";
+					const dark = resolveThemeDark(theme);
 					document.documentElement.classList.add("is-theme-transitioning");
 					window.dispatchEvent(
 						new CustomEvent("owen:theme-transition", {
@@ -459,6 +483,28 @@ if (siteConfig.font) {
 						);
 					}, 1040);
 				};
+
+				if (!(window).__owenSystemThemeSyncBound) {
+					(window).__owenSystemThemeSyncBound = true;
+					const syncSystemTheme = () => {
+						if (readStoredTheme() !== SYSTEM_THEME) {
+							return;
+						}
+						window.__owenApplyTheme?.(SYSTEM_THEME);
+					};
+
+					if (typeof systemThemeQuery.addEventListener === "function") {
+						systemThemeQuery.addEventListener("change", syncSystemTheme);
+					} else {
+						systemThemeQuery.onchange = syncSystemTheme;
+					}
+
+					document.addEventListener("visibilitychange", () => {
+						if (document.visibilityState === "visible") {
+							syncSystemTheme();
+						}
+					});
+				}
 				window.__owenUiController = {
 					openFloatPanel,
 					closeFloatPanel,

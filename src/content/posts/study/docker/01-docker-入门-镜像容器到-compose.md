@@ -346,7 +346,7 @@ Dockerfile 可以理解成“制作镜像的图纸”。
 
 ### 7.1 一个最小可运行示例
 
-```Dockerfile
+```dockerfile
 FROM python:3.13-slim
 
 WORKDIR /app

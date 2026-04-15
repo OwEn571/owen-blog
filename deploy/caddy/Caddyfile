@@ -1,8 +1,103 @@
-www.owen571.top {
+{
+	auto_https disable_redirects
+}
+
+(public_asset_matcher) {
+	@public_static_assets path_regexp public_static_assets (?i)^/(?:assets|images|scripts)/.*\.(?:avif|bmp|css|gif|ico|jpe?g|js|mjs|mp4|png|svg|ttf|webm|webp|woff2?)$
+}
+
+(pdf_rag_v3_routes) {
+	handle /v3* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /ui/chat-v3* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /api/v1/agent/v3* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /api/v1/library/snapshot* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /api/v1/papers* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /static/chat.css* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle /static/chat.js* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8000
+	}
+}
+
+:80 {
+	@blog_domains host owen571.top www.owen571.top
+	handle @blog_domains {
+		redir https://owen571.top{uri} 308
+	}
+
+	import public_asset_matcher
+
+	handle @public_static_assets {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:4321 {
+			header_down Cache-Control "public, max-age=2592000, immutable"
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:4321
+	}
+}
+
+https://www.owen571.top {
 	redir https://owen571.top{uri} 308
 }
 
-owen571.top {
-	encode zstd gzip
-	reverse_proxy 127.0.0.1:4321
+https://owen571.top {
+	import pdf_rag_v3_routes
+
+	import public_asset_matcher
+
+	handle @public_static_assets {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:4321 {
+			header_down Cache-Control "public, max-age=2592000, immutable"
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:4321
+	}
+}
+
+:8080 {
+	import public_asset_matcher
+
+	handle @public_static_assets {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:4321 {
+			header_down Cache-Control "public, max-age=2592000, immutable"
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:4321
+	}
 }

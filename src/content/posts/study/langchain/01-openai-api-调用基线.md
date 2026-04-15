@@ -16,12 +16,12 @@ comment: true
 我们要调用了解OpenAI包的用法，可以前往[OpenAI Python API library](https://github.com/openai/openai-python)查看；如果想快速用了解怎么用这个包来开发，可以看[OpenAI Developers的接口文档](https://developers.openai.com/api/docs/quickstart)。笔者整理的时候，这个包在pypi上的stable版本已经v2.29.0，一些教程还在用旧版的接口。
 
 首先，最基本的当然是从PyPI安装
-```python
+```bash
 pip install openai
 ```
 
 安装完成用pip show openai可以看到
-```
+```text
 Name: openai
 Version: 2.29.0
 Summary: The official Python library for the openai API
@@ -141,7 +141,7 @@ asyncio.run(main())
 流式回答可以让模型不要等整段生成完再一次性返回，而是边生成边把事件流发回来。官方文档描述为server-sent events，SDK中会拿到一个可迭代对象，所以能一直打印，直到收到完成事件为止。
 
 直接print会打印整个对象的一大堆信息，我们也可以看一下：
-```
+```text
 ResponseTextDeltaEvent(content_index=0, delta='善', item_id='msg_01cd90f5c2f813180069c3fef6a7e08190b9a175ce86233099', logprobs=[], output_index=0, sequence_number=492, type='response.output_text.delta', obfuscation='JRiZxCSRiPjcp8M')
 ```
 如果想呈现目前常见的打字机输出，可以只打印每个事件的delta字段，然后把flush设置为True（即将缓存区的数据立刻写入文件同时清空缓冲区）。

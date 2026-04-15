@@ -1,0 +1,256 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+
+import { getZoteroPaperRagSnapshot } from "../../../server/zotero-paper-rag";
+
+export const prerender = false;
+
+const snapshot = await getZoteroPaperRagSnapshot();
+
+const statusLine = snapshot.available
+	? "Zotero Paper Agent V2 在线"
+	: snapshot.error || "Zotero Paper Agent service unavailable";
+const indexedPapersLine = snapshot.indexedPapers
+	? `${snapshot.indexedPapers} 篇论文已入库`
+	: "索引统计暂不可用";
+const corpusDocsLine = snapshot.corpusDocs
+	? `${snapshot.corpusDocs} 个语料 chunk`
+	: "chunk 统计暂不可用";
+---
+
+<MainGridLayout
+	immersiveLayout={true}
+	title="Zotero Paper Agent"
+	description="基于 Zotero 论文库的 RAG 研究控制台"
+>
+	<script>
+		import("../../../scripts/right-sidebar-layout.js");
+	</script>
+
+	<div class="module-page rag-project-page" style="--module-accent: 86 206 178;">
+		<section class="module-hero rag-project-hero">
+			<div class="module-copy">
+				<p class="module-eyebrow">Lab / Zotero Paper Agent</p>
+				<h1 class="module-title">Zotero Paper Agent</h1>
+				<p class="module-subtitle">
+					把本地 Zotero 论文库接成一个真的能对话、检索、追证据的研究控制台。
+				</p>
+				<p class="module-description">
+					这个项目当前主线是 V2。前端已经能直接聊天，右侧会联动显示召回论文、证据片段、结构化 claims
+					和最终引用，适合拿来做论文问答与项目演示。
+				</p>
+
+				<div class="rag-project-actions">
+					<a href="/lab/zotero-paper-rag/console/" class="rag-project-action">
+						<Icon name="mdi:monitor-dashboard" class="text-[1.05rem]" />
+						<span>打开控制台</span>
+					</a>
+					<a
+						href="/api/lab/zotero-paper-rag/ui/chat/"
+						class="rag-project-action"
+					>
+						<Icon name="mdi:open-in-new" class="text-[1.05rem]" />
+						<span>直接打开代理前端</span>
+					</a>
+					<a href="/lab/" class="rag-project-action">
+						<Icon name="mdi:arrow-left" class="text-[1.05rem]" />
+						<span>返回 Lab</span>
+					</a>
+				</div>
+
+				<div class="rag-project-jumpbar">
+					<span>{statusLine}</span>
+					<span>{indexedPapersLine}</span>
+					<span>{corpusDocsLine}</span>
+				</div>
+			</div>
+		</section>
+
+		<section class="module-content-shell" id="rag-panels">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">Project Entry</p>
+					<h2 class="module-content-title">这个项目现在怎么展示</h2>
+					<p class="module-content-description">
+						入口页只保留 live console、运行状态和项目结构，真正交互时再点进控制台页面。
+					</p>
+				</div>
+				<span class="module-panel-badge">
+					{snapshot.available ? "V2 Live" : "Needs Attention"}
+				</span>
+			</div>
+
+			<div class="module-panel-grid rag-project-grid">
+				<a
+					class="module-panel rag-project-card rag-project-card--link"
+					href="/lab/zotero-paper-rag/console/"
+				>
+					<div class="module-panel-top">
+						<span class="module-panel-label">Live Console</span>
+						<div class="module-panel-icon">
+							<Icon name="mdi:message-badge-outline" class="text-[1.15rem]" />
+						</div>
+					</div>
+					<h3 class="module-panel-title">Zotero Research Console</h3>
+					<p class="module-panel-copy">
+						直接进入类 GPT 的聊天前端。问题、节点轨迹、候选论文、证据和引用在同一套界面里联动展示。
+					</p>
+					<div class="rag-project-stats">
+						<span>Paper Agent V2</span>
+						<span>Trace UI + Citations</span>
+					</div>
+					<span class="module-panel-link">
+						打开控制台详情
+						<Icon name="mdi:arrow-right" class="text-[1rem]" />
+					</span>
+				</a>
+
+				<article class="module-panel rag-project-card">
+					<div class="module-panel-top">
+						<span class="module-panel-label">Runtime Snapshot</span>
+						<div class="module-panel-icon">
+							<Icon name="mdi:pulse" class="text-[1.15rem]" />
+						</div>
+					</div>
+					<h3 class="module-panel-title">当前运行状态</h3>
+					<p class="module-panel-copy">
+						服务入口、索引体量和当前主线都收在这里，方便你在博客里快速交代这套系统现在已经能做到什么。
+					</p>
+					<div class="rag-project-pill-list">
+						<span>{statusLine}</span>
+						<span>{indexedPapersLine}</span>
+						<span>{corpusDocsLine}</span>
+						<span>Milvus + BM25</span>
+						<span>Selective hi_res PDF parse</span>
+					</div>
+				</article>
+
+				<article class="module-panel rag-project-card">
+					<div class="module-panel-top">
+						<span class="module-panel-label">Project Frame</span>
+						<div class="module-panel-icon">
+							<Icon
+								name="mdi:file-document-multiple-outline"
+								class="text-[1.15rem]"
+							/>
+						</div>
+					</div>
+					<h3 class="module-panel-title">这页重点讲什么</h3>
+					<p class="module-panel-copy">
+						这不是只会回答一句的 demo，而是一套面向论文问答的系统样机：数据源来自 Zotero，本地索引走
+						BM25 + Dense，回答时会把论文筛选、证据展开和最终引用一起展示出来。
+					</p>
+					<div class="rag-project-pill-list">
+						<span>Zotero Library</span>
+						<span>Milvus Vector Store</span>
+						<span>Multi-turn QA</span>
+						<span>Evidence Panels</span>
+						<span>Interview-ready Surface</span>
+					</div>
+				</article>
+			</div>
+		</section>
+	</div>
+</MainGridLayout>
+
+<style>
+	.rag-project-page {
+		overflow: clip;
+		--rag-action-bg: rgba(255, 255, 255, 0.05);
+		--rag-action-border: rgba(86, 206, 178, 0.18);
+		--rag-action-text: rgba(239, 247, 243, 0.9);
+		--rag-action-hover-bg: rgba(255, 255, 255, 0.08);
+		--rag-action-hover-border: rgba(86, 206, 178, 0.28);
+		--rag-muted: rgba(215, 231, 224, 0.72);
+	}
+
+	:global(:root:not(.dark)) .rag-project-page {
+		--rag-action-bg: rgba(255, 255, 255, 0.76);
+		--rag-action-border: rgba(148, 163, 184, 0.24);
+		--rag-action-text: rgba(30, 41, 59, 0.84);
+		--rag-action-hover-bg: rgba(255, 255, 255, 0.94);
+		--rag-action-hover-border: rgba(86, 206, 178, 0.28);
+		--rag-muted: rgba(51, 65, 85, 0.7);
+	}
+
+	.rag-project-hero {
+		padding-bottom: 0.5rem;
+	}
+
+	.rag-project-actions,
+	.rag-project-jumpbar,
+	.rag-project-pill-list,
+	.rag-project-stats {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.rag-project-action,
+	.rag-project-jumpbar span,
+	.rag-project-pill-list span,
+	.rag-project-stats span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.72rem 1rem;
+		border-radius: 999px;
+		border: 1px solid var(--rag-action-border);
+		background: var(--rag-action-bg);
+		color: var(--rag-action-text);
+		text-decoration: none;
+		font-size: 0.88rem;
+	}
+
+	.rag-project-action {
+		transition:
+			transform 220ms ease,
+			background-color 220ms ease,
+			border-color 220ms ease;
+	}
+
+	.rag-project-action:hover {
+		transform: translateY(-2px);
+		border-color: var(--rag-action-hover-border);
+		background: var(--rag-action-hover-bg);
+	}
+
+	.rag-project-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.rag-project-card {
+		min-height: 100%;
+	}
+
+	.rag-project-card .module-panel-title {
+		margin-top: 0;
+		padding-top: 1.15rem;
+	}
+
+	.rag-project-card .module-panel-link {
+		margin-top: auto;
+	}
+
+	.rag-project-card--link {
+		text-decoration: none;
+	}
+
+	@media (max-width: 980px) {
+		.rag-project-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.rag-project-actions {
+			flex-direction: column;
+		}
+
+		.rag-project-action {
+			width: 100%;
+			justify-content: center;
+		}
+	}
+</style>

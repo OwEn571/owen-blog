@@ -7,25 +7,42 @@ import { profileConfig, siteConfig } from "@/config";
 import { homeSections } from "./entry-data";
 
 const splashTitle = profileConfig.name || siteConfig.title;
+const enableSplashVideoBackground =
+	siteConfig.performance?.splash?.enableVideoBackground ?? true;
+const splashDarkPoster = "/assets/opening/qidian-splash-poster.jpg";
+const splashLightPoster = "/assets/opening/sakura-field-day-poster.svg";
 ---
 
 <div id="splash-selector" class="splash-shell" data-state="opening" data-theme="dark" role="dialog" aria-modal="true" aria-label="开屏入口选择">
 	<div class="splash-backdrop">
-		<video
-			class="splash-video"
-			muted
-			loop
-			playsinline
-			preload="none"
-			poster="/assets/opening/qidian-splash-poster.jpg"
-			data-poster-dark="/assets/opening/qidian-splash-poster.jpg"
-			data-poster-light="/assets/opening/sakura-field-day-poster.svg"
-			disableRemotePlayback
-			data-splash-video
-			aria-hidden="true"
-		>
-			<source data-src-dark="/assets/opening/qidian-splash.mp4" data-src-light="/assets/opening/sakura-field-day.mp4" type="video/mp4" />
-		</video>
+		{
+			enableSplashVideoBackground ? (
+				<video
+					class="splash-video"
+					muted
+					loop
+					playsinline
+					preload="metadata"
+					poster={splashDarkPoster}
+					data-poster-dark={splashDarkPoster}
+					data-poster-light={splashLightPoster}
+					disableRemotePlayback
+					data-splash-video
+					aria-hidden="true"
+				>
+					<source data-src-dark="/assets/opening/qidian-splash-lite.mp4" data-src-light="/assets/opening/sakura-field-day-lite.mp4" type="video/mp4" />
+				</video>
+			) : (
+				<div
+					class="splash-backdrop-photo"
+					data-splash-backdrop-photo
+					data-poster-dark={splashDarkPoster}
+					data-poster-light={splashLightPoster}
+					style={`background-image: url('${splashDarkPoster}')`}
+					aria-hidden="true"
+				></div>
+			)
+		}
 		<div class="splash-backdrop-overlay"></div>
 	</div>
 	<div class="splash-panel">
@@ -102,8 +119,10 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		const themeToggle = root.querySelector("[data-splash-theme-toggle]");
 		const video = root.querySelector("[data-splash-video]");
 		const videoSource = video?.querySelector("source");
+		const backdropPhoto = root.querySelector("[data-splash-backdrop-photo]");
 		const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
 		const shouldReduceVideo =
+			!(video instanceof HTMLVideoElement) ||
 			prefersReducedMotion ||
 			Boolean(connection?.saveData) ||
 			/(?:^|slow-)?2g/i.test(connection?.effectiveType || "");
@@ -119,12 +138,18 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			const theme = resolveTheme();
 			root.dataset.theme = theme;
 
+			const nextPoster =
+				theme === "dark"
+					? video?.dataset.posterDark || backdropPhoto?.dataset.posterDark
+					: video?.dataset.posterLight || backdropPhoto?.dataset.posterLight;
+			if (backdropPhoto instanceof HTMLElement) {
+				backdropPhoto.style.backgroundImage = nextPoster ? `url("${nextPoster}")` : "";
+			}
+
 			if (!(video instanceof HTMLVideoElement) || !(videoSource instanceof HTMLSourceElement)) {
 				return;
 			}
 
-			const nextPoster =
-				theme === "dark" ? video.dataset.posterDark : video.dataset.posterLight;
 			if (nextPoster) {
 				video.poster = nextPoster;
 			} else {
@@ -187,11 +212,11 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			}
 
 			if ("requestIdleCallback" in window) {
-				window.requestIdleCallback(activateVideo, { timeout: 2200 });
+				window.requestIdleCallback(activateVideo, { timeout: 1200 });
 				return;
 			}
 
-			window.setTimeout(activateVideo, 1400);
+			window.setTimeout(activateVideo, 800);
 		};
 
 		const preloadRoute = (href) => {
@@ -333,28 +358,43 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		background: #02050c;
 	}
 
-	.splash-video {
+		.splash-video {
+			position: absolute;
+			inset: -2%;
+			width: 104%;
+			height: 104%;
+			object-fit: cover;
+			opacity: 0.92;
+			filter: blur(4px) brightness(0.9) saturate(1.18) contrast(1.08);
+			transform: scale(1.045);
+			transform-origin: center;
+			pointer-events: none;
+		}
+
+		.splash-backdrop-photo {
 		position: absolute;
 		inset: -2%;
 		width: 104%;
 		height: 104%;
-		object-fit: cover;
-		opacity: 0.94;
-		filter: brightness(0.88) saturate(1.36) contrast(1.14);
-		transform: scale(1.02);
-		transform-origin: center;
-		pointer-events: none;
-	}
+			background-position: center;
+			background-repeat: no-repeat;
+			background-size: cover;
+			opacity: 0.94;
+			filter: blur(3px) saturate(1.04) contrast(1.02);
+			transform: scale(1.035);
+			transform-origin: center;
+			pointer-events: none;
+		}
 
-	.splash-backdrop-overlay {
+		.splash-backdrop-overlay {
 		position: absolute;
 		inset: 0;
-		background:
-			radial-gradient(circle at 16% 20%, rgba(90, 128, 255, 0.2), transparent 24rem),
-			radial-gradient(circle at 78% 26%, rgba(183, 123, 255, 0.14), transparent 22rem),
-			radial-gradient(circle at 68% 78%, rgba(136, 170, 255, 0.12), transparent 20rem),
-			linear-gradient(180deg, rgba(2, 4, 10, 0.18), rgba(2, 4, 10, 0.62)),
-			radial-gradient(circle at center, transparent 48%, rgba(2, 4, 10, 0.34) 100%);
+			background:
+				radial-gradient(circle at 16% 20%, rgba(90, 128, 255, 0.18), transparent 24rem),
+				radial-gradient(circle at 78% 26%, rgba(183, 123, 255, 0.12), transparent 22rem),
+				radial-gradient(circle at 68% 78%, rgba(136, 170, 255, 0.1), transparent 20rem),
+				linear-gradient(180deg, rgba(2, 4, 10, 0.24), rgba(2, 4, 10, 0.7)),
+				radial-gradient(circle at center, transparent 44%, rgba(2, 4, 10, 0.4) 100%);
 	}
 
 	.splash-panel {
@@ -688,20 +728,25 @@ const splashTitle = profileConfig.name || siteConfig.title;
 		background: linear-gradient(180deg, #fffdfd 0%, #fff2f7 100%);
 	}
 
-	.splash-shell[data-theme="light"] .splash-video {
-		opacity: 0.97;
-		filter: brightness(1.04) saturate(1.08) contrast(1.02);
-		transform: scale(1.015);
-	}
+		.splash-shell[data-theme="light"] .splash-video {
+			opacity: 0.95;
+			filter: blur(4px) brightness(1.03) saturate(1.05) contrast(1.02);
+			transform: scale(1.04);
+		}
 
-	.splash-shell[data-theme="light"] .splash-backdrop-overlay {
-		background:
-			radial-gradient(circle at 16% 20%, rgba(255, 186, 209, 0.34), transparent 24rem),
-			radial-gradient(circle at 78% 26%, rgba(229, 198, 255, 0.28), transparent 22rem),
-			radial-gradient(circle at 68% 78%, rgba(255, 222, 232, 0.28), transparent 20rem),
-			linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 241, 247, 0.66)),
-			radial-gradient(circle at center, transparent 48%, rgba(255, 255, 255, 0.16) 100%);
-	}
+		.splash-shell[data-theme="light"] .splash-backdrop-photo {
+			opacity: 0.98;
+			filter: blur(3px) saturate(1.02) contrast(1.01);
+		}
+
+		.splash-shell[data-theme="light"] .splash-backdrop-overlay {
+			background:
+				radial-gradient(circle at 16% 20%, rgba(255, 186, 209, 0.28), transparent 24rem),
+				radial-gradient(circle at 78% 26%, rgba(229, 198, 255, 0.22), transparent 22rem),
+				radial-gradient(circle at 68% 78%, rgba(255, 222, 232, 0.22), transparent 20rem),
+				linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 241, 247, 0.72)),
+				radial-gradient(circle at center, transparent 46%, rgba(255, 255, 255, 0.2) 100%);
+		}
 
 	.splash-shell[data-theme="light"] .splash-panel {
 		background:
@@ -852,10 +897,28 @@ const splashTitle = profileConfig.name || siteConfig.title;
 			transform 360ms ease;
 	}
 
-	@media (max-width: 860px) {
-		.splash-grid {
-			grid-template-columns: 1fr;
-		}
+		@media (max-width: 860px) {
+			.splash-video {
+				filter: blur(3px) brightness(0.91) saturate(1.14) contrast(1.06);
+				transform: scale(1.03);
+			}
+
+			.splash-backdrop-photo {
+				filter: blur(2px) saturate(1.03) contrast(1.01);
+				transform: scale(1.025);
+			}
+
+			.splash-shell[data-theme="light"] .splash-video {
+				filter: blur(3px) brightness(1.02) saturate(1.04) contrast(1.01);
+			}
+
+			.splash-shell[data-theme="light"] .splash-backdrop-photo {
+				filter: blur(2px) saturate(1.02) contrast(1.01);
+			}
+
+			.splash-grid {
+				grid-template-columns: 1fr;
+			}
 
 		.splash-title {
 			font-size: 2.8rem;

@@ -18,7 +18,7 @@ LangChain 是一个用于构建LLM应用的开源开发框架，有Python和Java
 我们基于[LangChain的官方文档](https://docs.langchain.com/oss/python/langchain/overview)进行学习。
 
 先安装一下，然后LangChain说自己对许多LLM有融合，这些融合在独立的包中，所以我们安装一下对OpenAI的支持。
-```python
+```bash
 pip install -U langchain
 pip install -U langchain-openai
 ```
@@ -42,7 +42,7 @@ npx是Node.js生态里的一个通用命令执行工具，用于直接运行npm�
 
 总之，只要“support the Agent Skills specification”，也就是说agent支持标准的[Agent规范](https://agentskills.io/specification)，就可以用命令添加。Agent Skills的介绍如下：[Agent Skills文档](https://agentskills.io/home)，这里按下不表，之后进行学习，不然就跑偏太远了。
 
-```python
+```bash
 npx skills add langchain-ai/langchain-skills --skill '*' --yes
 ```
 
@@ -54,7 +54,7 @@ npx skills add langchain-ai/langchain-skills --skill '*' --yes
 ![alt text](/images/study/langchain/image-6.png)
 
 总之，这个先这样，现在我们是把skills放在了当前目录下，在这里使用agent可以让它自己去读取。但是其实也可以放~/.agents/skills/一劳永逸，用这样的命令：
-```python
+```bash
 npx skills add langchain-ai/langchain-skills --skill '*' --agent codex -g 
 ```
 执行完这条，还默认给我装了Find Skills的Skill，我们检查文件如下：
@@ -99,7 +99,7 @@ print(result)
 ```
 
 我们来看看原始输出的结果：
-```json
+```jsonc
 {
   "messages": [
     {
@@ -256,7 +256,7 @@ If a user asks you for the weather, make sure you know the location. If you can 
 
 官方文档：工具应有详细文档：它们的名称、描述和参数名称成为模型提示的一部分。LangChain 的 @tool 装饰器添加元数据，并通过 ToolRuntime 参数启用运行时注入。请在工具指南中了解更多。
 
-```python3
+```python
 # Create tools
 from dataclasses import dataclass
 from langchain.tools import tool, ToolRuntime

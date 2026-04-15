@@ -2,11 +2,35 @@ import {
 	DARK_MODE,
 	DEFAULT_THEME,
 	LIGHT_MODE,
+	SYSTEM_MODE,
 	// WALLPAPER_BANNER,
 } from "@constants/constants";
 
 import { siteConfig } from "@/config";
 import type { LIGHT_DARK_MODE, WALLPAPER_MODE } from "@/types/config";
+
+function normalizeTheme(theme: string | null | undefined): LIGHT_DARK_MODE {
+	switch (theme) {
+		case LIGHT_MODE:
+		case DARK_MODE:
+		case SYSTEM_MODE:
+			return theme;
+		default:
+			return DEFAULT_THEME;
+	}
+}
+
+function resolveThemeDark(theme: LIGHT_DARK_MODE): boolean {
+	switch (theme) {
+		case LIGHT_MODE:
+			return false;
+		case DARK_MODE:
+			return true;
+		case SYSTEM_MODE:
+		default:
+			return window.matchMedia("(prefers-color-scheme: dark)").matches;
+	}
+}
 
 export function getDefaultHue(): number {
 	const fallback = "250";
@@ -42,18 +66,7 @@ export function applyThemeToDocument(theme: LIGHT_DARK_MODE) {
 	const themedWindow = window as ThemeTransitionWindow;
 	const currentIsDark = document.documentElement.classList.contains("dark");
 	const currentTheme = document.documentElement.getAttribute("data-theme");
-	let targetIsDark = false;
-	switch (theme) {
-		case LIGHT_MODE:
-			targetIsDark = false;
-			break;
-		case DARK_MODE:
-			targetIsDark = true;
-			break;
-		default:
-			targetIsDark = currentIsDark;
-			break;
-	}
+	const targetIsDark = resolveThemeDark(theme);
 	const needsThemeChange = currentIsDark !== targetIsDark;
 	const expectedTheme = targetIsDark ? "github-dark" : "github-light";
 	const needsCodeThemeUpdate = currentTheme !== expectedTheme;
@@ -148,7 +161,7 @@ export function setTheme(theme: LIGHT_DARK_MODE): void {
 }
 
 export function getStoredTheme(): LIGHT_DARK_MODE {
-	return (localStorage.getItem("theme") as LIGHT_DARK_MODE) || DEFAULT_THEME;
+	return normalizeTheme(localStorage.getItem("theme"));
 }
 
 export function getStoredWallpaperMode(): WALLPAPER_MODE {

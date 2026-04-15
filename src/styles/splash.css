@@ -49,6 +49,27 @@ body {
 	color: rgba(247, 250, 255, 0.96);
 }
 
+body.performance-priority .theme-transition-overlay,
+body.performance-priority .splash-panel,
+body.performance-priority .splash-choice,
+body.performance-priority .splash-theme-toggle {
+	transition: none !important;
+}
+
+body.performance-priority .splash-choice,
+body.performance-priority .splash-theme-toggle {
+	backdrop-filter: none !important;
+	-webkit-backdrop-filter: none !important;
+	box-shadow: 0 16px 36px rgba(2, 4, 10, 0.14) !important;
+}
+
+body.performance-priority .splash-choice:hover,
+body.performance-priority .splash-choice:focus-visible,
+body.performance-priority .splash-theme-toggle:hover,
+body.performance-priority .splash-theme-toggle:focus-visible {
+	transform: none !important;
+}
+
 a {
 	color: inherit;
 	text-decoration: none;

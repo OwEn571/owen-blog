@@ -4,6 +4,9 @@
 	const PYODIDE_SCRIPT_ID = "owen-python-lab-pyodide";
 	const PANEL_POSITION_KEY = "owen-python-lab-position-v2";
 	const DRAFT_KEY = "owen-python-lab-draft-v2";
+	const DRAFT_SAVE_DELAY = 240;
+	const HIGHLIGHT_SYNC_LIMIT = 6000;
+	const HIGHLIGHT_DEFER_DELAY = 90;
 	const INDENT = "    ";
 	const labState = new WeakMap();
 	const shared = {
@@ -366,12 +369,37 @@
 		applyPosition(state, { left, top }, "anchored");
 	}
 
-	function saveDraft(state) {
+	function persistDraft(state) {
 		try {
 			localStorage.setItem(DRAFT_KEY, state.editor.value);
 		} catch (error) {
 			// ignore
 		}
+	}
+
+	function flushDraft(state) {
+		if (state.draftTimer) {
+			window.clearTimeout(state.draftTimer);
+			state.draftTimer = 0;
+		}
+		persistDraft(state);
+	}
+
+	function saveDraft(state, options = {}) {
+		const { immediate = false } = options;
+		if (immediate) {
+			flushDraft(state);
+			return;
+		}
+
+		if (state.draftTimer) {
+			window.clearTimeout(state.draftTimer);
+		}
+
+		state.draftTimer = window.setTimeout(() => {
+			state.draftTimer = 0;
+			persistDraft(state);
+		}, DRAFT_SAVE_DELAY);
 	}
 
 	function restoreDraft(state) {
@@ -555,16 +583,38 @@
 	}
 
 	function renderLineNumbers(state) {
-		const total = Math.max(state.editor.value.split("\n").length, 1);
-		const lines = Array.from({ length: total }, (_, index) => `${index + 1}`);
-		state.gutter.textContent = lines.join("\n");
+		let total = 1;
+		for (let index = 0; index < state.editor.value.length; index += 1) {
+			if (state.editor.value.charCodeAt(index) === 10) {
+				total += 1;
+			}
+		}
+
+		if (state.lineCount !== total) {
+			const lines = Array.from({ length: total }, (_, index) => `${index + 1}`);
+			state.gutter.textContent = lines.join("\n");
+			state.lineCount = total;
+		}
+
 		state.gutter.scrollTop = state.editor.scrollTop;
 	}
 
-	function updateCurrentLineHighlight(state) {
+	function refreshEditorMetrics(state, force = false) {
+		const editorWidth = state.editor.clientWidth || 0;
+		if (!force && state.editorMetricsWidth === editorWidth && state.editorLineHeight > 0) {
+			return;
+		}
+
 		const style = window.getComputedStyle(state.editor);
-		const lineHeight = Number.parseFloat(style.lineHeight || "24") || 24;
-		const paddingTop = Number.parseFloat(style.paddingTop || "0") || 0;
+		state.editorLineHeight = Number.parseFloat(style.lineHeight || "24") || 24;
+		state.editorPaddingTop = Number.parseFloat(style.paddingTop || "0") || 0;
+		state.editorMetricsWidth = editorWidth;
+	}
+
+	function updateCurrentLineHighlight(state) {
+		refreshEditorMetrics(state);
+		const lineHeight = state.editorLineHeight || 24;
+		const paddingTop = state.editorPaddingTop || 0;
 		const before = state.editor.value.slice(0, state.editor.selectionStart);
 		const lineIndex = before.split("\n").length - 1;
 		const top = paddingTop + lineIndex * lineHeight - state.editor.scrollTop;
@@ -579,16 +629,103 @@
 		updateCurrentLineHighlight(state);
 	}
 
-	function renderHighlight(state) {
+	function scheduleViewportSync(state) {
+		if (state.viewportFrame) {
+			return;
+		}
+
+		state.viewportFrame = window.requestAnimationFrame(() => {
+			state.viewportFrame = 0;
+			syncViewport(state);
+			scheduleAssistivePosition(state);
+		});
+	}
+
+	function scheduleDeferredHighlight(state) {
+		if (state.highlightTimer) {
+			return;
+		}
+
+		state.highlightTimer = window.setTimeout(() => {
+			state.highlightTimer = 0;
+			renderHighlight(state, { force: true });
+		}, HIGHLIGHT_DEFER_DELAY);
+	}
+
+	function renderHighlight(state, options = {}) {
+		const { force = false } = options;
 		const value = state.editor.value;
-		state.highlight.innerHTML = renderHighlightedPython(value);
+		if (!force && value.length > HIGHLIGHT_SYNC_LIMIT) {
+			if (state.renderedValue !== value) {
+				scheduleDeferredHighlight(state);
+			}
+			syncViewport(state);
+			return;
+		}
+
+		if (state.highlightTimer) {
+			window.clearTimeout(state.highlightTimer);
+			state.highlightTimer = 0;
+		}
+
+		if (force || state.renderedValue !== value) {
+			state.highlight.innerHTML = renderHighlightedPython(value);
+			state.renderedValue = value;
+		}
 		syncViewport(state);
 	}
 
-	function syncEditorChrome(state) {
+	function syncEditorChrome(state, options = {}) {
 		renderLineNumbers(state);
-		renderHighlight(state);
-		updateCurrentLineHighlight(state);
+		renderHighlight(state, options);
+	}
+
+	function scheduleEditorChrome(state) {
+		if (state.editorFrame) {
+			return;
+		}
+
+		state.editorFrame = window.requestAnimationFrame(() => {
+			state.editorFrame = 0;
+			syncEditorChrome(state);
+		});
+	}
+
+	function scheduleAssistiveUi(state, options = {}) {
+		const { forceAutocomplete = false } = options;
+		state.pendingForceAutocomplete = state.pendingForceAutocomplete || forceAutocomplete;
+
+		if (state.assistiveFrame) {
+			return;
+		}
+
+		state.assistiveFrame = window.requestAnimationFrame(() => {
+			const nextForceAutocomplete = state.pendingForceAutocomplete;
+			state.assistiveFrame = 0;
+			state.pendingForceAutocomplete = false;
+			updateAutocomplete(state, { force: nextForceAutocomplete });
+			updateSignatureHelp(state);
+			updateHoverInfo(state);
+		});
+	}
+
+	function scheduleAssistivePosition(state) {
+		if (state.positionFrame) {
+			return;
+		}
+
+		state.positionFrame = window.requestAnimationFrame(() => {
+			state.positionFrame = 0;
+			if (!state.autocomplete.hidden) {
+				positionAutocomplete(state);
+			}
+			if (!state.signature.hidden) {
+				positionSignatureHelp(state);
+			}
+			if (!state.hover.hidden) {
+				positionHoverInfo(state);
+			}
+		});
 	}
 
 	function createAutocompletePortal() {
@@ -622,6 +759,7 @@
 		state.suggestions = [];
 		state.activeIndex = 0;
 		state.context = null;
+		state.autocompleteKey = "";
 	}
 
 	function hideSignatureHelp(state) {
@@ -654,13 +792,25 @@
 		};
 	}
 
-	function collectSuggestions(prefix, source) {
+	function getDynamicIdentifiers(state) {
+		const source = state.editor.value;
+		if (state.identifierCacheSource !== source) {
+			state.identifierCacheSource = source;
+			state.dynamicIdentifiers = Array.from(
+				new Set(source.match(/[A-Za-z_][A-Za-z0-9_]*/g) || []),
+			);
+		}
+
+		return state.dynamicIdentifiers;
+	}
+
+	function collectSuggestions(state, prefix) {
 		if (!prefix) {
 			return [];
 		}
 
 		const normalizedPrefix = prefix.toLowerCase();
-		const dynamicIdentifiers = Array.from(new Set(source.match(/[A-Za-z_][A-Za-z0-9_]*/g) || []));
+		const dynamicIdentifiers = getDynamicIdentifiers(state);
 
 		return Array.from(new Set([...dynamicIdentifiers, ...PYTHON_SUGGESTIONS]))
 			.filter((item) => item.toLowerCase().startsWith(normalizedPrefix) && item !== prefix)
@@ -930,11 +1080,11 @@
 			activeCall.argumentIndex,
 			(reference.signatures[0].parameters?.length || 1) - 1,
 		);
-		state.signatureContext = {
-			name: activeCall.name,
-			activeParameter,
-		};
-		state.signature.innerHTML = renderSignatureMarkup(reference, activeParameter);
+		const signatureContextKey = `${activeCall.name}:${activeParameter}`;
+		if (state.signatureContext !== signatureContextKey) {
+			state.signatureContext = signatureContextKey;
+			state.signature.innerHTML = renderSignatureMarkup(reference, activeParameter);
+		}
 		state.signature.hidden = false;
 		positionSignatureHelp(state);
 	}
@@ -964,8 +1114,10 @@
 			return;
 		}
 
-		state.hoverContext = match.word;
-		state.hover.innerHTML = renderHoverMarkup(match.word, reference);
+		if (state.hoverContext !== match.word) {
+			state.hoverContext = match.word;
+			state.hover.innerHTML = renderHoverMarkup(match.word, reference);
+		}
 		state.hover.hidden = false;
 		positionHoverInfo(state);
 	}
@@ -1005,7 +1157,7 @@
 			return;
 		}
 
-		const suggestions = collectSuggestions(context.prefix, state.editor.value);
+		const suggestions = collectSuggestions(state, context.prefix);
 		if (suggestions.length === 0) {
 			hideAutocomplete(state);
 			return;
@@ -1013,6 +1165,14 @@
 
 		state.context = context;
 		state.suggestions = suggestions;
+		const autocompleteKey = `${context.start}:${context.end}:${context.prefix}:${suggestions.join("\u0001")}`;
+		if (state.autocompleteKey === autocompleteKey) {
+			state.autocomplete.hidden = false;
+			positionAutocomplete(state);
+			return;
+		}
+
+		state.autocompleteKey = autocompleteKey;
 		state.activeIndex = 0;
 		state.autocomplete.innerHTML = "";
 
@@ -1110,7 +1270,7 @@
 
 		if ((event.ctrlKey || event.metaKey) && event.code === "Space") {
 			event.preventDefault();
-			updateAutocomplete(state, { force: true });
+			scheduleAssistiveUi(state, { forceAutocomplete: true });
 			return;
 		}
 
@@ -1364,13 +1524,15 @@ finally:
 		state.root.dataset.state = "open";
 		state.toggle.setAttribute("aria-expanded", "true");
 		state.panel.setAttribute("aria-hidden", "false");
-		syncEditorChrome(state);
+		refreshEditorMetrics(state, true);
+		syncEditorChrome(state, { force: true });
 		updateSignatureHelp(state);
 		updateHoverInfo(state);
 		focusEditor(state);
 	}
 
 	function closePanel(state) {
+		flushDraft(state);
 		hideAutocomplete(state);
 		hideSignatureHelp(state);
 		hideHoverInfo(state);
@@ -1454,13 +1616,29 @@ finally:
 			suggestions: [],
 			activeIndex: 0,
 			context: null,
+			autocompleteKey: "",
 			signatureContext: null,
 			hoverContext: null,
+			draftTimer: 0,
+			editorFrame: 0,
+			assistiveFrame: 0,
+			viewportFrame: 0,
+			positionFrame: 0,
+			highlightTimer: 0,
+			lineCount: 0,
+			renderedValue: "",
+			pendingForceAutocomplete: false,
+			editorLineHeight: 0,
+			editorPaddingTop: 0,
+			editorMetricsWidth: 0,
+			identifierCacheSource: "",
+			dynamicIdentifiers: [],
 		};
 		labState.set(root, state);
 
 		restoreDraft(state);
-		syncEditorChrome(state);
+		refreshEditorMetrics(state, true);
+		syncEditorChrome(state, { force: true });
 		setStatus(state, "轻量编辑器已就绪，支持高亮与轻量自动补全。");
 		setOutput(state, "等待运行…", "idle");
 
@@ -1491,8 +1669,8 @@ finally:
 
 		resetButton.addEventListener("click", () => {
 			state.editor.value = state.source.value;
-			saveDraft(state);
-			syncEditorChrome(state);
+			saveDraft(state, { immediate: true });
+			syncEditorChrome(state, { force: true });
 			hideAutocomplete(state);
 			updateSignatureHelp(state);
 			updateHoverInfo(state);
@@ -1507,23 +1685,12 @@ finally:
 
 		editor.addEventListener("input", () => {
 			saveDraft(state);
-			syncEditorChrome(state);
-			updateAutocomplete(state);
-			updateSignatureHelp(state);
-			updateHoverInfo(state);
+			scheduleEditorChrome(state);
+			scheduleAssistiveUi(state);
 		});
 
 		editor.addEventListener("scroll", () => {
-			syncViewport(state);
-			if (!state.autocomplete.hidden) {
-				positionAutocomplete(state);
-			}
-			if (!state.signature.hidden) {
-				positionSignatureHelp(state);
-			}
-			if (!state.hover.hidden) {
-				positionHoverInfo(state);
-			}
+			scheduleViewportSync(state);
 		});
 
 		editor.addEventListener("keydown", (event) => {
@@ -1533,23 +1700,23 @@ finally:
 		editor.addEventListener("keyup", (event) => {
 			if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
 				updateCurrentLineHighlight(state);
-				updateAutocomplete(state);
-				updateSignatureHelp(state);
-				updateHoverInfo(state);
+				scheduleAssistiveUi(state);
 			}
 		});
 
 		editor.addEventListener("click", () => {
 			updateCurrentLineHighlight(state);
-			updateAutocomplete(state);
-			updateSignatureHelp(state);
-			updateHoverInfo(state);
+			scheduleAssistiveUi(state);
 		});
 
 		editor.addEventListener("focus", () => {
-			syncEditorChrome(state);
-			updateSignatureHelp(state);
-			updateHoverInfo(state);
+			refreshEditorMetrics(state, true);
+			scheduleEditorChrome(state);
+			scheduleAssistiveUi(state);
+		});
+
+		editor.addEventListener("blur", () => {
+			saveDraft(state, { immediate: true });
 		});
 
 		document.addEventListener(
@@ -1572,8 +1739,17 @@ finally:
 		);
 
 		window.addEventListener(
+			"pagehide",
+			() => {
+				flushDraft(state);
+			},
+			{ once: true },
+		);
+
+		window.addEventListener(
 			"resize",
 			() => {
+				refreshEditorMetrics(state, true);
 				if (panel.hidden) {
 					return;
 				}
@@ -1583,15 +1759,7 @@ finally:
 				if (panel.dataset.positionMode === "custom") {
 					storePosition(next);
 				}
-				if (!state.autocomplete.hidden) {
-					positionAutocomplete(state);
-				}
-				if (!state.signature.hidden) {
-					positionSignatureHelp(state);
-				}
-				if (!state.hover.hidden) {
-					positionHoverInfo(state);
-				}
+				scheduleAssistivePosition(state);
 			},
 			{ passive: true },
 		);
@@ -1599,15 +1767,7 @@ finally:
 		window.addEventListener(
 			"scroll",
 			() => {
-				if (!state.autocomplete.hidden) {
-					positionAutocomplete(state);
-				}
-				if (!state.signature.hidden) {
-					positionSignatureHelp(state);
-				}
-				if (!state.hover.hidden) {
-					positionHoverInfo(state);
-				}
+				scheduleAssistivePosition(state);
 			},
 			{ passive: true },
 		);

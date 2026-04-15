@@ -1,0 +1,743 @@
+---
+import Markdown from "@components/misc/Markdown.astro";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { render } from "astro:content";
+import { Icon } from "astro-icon/components";
+
+import { getAiosNewsroomSnapshot } from "../../../server/aios-newsroom";
+import { getModulePosts } from "../../../utils/module-content-utils";
+import { getPostUrl } from "../../../utils/url-utils";
+
+export const prerender = false;
+
+type AnyRecord = Record<string, any>;
+
+const snapshot = await getAiosNewsroomSnapshot();
+const report = (snapshot.report as AnyRecord | null) || {};
+const reportMetrics = (report.metrics as AnyRecord | null) || {};
+const mcp = (snapshot.mcp as AnyRecord | null) || {};
+
+const journalEntries = (await getModulePosts("lab")).filter((post) =>
+	post.id.startsWith("lab/aios-newsroom/"),
+);
+const overviewEntry =
+	journalEntries.find((post) =>
+		post.id.includes("00-aios-newsroom-总览-从比赛-demo-到-agent-ecosystem"),
+	) ||
+	journalEntries[0] ||
+	null;
+
+let OverviewContent: any = null;
+if (overviewEntry) {
+	const renderedOverview = await render(overviewEntry);
+	OverviewContent = renderedOverview.Content;
+}
+
+const overviewUrl = overviewEntry ? getPostUrl(overviewEntry) : null;
+const hasOverviewContent = Boolean(OverviewContent);
+
+function formatDateTime(value: unknown) {
+	const text = String(value || "").trim();
+	if (!text) {
+		return "N/A";
+	}
+	return text
+		.replace("T", " ")
+		.replace(/\.\d+/, "")
+		.replace(/\+08:00$/, " CST");
+}
+
+const htmlSummaryLine = [
+	reportMetrics.total_articles
+		? `${reportMetrics.total_articles} 篇成稿`
+		: "",
+	reportMetrics.active_sections
+		? `${reportMetrics.active_sections} 个栏目`
+		: "",
+	reportMetrics.total_sources
+		? `${reportMetrics.total_sources} 条参考信源`
+		: "",
+]
+	.filter(Boolean)
+	.join(" · ");
+
+const systemStatusLine = snapshot.available
+	? "AIOS News Ecosystem 在线"
+	: snapshot.error || "AIOS service unavailable";
+const archiveLabel =
+	overviewEntry?.data.category || overviewEntry?.data.title || "Project Archive";
+const mcpToolNames = Array.isArray(mcp.tool_names)
+	? mcp.tool_names.filter((item): item is string => typeof item === "string")
+	: [];
+const mcpResourceUris = Array.isArray(mcp.resource_uris)
+	? mcp.resource_uris.filter((item): item is string => typeof item === "string")
+	: [];
+const mcpServerUrl =
+	(typeof mcp.public_url === "string" && mcp.public_url.trim()) ||
+	(typeof mcp.local_url === "string" && mcp.local_url.trim()) ||
+	"http://127.0.0.1:8011/";
+const mcpDiscoveryUrl = `${snapshot.baseUrl}/api/ecosystem/mcp`;
+const mcpIsPublic = Boolean(
+	typeof mcp.public_url === "string" && mcp.public_url.trim(),
+);
+const mcpAccessHint = mcpIsPublic
+	? "当前已配置可直接给外部 Agent 使用的 MCP 地址。"
+	: "当前显示的是服务器直连地址；如果要给站外 Agent 用，建议再挂一个公网域名或反向代理。";
+const mcpPythonExample = `from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.session import ClientSession
+
+async with streamablehttp_client("${mcpServerUrl}") as (read, write, _):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        result = await session.call_tool(
+            "get_today_news_brief",
+            {"max_sections": 3, "max_articles_per_section": 3},
+        )`;
+---
+
+<MainGridLayout
+	immersiveLayout={true}
+	title="AIOS Newsroom"
+	description="AIOS Newsroom 的正式项目展示页"
+>
+	<script>
+		import("../../../scripts/right-sidebar-layout.js");
+	</script>
+
+	<div class="module-page newsroom-page" style="--module-accent: 86 168 255;">
+		<section class="module-hero newsroom-hero">
+			<div class="module-copy">
+				<p class="module-eyebrow">Lab / AIOS Newsroom</p>
+				<h1 class="module-title">AIOS Newsroom</h1>
+				<p class="module-subtitle">
+					展示页现在只保留三块：HTML 成品、系统面板、项目档案。
+				</p>
+				<p class="module-description">
+					主页面只负责给人看清入口。最终 HTML 和 AIOS News Ecosystem
+					都放到二级界面，项目档案则直接在这页往下展开，演示时可以一路往下讲完。
+				</p>
+
+				<div class="newsroom-actions">
+					<a href="#aios-panels" class="newsroom-action">
+						<Icon name="mdi:view-grid-outline" class="text-[1.05rem]" />
+						<span>三个面板</span>
+					</a>
+					<a href="/lab/aios-newsroom/report/" class="newsroom-action">
+						<Icon name="mdi:file-document-outline" class="text-[1.05rem]" />
+						<span>HTML 成品</span>
+					</a>
+					<a href="/lab/aios-newsroom/system/" class="newsroom-action">
+						<Icon name="mdi:view-dashboard-outline" class="text-[1.05rem]" />
+						<span>系统面板</span>
+					</a>
+					<a href="#aios-archive" class="newsroom-action">
+						<Icon name="mdi:notebook-outline" class="text-[1.05rem]" />
+						<span>项目档案</span>
+					</a>
+				</div>
+
+				<div class="newsroom-jumpbar">
+					<a href="/api/lab/aios/report.html" class="newsroom-jumpbar__link">
+						<Icon name="mdi:open-in-new" class="text-[1.05rem]" />
+						<span>直接打开原始 HTML</span>
+					</a>
+					<a href="/api/lab/aios/dashboard.html" class="newsroom-jumpbar__link">
+						<Icon name="mdi:open-in-new" class="text-[1.05rem]" />
+						<span>直接打开 AIOS News Ecosystem</span>
+					</a>
+					{
+						overviewUrl && (
+							<a href={overviewUrl} class="newsroom-jumpbar__link">
+								<Icon name="mdi:text-box-outline" class="text-[1.05rem]" />
+								<span>原始档案文章</span>
+							</a>
+						)
+					}
+					<a href="/lab/" class="newsroom-jumpbar__link">
+						<Icon name="mdi:arrow-left" class="text-[1.05rem]" />
+						<span>返回 Lab</span>
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<section class="module-content-shell" id="aios-panels">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">展示入口</p>
+					<h2 class="module-content-title">主展示页只保留 3 个面板</h2>
+					<p class="module-content-description">
+						前两个面板点开进入二级界面，项目档案则直接在当前页面继续下拉查看。
+					</p>
+				</div>
+				<span class="module-panel-badge">
+					{report.date_label || "最新日报"}
+				</span>
+			</div>
+
+			<div class="module-panel-grid newsroom-panel-grid">
+				<a class="module-panel newsroom-panel-card newsroom-panel-card--link" href="/lab/aios-newsroom/report/">
+					<div class="module-panel-top">
+						<span class="module-panel-label">HTML 成品</span>
+						<div class="module-panel-icon">
+							<Icon name="mdi:file-document-outline" class="text-[1.15rem]" />
+						</div>
+					</div>
+					<h3 class="module-panel-title">HTML 成品</h3>
+					<p class="module-panel-copy">
+						展示时优先看最终日报 HTML。首页不再直接嵌入 iframe，点击后进入二级界面再完整浏览。
+					</p>
+					<div class="newsroom-panel-stats">
+						<span>{htmlSummaryLine || "当前版本日报"}</span>
+						<span>{formatDateTime(report.generated_at)}</span>
+					</div>
+					<span class="module-panel-link">
+						打开成品详情
+						<Icon name="mdi:arrow-right" class="text-[1rem]" />
+					</span>
+				</a>
+
+				<a class="module-panel newsroom-panel-card newsroom-panel-card--link" href="/lab/aios-newsroom/system/">
+					<div class="module-panel-top">
+						<span class="module-panel-label">系统面板</span>
+						<div class="module-panel-icon">
+							<Icon
+								name="mdi:view-dashboard-outline"
+								class="text-[1.15rem]"
+							/>
+						</div>
+					</div>
+					<h3 class="module-panel-title">系统面板</h3>
+					<p class="module-panel-copy">
+						这里只保留 AIOS News Ecosystem 这一张系统 HTML。时间线、状态指标和最近运行都放到二级界面里看。
+					</p>
+					<div class="newsroom-panel-stats">
+						<span>{systemStatusLine}</span>
+						<span>{formatDateTime(report.generated_at)}</span>
+					</div>
+					<span class="module-panel-link">
+						打开系统详情
+						<Icon name="mdi:arrow-right" class="text-[1rem]" />
+					</span>
+				</a>
+
+				<article class="module-panel newsroom-panel-card newsroom-panel-card--overview">
+					<div class="module-panel-top">
+						<span class="module-panel-label">项目档案</span>
+						<div class="module-panel-icon">
+							<Icon name="mdi:notebook-outline" class="text-[1.15rem]" />
+						</div>
+					</div>
+					<h3 class="module-panel-title">项目档案</h3>
+					<p class="module-panel-copy">
+						项目目标、架构、运行方式和演示说明直接在本页往下展开，演示时不用再跳到别处。
+					</p>
+					<div class="newsroom-panel-stats">
+						<span>{archiveLabel}</span>
+						<span>{overviewEntry?.data.title || "AIOS Newsroom 总览"}</span>
+					</div>
+					{
+						hasOverviewContent ? (
+							<a class="module-panel-link" href="#aios-archive">
+								继续下拉阅读
+								<Icon name="mdi:arrow-down" class="text-[1rem]" />
+							</a>
+						) : overviewUrl ? (
+							<a class="module-panel-link" href={overviewUrl}>
+								打开原始文章
+								<Icon name="mdi:arrow-top-right" class="text-[1rem]" />
+							</a>
+						) : (
+							<span class="newsroom-panel-note">档案内容暂不可用</span>
+						)
+					}
+				</article>
+			</div>
+		</section>
+
+		<section class="module-content-shell" id="aios-mcp">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">Agent 接入</p>
+					<h2 class="module-content-title">MCP 调用方式</h2>
+					<p class="module-content-description">
+						这套系统已经把“当日新闻”做成了标准 MCP 服务。任何支持
+						MCP 的 Agent，不需要理解内部 workflow，只要接入这个地址就能直接读今天新闻。
+					</p>
+				</div>
+				<span class="module-panel-badge">MCP Ready</span>
+			</div>
+
+			<div class="newsroom-mcp-card">
+				<div class="newsroom-mcp-grid">
+					<article class="newsroom-mcp-panel">
+						<div class="newsroom-mcp-panel__top">
+							<span class="module-panel-label">服务地址</span>
+							<Icon name="mdi:connection" class="text-[1.1rem]" />
+						</div>
+						<h3 class="newsroom-mcp-title">直接接入地址</h3>
+						<p class="newsroom-mcp-copy">
+							推荐让 Agent 直接连接 MCP server；生态服务也保留了一个发现接口用来返回当前配置。
+						</p>
+						<div class="newsroom-mcp-pairs">
+							<div class="newsroom-mcp-pair">
+								<span>Server URL</span>
+								<code>{mcpServerUrl}</code>
+							</div>
+							<div class="newsroom-mcp-pair">
+								<span>发现接口</span>
+								<code>{mcpDiscoveryUrl}</code>
+							</div>
+						</div>
+						<p class="newsroom-mcp-note">{mcpAccessHint}</p>
+					</article>
+
+					<article class="newsroom-mcp-panel">
+						<div class="newsroom-mcp-panel__top">
+							<span class="module-panel-label">可调用能力</span>
+							<Icon name="mdi:toolbox-outline" class="text-[1.1rem]" />
+						</div>
+						<h3 class="newsroom-mcp-title">暴露给 Agent 的内容</h3>
+						<p class="newsroom-mcp-copy">
+							<code>tool</code> 适合主动调用摘要或结构化结果，<code>resource</code>
+							适合直接读取最新日报原文和快照。
+						</p>
+						<div class="newsroom-mcp-list">
+							<div>
+								<p class="newsroom-mcp-list__label">Tools</p>
+								<div class="newsroom-mcp-tags">
+									{
+										mcpToolNames.map((name) => (
+											<span class="newsroom-mcp-tag">{name}</span>
+										))
+									}
+								</div>
+							</div>
+							<div>
+								<p class="newsroom-mcp-list__label">Resources</p>
+								<div class="newsroom-mcp-tags">
+									{
+										mcpResourceUris.map((uri) => (
+											<span class="newsroom-mcp-tag">{uri}</span>
+										))
+									}
+								</div>
+							</div>
+						</div>
+					</article>
+				</div>
+
+				<div class="newsroom-mcp-example">
+					<div class="newsroom-mcp-example__head">
+						<div>
+							<p class="newsroom-mcp-list__label">最小示例</p>
+							<h3 class="newsroom-mcp-title">任何支持 MCP 的 Agent 都可以这样接</h3>
+						</div>
+						<span class="newsroom-mcp-example__badge">Python</span>
+					</div>
+					<pre class="newsroom-mcp-code"><code>{mcpPythonExample}</code></pre>
+					<p class="newsroom-mcp-note">
+						详细讲解文档已放在 AIOS-NP 根目录：<code>MCP_DAILY_NEWS_GUIDE.zh-CN.md</code>
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="module-content-shell" id="aios-archive">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">项目档案</p>
+					<h2 class="module-content-title">项目档案直接在页面里展开</h2>
+					<p class="module-content-description">
+						从这里开始就是完整项目档案，展示时可以顺着页面直接讲完，不需要额外切换页面。
+					</p>
+				</div>
+				<span class="module-panel-badge">{archiveLabel}</span>
+			</div>
+
+			<div class="newsroom-overview-card">
+				{
+					hasOverviewContent ? (
+						<Markdown class="newsroom-overview-prose">
+							<OverviewContent />
+						</Markdown>
+					) : (
+						<div class="newsroom-empty-state">
+							<h3>项目档案暂时不可用</h3>
+							<p>当前没有加载到可展开的档案正文。</p>
+							{
+								overviewUrl && (
+									<a class="newsroom-inline-link" href={overviewUrl}>
+										打开原始文章
+										<Icon
+											name="mdi:arrow-top-right"
+											class="text-[1rem]"
+										/>
+									</a>
+								)
+							}
+						</div>
+					)
+				}
+			</div>
+		</section>
+	</div>
+</MainGridLayout>
+
+<style>
+	.newsroom-page {
+		overflow: clip;
+		--newsroom-action-bg: rgba(255, 255, 255, 0.05);
+		--newsroom-action-border: rgba(92, 168, 255, 0.16);
+		--newsroom-action-text: rgba(240, 246, 255, 0.86);
+		--newsroom-action-hover-bg: rgba(255, 255, 255, 0.08);
+		--newsroom-action-hover-border: rgba(92, 168, 255, 0.28);
+		--newsroom-muted: rgba(219, 229, 244, 0.68);
+		--newsroom-inline-link: rgba(242, 247, 255, 0.92);
+		--newsroom-chip-bg: rgba(255, 255, 255, 0.05);
+		--newsroom-chip-border: rgba(92, 168, 255, 0.14);
+		--newsroom-chip-text: rgba(226, 236, 250, 0.76);
+		--newsroom-surface:
+			linear-gradient(180deg, rgba(8, 12, 21, 0.36), rgba(5, 8, 15, 0.16)),
+			radial-gradient(circle at top right, rgba(92, 168, 255, 0.16), transparent 16rem);
+		--newsroom-surface-border: rgba(92, 168, 255, 0.12);
+		--newsroom-surface-shadow:
+			0 28px 80px rgba(0, 0, 0, 0.18),
+			inset 0 1px 0 rgba(255, 255, 255, 0.06);
+	}
+
+	.newsroom-page::before {
+		content: "";
+		position: absolute;
+		inset: auto -10rem 78% auto;
+		width: 22rem;
+		height: 22rem;
+		border-radius: 999px;
+		background: radial-gradient(circle, rgba(92, 168, 255, 0.18), transparent 70%);
+		filter: blur(10px);
+		pointer-events: none;
+	}
+
+	:global(:root:not(.dark)) .newsroom-page {
+		--newsroom-action-bg: rgba(255, 255, 255, 0.72);
+		--newsroom-action-border: rgba(148, 163, 184, 0.24);
+		--newsroom-action-text: rgba(30, 41, 59, 0.84);
+		--newsroom-action-hover-bg: rgba(255, 255, 255, 0.92);
+		--newsroom-action-hover-border: rgba(92, 168, 255, 0.26);
+		--newsroom-muted: rgba(51, 65, 85, 0.66);
+		--newsroom-inline-link: rgba(15, 23, 42, 0.92);
+		--newsroom-chip-bg: rgba(255, 255, 255, 0.74);
+		--newsroom-chip-border: rgba(148, 163, 184, 0.22);
+		--newsroom-chip-text: rgba(51, 65, 85, 0.72);
+		--newsroom-surface:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(247, 250, 255, 0.62)),
+			radial-gradient(circle at top right, rgba(92, 168, 255, 0.12), transparent 16rem);
+		--newsroom-surface-border: rgba(148, 163, 184, 0.22);
+		--newsroom-surface-shadow:
+			0 24px 72px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.82);
+	}
+
+	.newsroom-hero {
+		padding-bottom: 0.5rem;
+	}
+
+	.newsroom-actions,
+	.newsroom-jumpbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.newsroom-action {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.72rem 1rem;
+		border-radius: 999px;
+		border: 1px solid var(--newsroom-action-border);
+		background: var(--newsroom-action-bg);
+		color: var(--newsroom-action-text);
+		text-decoration: none;
+		transition:
+			transform 220ms ease,
+			background-color 220ms ease,
+			border-color 220ms ease;
+	}
+
+	.newsroom-action:hover {
+		transform: translateY(-2px);
+		border-color: var(--newsroom-action-hover-border);
+		background: var(--newsroom-action-hover-bg);
+	}
+
+	.newsroom-jumpbar {
+		gap: 0.55rem;
+	}
+
+	.newsroom-jumpbar__link,
+	.newsroom-inline-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		color: var(--newsroom-inline-link);
+		text-decoration: none;
+		border-bottom: 1px solid transparent;
+		transition:
+			color 220ms ease,
+			border-color 220ms ease;
+	}
+
+	.newsroom-jumpbar__link {
+		padding: 0.36rem 0.2rem;
+		color: var(--newsroom-muted);
+	}
+
+	.newsroom-jumpbar__link:hover,
+	.newsroom-inline-link:hover {
+		border-color: rgba(92, 168, 255, 0.34);
+	}
+
+	.newsroom-panel-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.newsroom-panel-card {
+		min-height: 18rem;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	.newsroom-panel-card .module-panel-title {
+		margin-top: 0;
+		padding-top: 1.15rem;
+	}
+
+	.newsroom-panel-stats {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.65rem;
+		margin-top: 1rem;
+	}
+
+	.newsroom-panel-stats span {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.48rem 0.8rem;
+		border-radius: 999px;
+		border: 1px solid var(--newsroom-chip-border);
+		background: var(--newsroom-chip-bg);
+		color: var(--newsroom-chip-text);
+		font-size: 0.86rem;
+		line-height: 1.5;
+	}
+
+	.newsroom-panel-card .module-panel-link,
+	.newsroom-panel-note {
+		margin-top: auto;
+	}
+
+	.newsroom-panel-note {
+		color: var(--newsroom-muted);
+		font-size: 0.92rem;
+	}
+
+	.newsroom-overview-card {
+		padding: 1.2rem;
+		border-radius: 1.5rem;
+		border: 1px solid var(--newsroom-surface-border);
+		background: var(--newsroom-surface);
+		box-shadow: var(--newsroom-surface-shadow);
+	}
+
+	.newsroom-mcp-card {
+		display: grid;
+		gap: 1rem;
+		padding: 1.2rem;
+		border-radius: 1.5rem;
+		border: 1px solid var(--newsroom-surface-border);
+		background: var(--newsroom-surface);
+		box-shadow: var(--newsroom-surface-shadow);
+	}
+
+	.newsroom-mcp-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.newsroom-mcp-panel {
+		padding: 1rem;
+		border-radius: 1.2rem;
+		border: 1px solid var(--newsroom-chip-border);
+		background: var(--newsroom-action-bg);
+	}
+
+	.newsroom-mcp-panel__top,
+	.newsroom-mcp-example__head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.newsroom-mcp-title {
+		margin-top: 0.85rem;
+		font-size: 1.15rem;
+		color: var(--newsroom-inline-link);
+	}
+
+	.newsroom-mcp-copy,
+	.newsroom-mcp-note {
+		margin-top: 0.65rem;
+		color: var(--newsroom-muted);
+		line-height: 1.8;
+	}
+
+	.newsroom-mcp-pairs {
+		display: grid;
+		gap: 0.7rem;
+		margin-top: 1rem;
+	}
+
+	.newsroom-mcp-pair {
+		display: grid;
+		gap: 0.35rem;
+	}
+
+	.newsroom-mcp-pair span,
+	.newsroom-mcp-list__label {
+		font-size: 0.8rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--newsroom-muted);
+	}
+
+	.newsroom-mcp-pair code,
+	.newsroom-mcp-code code {
+		word-break: break-all;
+	}
+
+	.newsroom-mcp-list {
+		display: grid;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.newsroom-mcp-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-top: 0.7rem;
+	}
+
+	.newsroom-mcp-tag,
+	.newsroom-mcp-example__badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.48rem 0.78rem;
+		border-radius: 999px;
+		border: 1px solid var(--newsroom-chip-border);
+		background: var(--newsroom-chip-bg);
+		color: var(--newsroom-chip-text);
+		font-size: 0.84rem;
+		line-height: 1.5;
+	}
+
+	.newsroom-mcp-example {
+		padding: 1rem;
+		border-radius: 1.2rem;
+		border: 1px solid var(--newsroom-chip-border);
+		background: rgba(4, 8, 18, 0.44);
+	}
+
+	:global(:root:not(.dark)) .newsroom-mcp-example {
+		background: rgba(245, 248, 255, 0.88);
+	}
+
+	.newsroom-mcp-code {
+		margin-top: 1rem;
+		padding: 1rem;
+		border-radius: 1rem;
+		background: rgba(4, 8, 18, 0.88);
+		color: rgba(236, 245, 255, 0.92);
+		overflow-x: auto;
+		font-size: 0.88rem;
+		line-height: 1.7;
+	}
+
+	:global(:root:not(.dark)) .newsroom-mcp-code {
+		background: rgba(15, 23, 42, 0.96);
+		color: rgba(248, 250, 252, 0.96);
+	}
+
+	.newsroom-empty-state h3 {
+		font-size: 1.2rem;
+		color: var(--newsroom-inline-link);
+	}
+
+	.newsroom-empty-state p {
+		margin-top: 0.55rem;
+		color: var(--newsroom-muted);
+		line-height: 1.8;
+	}
+
+	:global(:root:not(.dark)) .newsroom-overview-prose,
+	:global(:root:not(.dark)) .newsroom-overview-prose :where(p, li, blockquote) {
+		color: rgba(51, 65, 85, 0.76);
+	}
+
+	:global(:root:not(.dark)) .newsroom-overview-prose :where(h1, h2, h3, h4) {
+		color: rgba(15, 23, 42, 0.92);
+	}
+
+	.newsroom-overview-prose :global(h1:first-child),
+	.newsroom-overview-prose :global(h2:first-child) {
+		margin-top: 0;
+	}
+
+	@media (max-width: 1100px) {
+		.newsroom-panel-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.newsroom-mcp-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.newsroom-panel-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.newsroom-actions,
+		.newsroom-jumpbar {
+			flex-direction: column;
+		}
+
+		.newsroom-action {
+			width: 100%;
+			justify-content: center;
+		}
+
+		.newsroom-jumpbar__link,
+		.newsroom-inline-link {
+			padding: 0.2rem 0;
+		}
+
+		.newsroom-overview-card {
+			padding: 1rem;
+		}
+
+		.newsroom-mcp-card,
+		.newsroom-mcp-panel,
+		.newsroom-mcp-example,
+		.newsroom-mcp-code {
+			padding: 1rem;
+		}
+	}
+</style>

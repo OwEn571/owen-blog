@@ -9,370 +9,460 @@ import type { MarkdownHeading } from "astro";
 interface Props {
 	class?: string;
 	headings?: MarkdownHeading[];
+	variant?: "default" | "rail";
 }
 
-const { class: className } = Astro.props;
+const { class: className, variant = "default" } = Astro.props;
 ---
 
-<table-of-contents class:list={[className, "group"]} id="toc">
+<table-of-contents
+	class:list={[className, "group"]}
+	id="toc"
+	data-toc-variant={variant}
+>
 </table-of-contents>
 
 <script>
-import { groupTOCItems, findTOCGroupParentId } from "./utils/toc-groups";
-import {
-	extractHeadings,
-	generateTOCItems,
-	getTOCConfig,
-	scrollToHeading,
-} from "./utils/toc-utils";
+	import { groupTOCItems, findTOCGroupParentId } from "./utils/toc-groups";
+	import {
+		extractHeadings,
+		generateTOCItems,
+		getTOCConfig,
+		scrollToHeading,
+	} from "./utils/toc-utils";
 
-import {
-	calculateActiveHeadingRange,
-	isInRange,
-} from "./hooks/useTocHighlight";
+	import {
+		calculateActiveHeadingRange,
+		isInRange,
+	} from "./hooks/useTocHighlight";
 
-import {
-	throttle,
-	calculateActiveIndicatorPosition,
-} from "./hooks/useTocScroll";
+	import {
+		calculateActiveIndicatorPosition,
+	} from "./hooks/useTocScroll";
 
-class TableOfContents extends HTMLElement {
-	tocEl: HTMLElement | null = null;
-	visibleClass = "visible";
-	observer: IntersectionObserver;
-	anchorNavTarget: HTMLElement | null = null;
-	headingIdxMap = new Map<string, number>();
-	headings: HTMLElement[] = [];
-	sections: HTMLElement[] = [];
-	tocEntries: HTMLAnchorElement[] = [];
-	active: boolean[] = [];
-	activeIndicator: HTMLElement | null = null;
-	manualExpandedGroups = new Set<string>();
-	manualCollapsedGroups = new Set<string>();
-	autoExpandedGroup: string | null = null;
-	tocGroups: Array<{ parent: { id: string; level: number; depth: number; text: string; badge?: string }; children: Array<{ id: string; level: number; depth: number; text: string; badge?: string }> }> = [];
-	navbarHeight = 80;
+	class TableOfContents extends HTMLElement {
+		tocEl: HTMLElement | null = null;
+		visibleClass = "visible";
+		observer: IntersectionObserver;
+		anchorNavTarget: HTMLElement | null = null;
+		headingIdxMap = new Map<string, number>();
+		headings: HTMLElement[] = [];
+		sections: HTMLElement[] = [];
+		tocEntries: HTMLAnchorElement[] = [];
+		active: boolean[] = [];
+		activeIndicator: HTMLElement | null = null;
+		updateFrame: number | null = null;
+		lastActiveKey = "__init__";
+		lastVisibleIndices: number[] = [];
+		manualExpandedGroups = new Set<string>();
+		manualCollapsedGroups = new Set<string>();
+		autoExpandedGroup: string | null = null;
+		tocGroups: Array<{
+			parent: {
+				id: string;
+				level: number;
+				depth: number;
+				text: string;
+				badge?: string;
+			};
+			children: Array<{
+				id: string;
+				level: number;
+				depth: number;
+				text: string;
+				badge?: string;
+			}>;
+		}> = [];
+		navbarHeight = 80;
 
-	constructor() {
-		super();
-		this.observer = new IntersectionObserver(
-			this.markVisibleSection.bind(this),
-			{ threshold: 0 },
-		);
-	}
-
-	markVisibleSection = (entries: IntersectionObserverEntry[]) => {
-		entries.forEach((entry) => {
-			const id = (entry.target as HTMLElement).children[0]?.getAttribute("id");
-			const idx = id ? this.headingIdxMap.get(id) : undefined;
-			if (idx !== undefined) {
-				this.active[idx] = entry.isIntersecting;
-			}
-
-			if (
-				entry.isIntersecting &&
-				this.anchorNavTarget === (entry.target as HTMLElement).firstChild
-			) {
-				this.anchorNavTarget = null;
-			}
-		});
-
-		if (!this.active.includes(true)) {
-			this.fallback();
+		constructor() {
+			super();
+			this.observer = new IntersectionObserver(
+				this.markVisibleSection.bind(this),
+				{ threshold: 0 },
+			);
 		}
-		this.update();
-	};
+
+		markVisibleSection = (entries: IntersectionObserverEntry[]) => {
+			entries.forEach((entry) => {
+				const id = (
+					entry.target as HTMLElement
+				).children[0]?.getAttribute("id");
+				const idx = id ? this.headingIdxMap.get(id) : undefined;
+				if (idx !== undefined) {
+					this.active[idx] = entry.isIntersecting;
+				}
+
+				if (
+					entry.isIntersecting &&
+					this.anchorNavTarget ===
+						(entry.target as HTMLElement).firstChild
+				) {
+					this.anchorNavTarget = null;
+				}
+			});
+
+			if (!this.active.includes(true)) {
+				this.fallback();
+			}
+			this.update();
+		};
 
 	getActiveHeadingIds = () =>
 		this.tocEntries
-			.map((entry, index) => (this.active[index] ? decodeURIComponent(entry.hash?.substring(1) || "") : null))
+			.map((entry, index) =>
+				this.active[index]
+					? decodeURIComponent(entry.hash?.substring(1) || "")
+					: null,
+			)
 			.filter((id): id is string => !!id);
 
-	isGroupExpanded = (groupId: string) =>
-		this.manualExpandedGroups.has(groupId) ||
-		(this.autoExpandedGroup === groupId && !this.manualCollapsedGroups.has(groupId));
+		isGroupExpanded = (groupId: string) =>
+			this.manualExpandedGroups.has(groupId) ||
+			(this.autoExpandedGroup === groupId &&
+				!this.manualCollapsedGroups.has(groupId));
 
-	expandGroupManually = (groupId: string) => {
-		this.manualCollapsedGroups.delete(groupId);
-		this.manualExpandedGroups.add(groupId);
-	};
+		expandGroupManually = (groupId: string) => {
+			this.manualCollapsedGroups.delete(groupId);
+			this.manualExpandedGroups.add(groupId);
+		};
 
-	collapseGroupManually = (groupId: string) => {
-		this.manualExpandedGroups.delete(groupId);
-		this.manualCollapsedGroups.add(groupId);
-	};
+		collapseGroupManually = (groupId: string) => {
+			this.manualExpandedGroups.delete(groupId);
+			this.manualCollapsedGroups.add(groupId);
+		};
 
-	setAutoExpandedGroup = (groupId: string | null) => {
-		if (this.autoExpandedGroup === groupId) {
-			return;
-		}
-
-		this.autoExpandedGroup = groupId;
-		this.syncExpandedGroups();
-	};
-
-	syncExpandedGroups = () => {
-		this.querySelectorAll<HTMLElement>("[data-toc-group]").forEach((group) => {
-			const groupId = group.dataset.tocGroup || "";
-			group.classList.toggle("is-active-group", this.isGroupExpanded(groupId));
-		});
-
-		this.querySelectorAll<HTMLElement>("[data-toc-children]").forEach((container) => {
-			const groupId = container.dataset.tocChildren || "";
-			const expanded = this.isGroupExpanded(groupId);
-			container.hidden = false;
-			container.classList.toggle("expanded", expanded);
-			container.style.maxHeight = expanded ? `${container.scrollHeight}px` : "0px";
-			container.style.pointerEvents = expanded ? "auto" : "none";
-		});
-
-		this.querySelectorAll<HTMLButtonElement>("[data-toc-toggle]").forEach((button) => {
-			const groupId = button.dataset.tocToggle || "";
-			const expanded = this.isGroupExpanded(groupId);
-			button.classList.toggle("expanded", expanded);
-			button.setAttribute("aria-expanded", expanded ? "true" : "false");
-		});
-	};
-
-	syncAutoExpandedGroup = (headingIds: string[]) => {
-		const currentId =
-			headingIds[headingIds.length - 1] || headingIds[0] || null;
-		if (!currentId) {
-			this.setAutoExpandedGroup(null);
-			return;
-		}
-
-		const groupId = findTOCGroupParentId(this.tocGroups, currentId);
-		if (!groupId) {
-			this.setAutoExpandedGroup(null);
-			return;
-		}
-
-		const targetGroup = this.tocGroups.find((group) => group.parent.id === groupId);
-		if (!targetGroup || targetGroup.children.length === 0) {
-			this.setAutoExpandedGroup(null);
-			return;
-		}
-
-		this.setAutoExpandedGroup(groupId);
-	};
-
-	toggleActiveHeading = () => {
-		this.syncAutoExpandedGroup(this.getActiveHeadingIds());
-
-		const { min, max } = calculateActiveHeadingRange(this.active);
-
-		this.tocEntries.forEach((entry, i) => {
-			if (this.active[i]) {
-				entry.classList.add(this.visibleClass);
-			} else {
-				entry.classList.remove(this.visibleClass);
-			}
-		});
-
-		if (min > max) {
-			this.activeIndicator?.setAttribute("style", "opacity: 0");
-		} else {
-			const minEntry = this.tocEntries[min];
-			const maxEntry = this.tocEntries[max];
-			if (minEntry && maxEntry && this.tocEl) {
-				const { top, height } = calculateActiveIndicatorPosition(
-					this.tocEl,
-					minEntry,
-					maxEntry,
-				);
-				this.activeIndicator?.setAttribute(
-					"style",
-					`top: ${top}px; height: ${height}px`,
-				);
-			}
-		}
-	};
-
-	scrollToActiveHeading = throttle(() => {
-		if (this.anchorNavTarget || !this.tocEl) return;
-
-		const activeEntries = this.tocEntries.filter((entry) =>
-			entry.classList.contains(this.visibleClass),
-		);
-		if (activeEntries.length === 0) return;
-
-		const topmost = activeEntries[0];
-		const bottommost = activeEntries[activeEntries.length - 1];
-		const tocHeight = this.tocEl.clientHeight;
-
-		const visibleHeight =
-			bottommost.getBoundingClientRect().bottom -
-			topmost.getBoundingClientRect().top;
-
-		let top: number;
-		if (visibleHeight < 0.9 * tocHeight) {
-			top = (topmost as HTMLElement).offsetTop - 32;
-		} else {
-			top = (bottommost as HTMLElement).offsetTop - tocHeight * 0.8;
-		}
-
-		this.tocEl.scrollTo({ top, left: 0, behavior: "auto" });
-	}, 100);
-
-	update = () => {
-		requestAnimationFrame(() => {
-			this.toggleActiveHeading();
-			this.scrollToActiveHeading();
-		});
-	};
-
-	fallback = () => {
-		if (!this.sections.length) return;
-
-		for (let i = 0; i < this.sections.length; i++) {
-			const rect = this.sections[i].getBoundingClientRect();
-			if (
-				isInRange(rect.top, 0, window.innerHeight) ||
-				isInRange(rect.bottom, 0, window.innerHeight) ||
-				(rect.top < 0 && rect.bottom > window.innerHeight)
-			) {
-				this.active[i] = true;
-			} else if (rect.top > window.innerHeight) {
-				break;
-			}
-		}
-	};
-
-	handleClick = (event: Event) => {
-		const toggleButton = (event.target as HTMLElement)?.closest?.("[data-toc-toggle]") as HTMLButtonElement | null;
-		if (toggleButton) {
-			event.preventDefault();
-			event.stopPropagation();
-
-			const groupId = toggleButton.dataset.tocToggle || "";
-			if (!groupId) {
+		setAutoExpandedGroup = (groupId: string | null) => {
+			if (this.autoExpandedGroup === groupId) {
 				return;
 			}
 
-			if (this.isGroupExpanded(groupId)) {
-				this.collapseGroupManually(groupId);
-			} else {
-				this.expandGroupManually(groupId);
-			}
-
+			this.autoExpandedGroup = groupId;
 			this.syncExpandedGroups();
-			this.update();
-			return;
-		}
+		};
 
-		const anchor = (event.composedPath() as EventTarget[]).find(
-			(el) => el instanceof HTMLAnchorElement,
-		) as HTMLAnchorElement | undefined;
+		syncExpandedGroups = () => {
+			this.querySelectorAll<HTMLElement>("[data-toc-group]").forEach(
+				(group) => {
+					const groupId = group.dataset.tocGroup || "";
+					group.classList.toggle(
+						"is-active-group",
+						this.isGroupExpanded(groupId),
+					);
+				},
+			);
 
-		if (anchor) {
-			event.preventDefault();
-			const id = decodeURIComponent(anchor.hash?.substring(1) || "");
-			scrollToHeading(id, this.navbarHeight);
+			this.querySelectorAll<HTMLElement>("[data-toc-children]").forEach(
+				(container) => {
+					const groupId = container.dataset.tocChildren || "";
+					const expanded = this.isGroupExpanded(groupId);
+					container.hidden = false;
+					container.classList.toggle("expanded", expanded);
+					container.style.maxHeight = expanded
+						? `${container.scrollHeight}px`
+						: "0px";
+					container.style.pointerEvents = expanded ? "auto" : "none";
+				},
+			);
 
-			const groupId = findTOCGroupParentId(this.tocGroups, id);
-			if (groupId) {
-				this.expandGroupManually(groupId);
-				this.syncExpandedGroups();
+			this.querySelectorAll<HTMLButtonElement>(
+				"[data-toc-toggle]",
+			).forEach((button) => {
+				const groupId = button.dataset.tocToggle || "";
+				const expanded = this.isGroupExpanded(groupId);
+				button.classList.toggle("expanded", expanded);
+				button.setAttribute(
+					"aria-expanded",
+					expanded ? "true" : "false",
+				);
+			});
+		};
+
+		syncAutoExpandedGroup = (headingIds: string[]) => {
+			const currentId =
+				headingIds[headingIds.length - 1] || headingIds[0] || null;
+			if (!currentId) {
+				this.setAutoExpandedGroup(null);
+				return;
 			}
 
-			const idx = this.headingIdxMap.get(id);
-			this.anchorNavTarget = idx !== undefined ? this.headings[idx] : null;
-		}
-	};
+			const groupId = findTOCGroupParentId(this.tocGroups, currentId);
+			if (!groupId) {
+				this.setAutoExpandedGroup(null);
+				return;
+			}
 
-	connectedCallback() {
-		const element =
-			document.querySelector(".custom-md") ||
-			document.querySelector(".prose") ||
-			document.querySelector(".markdown-content");
-		let initialized = false;
+			const targetGroup = this.tocGroups.find(
+				(group) => group.parent.id === groupId,
+			);
+			if (!targetGroup || targetGroup.children.length === 0) {
+				this.setAutoExpandedGroup(null);
+				return;
+			}
 
-		const tryInit = () => {
-			if (!initialized) {
-				initialized = true;
-				this.init();
+			this.setAutoExpandedGroup(groupId);
+		};
+
+		toggleActiveHeading = (): number[] | null => {
+			const activeIndices = this.active.reduce<number[]>(
+				(indices, isActive, index) => {
+					if (isActive) {
+						indices.push(index);
+					}
+					return indices;
+				},
+				[],
+			);
+			const activeKey = activeIndices.join(",");
+			if (activeKey === this.lastActiveKey) {
+				return null;
+			}
+
+			this.lastActiveKey = activeKey;
+			const activeHeadingIds = activeIndices
+				.map((index) =>
+					decodeURIComponent(this.tocEntries[index]?.hash?.substring(1) || ""),
+				)
+				.filter((id): id is string => !!id);
+			this.syncAutoExpandedGroup(activeHeadingIds);
+
+			const nextVisible = new Set(activeIndices);
+			this.lastVisibleIndices.forEach((index) => {
+				if (!nextVisible.has(index)) {
+					this.tocEntries[index]?.classList.remove(this.visibleClass);
+				}
+			});
+			activeIndices.forEach((index) => {
+				this.tocEntries[index]?.classList.add(this.visibleClass);
+			});
+			this.lastVisibleIndices = activeIndices;
+
+			const { min, max } = calculateActiveHeadingRange(this.active);
+			if (min > max) {
+				this.activeIndicator?.setAttribute("style", "opacity: 0");
+			} else {
+				const minEntry = this.tocEntries[min];
+				const maxEntry = this.tocEntries[max];
+				if (minEntry && maxEntry && this.tocEl) {
+					const { top, height } = calculateActiveIndicatorPosition(
+						this.tocEl,
+						minEntry,
+						maxEntry,
+					);
+					this.activeIndicator?.setAttribute(
+						"style",
+						`top: ${top}px; height: ${height}px`,
+					);
+				}
+			}
+
+			return activeIndices;
+		};
+
+		scrollToActiveHeading = (activeIndices: number[]) => {
+			if (this.anchorNavTarget || !this.tocEl || activeIndices.length === 0) return;
+
+			const topmost = this.tocEntries[activeIndices[0]];
+			const bottommost = this.tocEntries[activeIndices[activeIndices.length - 1]];
+			if (!topmost || !bottommost) {
+				return;
+			}
+			const tocHeight = this.tocEl.clientHeight;
+
+			const visibleHeight =
+				bottommost.getBoundingClientRect().bottom -
+				topmost.getBoundingClientRect().top;
+
+			let top: number;
+			if (visibleHeight < 0.9 * tocHeight) {
+				top = (topmost as HTMLElement).offsetTop - 32;
+			} else {
+				top = (bottommost as HTMLElement).offsetTop - tocHeight * 0.8;
+			}
+
+			this.tocEl.scrollTo({ top, left: 0, behavior: "auto" });
+		};
+
+		update = () => {
+			if (this.updateFrame !== null) {
+				return;
+			}
+
+			this.updateFrame = requestAnimationFrame(() => {
+				this.updateFrame = null;
+				const activeIndices = this.toggleActiveHeading();
+				if (activeIndices) {
+					this.scrollToActiveHeading(activeIndices);
+				}
+			});
+		};
+
+		fallback = () => {
+			if (!this.sections.length) return;
+
+			for (let i = 0; i < this.sections.length; i++) {
+				const rect = this.sections[i].getBoundingClientRect();
+				if (
+					isInRange(rect.top, 0, window.innerHeight) ||
+					isInRange(rect.bottom, 0, window.innerHeight) ||
+					(rect.top < 0 && rect.bottom > window.innerHeight)
+				) {
+					this.active[i] = true;
+				} else if (rect.top > window.innerHeight) {
+					break;
+				}
 			}
 		};
 
-		if (element) {
-			element.addEventListener("animationend", tryInit, { once: true });
-			setTimeout(tryInit, 300);
-		} else {
-			tryInit();
-			setTimeout(tryInit, 300);
-		}
-	}
+		handleClick = (event: Event) => {
+			const toggleButton = (event.target as HTMLElement)?.closest?.(
+				"[data-toc-toggle]",
+			) as HTMLButtonElement | null;
+			if (toggleButton) {
+				event.preventDefault();
+				event.stopPropagation();
 
-	init() {
-		this.sections.forEach((section) => {
-			if (section instanceof HTMLElement) {
-				this.observer.unobserve(section);
+				const groupId = toggleButton.dataset.tocToggle || "";
+				if (!groupId) {
+					return;
+				}
+
+				if (this.isGroupExpanded(groupId)) {
+					this.collapseGroupManually(groupId);
+				} else {
+					this.expandGroupManually(groupId);
+				}
+
+				this.syncExpandedGroups();
+				this.update();
+				return;
 			}
-		});
-		this.observer.disconnect();
-		this.tocEl?.removeEventListener("click", this.handleClick);
-		this.headingIdxMap.clear();
-		this.headings = [];
-		this.sections = [];
-		this.tocEntries = [];
-		this.active = [];
-		this.anchorNavTarget = null;
 
-		this.regenerateTOC();
-		this.tocEl = this;
+			const anchor = (event.composedPath() as EventTarget[]).find(
+				(el) => el instanceof HTMLAnchorElement,
+			) as HTMLAnchorElement | undefined;
 
-		this.tocEl.addEventListener("click", this.handleClick, {
-			capture: true,
-		});
+			if (anchor) {
+				event.preventDefault();
+				const id = decodeURIComponent(anchor.hash?.substring(1) || "");
+				scrollToHeading(id, this.navbarHeight);
 
-		this.activeIndicator = this.querySelector("#active-indicator");
+				const groupId = findTOCGroupParentId(this.tocGroups, id);
+				if (groupId) {
+					this.expandGroupManually(groupId);
+					this.syncExpandedGroups();
+				}
 
-		this.tocEntries = Array.from(
-			this.querySelectorAll<HTMLAnchorElement>("a[href^='#']"),
-		);
+				const idx = this.headingIdxMap.get(id);
+				this.anchorNavTarget =
+					idx !== undefined ? this.headings[idx] : null;
+			}
+		};
 
-		if (this.tocEntries.length === 0) return;
+		connectedCallback() {
+			const element =
+				document.querySelector(".custom-md") ||
+				document.querySelector(".prose") ||
+				document.querySelector(".markdown-content");
+			let initialized = false;
 
-		this.sections = new Array(this.tocEntries.length);
-		this.headings = new Array(this.tocEntries.length);
+			const tryInit = () => {
+				if (!initialized) {
+					initialized = true;
+					this.init();
+				}
+			};
 
-		for (let i = 0; i < this.tocEntries.length; i++) {
-			const id = decodeURIComponent(
-				this.tocEntries[i].hash?.substring(1) || "",
+			if (element) {
+				element.addEventListener("animationend", tryInit, {
+					once: true,
+				});
+				setTimeout(tryInit, 300);
+			} else {
+				tryInit();
+				setTimeout(tryInit, 300);
+			}
+		}
+
+		init() {
+			this.sections.forEach((section) => {
+				if (section instanceof HTMLElement) {
+					this.observer.unobserve(section);
+				}
+			});
+			this.observer.disconnect();
+			this.tocEl?.removeEventListener("click", this.handleClick);
+			this.headingIdxMap.clear();
+			this.headings = [];
+			this.sections = [];
+			this.tocEntries = [];
+			this.active = [];
+			this.anchorNavTarget = null;
+
+			this.regenerateTOC();
+			this.tocEl = this;
+
+			this.tocEl.addEventListener("click", this.handleClick, {
+				capture: true,
+			});
+
+			this.activeIndicator = this.querySelector("#active-indicator");
+
+			this.tocEntries = Array.from(
+				this.querySelectorAll<HTMLAnchorElement>("a[href^='#']"),
 			);
-			const heading = document.getElementById(id);
-			const section = heading?.parentElement;
-			if (heading instanceof HTMLElement && section instanceof HTMLElement) {
-				this.headings[i] = heading;
-				this.sections[i] = section;
-				this.headingIdxMap.set(id, i);
+
+			if (this.tocEntries.length === 0) return;
+
+			this.sections = new Array(this.tocEntries.length);
+			this.headings = new Array(this.tocEntries.length);
+
+			for (let i = 0; i < this.tocEntries.length; i++) {
+				const id = decodeURIComponent(
+					this.tocEntries[i].hash?.substring(1) || "",
+				);
+				const heading = document.getElementById(id);
+				const section = heading?.parentElement;
+				if (
+					heading instanceof HTMLElement &&
+					section instanceof HTMLElement
+				) {
+					this.headings[i] = heading;
+					this.sections[i] = section;
+					this.headingIdxMap.set(id, i);
+				}
 			}
+			this.active = new Array(this.tocEntries.length).fill(false);
+			this.lastActiveKey = "__init__";
+			this.lastVisibleIndices = [];
+
+			this.sections.forEach((section) => this.observer.observe(section));
+
+			this.fallback();
+			this.update();
 		}
-		this.active = new Array(this.tocEntries.length).fill(false);
 
-		this.sections.forEach((section) => this.observer.observe(section));
+		renderItem(item: {
+			id: string;
+			text: string;
+			depth: number;
+			badge?: string;
+		}) {
+			const badgeContent =
+				item.depth === 0
+					? item.badge || ""
+					: item.depth === 1
+						? '<div class="toc-dot toc-dot-square"></div>'
+						: '<div class="toc-dot toc-dot-small"></div>';
 
-		this.fallback();
-		this.update();
-	}
+			const badgeClass =
+				item.depth === 0
+					? "toc-badge-parent"
+					: item.depth === 1
+						? "toc-badge-secondary"
+						: "toc-badge-tertiary";
 
-	renderItem(item: { id: string; text: string; depth: number; badge?: string }) {
-		const badgeContent =
-			item.depth === 0
-				? item.badge || ""
-				: item.depth === 1
-					? '<div class="toc-dot toc-dot-square"></div>'
-					: '<div class="toc-dot toc-dot-small"></div>';
-
-		const badgeClass =
-			item.depth === 0
-				? "toc-badge-parent"
-				: item.depth === 1
-					? "toc-badge-secondary"
-					: "toc-badge-tertiary";
-
-		return `<a
+			return `<a
 			href="#${item.id}"
 			class="toc-link ${item.depth === 0 ? "toc-link-parent" : "toc-link-child"}"
 			data-toc-depth="${item.depth}"
@@ -383,10 +473,18 @@ class TableOfContents extends HTMLElement {
 			</div>
 			<div class="toc-label ${item.depth <= 1 ? "text-50" : "text-30"}">${item.text}</div>
 		</a>`;
-	}
+		}
 
-	renderGroup(group: { parent: { id: string; text: string; depth: number; badge?: string }; children: Array<{ id: string; text: string; depth: number; badge?: string }> }) {
-		return `<div class="toc-group" data-toc-group="${group.parent.id}">
+		renderGroup(group: {
+			parent: { id: string; text: string; depth: number; badge?: string };
+			children: Array<{
+				id: string;
+				text: string;
+				depth: number;
+				badge?: string;
+			}>;
+		}) {
+			return `<div class="toc-group" data-toc-group="${group.parent.id}">
 			<div class="toc-group-header">
 				${this.renderItem(group.parent)}
 				${
@@ -411,59 +509,66 @@ class TableOfContents extends HTMLElement {
 					: ""
 			}
 		</div>`;
-	}
-
-	regenerateTOC(retryCount = 0) {
-		const isPostPage =
-			window.location.pathname.includes("/posts/") ||
-			document.querySelector(".custom-md, .markdown-content") !== null;
-
-		if (!isPostPage) {
-			this.innerHTML = "";
-			delete this.dataset.loaded;
-			return;
 		}
 
-		const headings = extractHeadings();
+		regenerateTOC(retryCount = 0) {
+			const isPostPage =
+				window.location.pathname.includes("/posts/") ||
+				document.querySelector(".custom-md, .markdown-content") !==
+					null;
 
-		if (headings.length === 0 && retryCount < 3) {
-			setTimeout(() => this.regenerateTOC(retryCount + 1), 120);
-			return;
+			if (!isPostPage) {
+				this.innerHTML = "";
+				delete this.dataset.loaded;
+				return;
+			}
+
+			const headings = extractHeadings();
+
+			if (headings.length === 0 && retryCount < 3) {
+				setTimeout(() => this.regenerateTOC(retryCount + 1), 120);
+				return;
+			}
+			if (headings.length === 0) {
+				this.innerHTML = "";
+				delete this.dataset.loaded;
+				return;
+			}
+
+			const config = getTOCConfig();
+			const tocItems = generateTOCItems(headings, config);
+			this.tocGroups = groupTOCItems(tocItems);
+			this.manualExpandedGroups = new Set();
+			this.manualCollapsedGroups = new Set();
+			this.autoExpandedGroup = null;
+
+			const tocHTML = this.tocGroups
+				.map((group) => this.renderGroup(group))
+				.join("");
+
+			this.innerHTML =
+				tocHTML +
+				'<div id="active-indicator" style="opacity: 0" class="toc-active-indicator"></div>';
+			this.dataset.loaded = "true";
+			this.syncExpandedGroups();
 		}
-		if (headings.length === 0) {
-			this.innerHTML = "";
-			delete this.dataset.loaded;
-			return;
+
+		disconnectedCallback() {
+			if (this.updateFrame !== null) {
+				cancelAnimationFrame(this.updateFrame);
+				this.updateFrame = null;
+			}
+			this.sections.forEach((section) =>
+				this.observer.unobserve(section),
+			);
+			this.observer.disconnect();
+			this.tocEl?.removeEventListener("click", this.handleClick);
 		}
-
-		const config = getTOCConfig();
-		const tocItems = generateTOCItems(headings, config);
-		this.tocGroups = groupTOCItems(tocItems);
-		this.manualExpandedGroups = new Set();
-		this.manualCollapsedGroups = new Set();
-		this.autoExpandedGroup = null;
-
-		const tocHTML = this.tocGroups.map((group) => this.renderGroup(group)).join("");
-
-		this.innerHTML =
-			tocHTML +
-			'<div id="active-indicator" style="opacity: 0" class="toc-active-indicator"></div>';
-		this.dataset.loaded = "true";
-		this.syncExpandedGroups();
 	}
 
-	disconnectedCallback() {
-		this.sections.forEach((section) =>
-			this.observer.unobserve(section),
-		);
-		this.observer.disconnect();
-		this.tocEl?.removeEventListener("click", this.handleClick);
+	if (!customElements.get("table-of-contents")) {
+		customElements.define("table-of-contents", TableOfContents);
 	}
-}
-
-if (!customElements.get("table-of-contents")) {
-	customElements.define("table-of-contents", TableOfContents);
-}
 </script>
 
 <style>
@@ -486,13 +591,13 @@ if (!customElements.get("table-of-contents")) {
 		z-index: -1;
 		border-radius: 1rem;
 		border: 1px solid color-mix(in srgb, var(--primary) 12%, transparent);
-		background:
-			linear-gradient(
-				180deg,
-				color-mix(in srgb, var(--primary) 10%, transparent),
-				color-mix(in srgb, var(--primary) 4%, transparent)
-			);
-		box-shadow: 0 14px 32px color-mix(in srgb, var(--primary) 10%, transparent);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--primary) 10%, transparent),
+			color-mix(in srgb, var(--primary) 4%, transparent)
+		);
+		box-shadow: 0 14px 32px
+			color-mix(in srgb, var(--primary) 10%, transparent);
 		transition:
 			top 0.2s ease,
 			height 0.2s ease,
@@ -506,13 +611,21 @@ if (!customElements.get("table-of-contents")) {
 		padding: 0.28rem;
 		border-radius: 1rem;
 		border: 1px solid transparent;
-		background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+		background: linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.03),
+			transparent
+		);
 	}
 
 	table-of-contents#toc .toc-group.is-active-group {
 		border-color: color-mix(in srgb, var(--primary) 12%, transparent);
 		background:
-			linear-gradient(180deg, color-mix(in srgb, var(--primary) 8%, transparent), transparent),
+			linear-gradient(
+				180deg,
+				color-mix(in srgb, var(--primary) 8%, transparent),
+				transparent
+			),
 			linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
 	}
 
@@ -533,7 +646,8 @@ if (!customElements.get("table-of-contents")) {
 		gap: 0.2rem;
 		margin-left: 0.95rem;
 		padding-left: 0.7rem;
-		border-left: 1px solid color-mix(in srgb, var(--primary) 14%, transparent);
+		border-left: 1px solid
+			color-mix(in srgb, var(--primary) 14%, transparent);
 		max-height: 0;
 		opacity: 0;
 		overflow: hidden;
@@ -576,8 +690,11 @@ if (!customElements.get("table-of-contents")) {
 	}
 
 	table-of-contents#toc .toc-link.visible {
-		background:
-			linear-gradient(180deg, color-mix(in srgb, var(--primary) 11%, transparent), color-mix(in srgb, var(--primary) 7%, transparent));
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--primary) 11%, transparent),
+			color-mix(in srgb, var(--primary) 7%, transparent)
+		);
 		border-color: color-mix(in srgb, var(--primary) 16%, transparent);
 		color: var(--primary);
 		font-weight: 620;
@@ -696,13 +813,26 @@ if (!customElements.get("table-of-contents")) {
 
 <style>
 	/* Owen sidebar toc refinement */
-	table-of-contents#toc {
+	table-of-contents#toc:not([data-toc-variant="rail"]) {
 		padding: 0.4rem;
 		border-radius: 1.5rem;
 		background:
-			linear-gradient(180deg, color-mix(in srgb, var(--card-bg) 96%, rgba(255, 255, 255, 0.06)), color-mix(in srgb, var(--card-bg) 88%, transparent)),
-			radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 10%, transparent), transparent 72%);
-		border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--line-color));
+			linear-gradient(
+				180deg,
+				color-mix(
+					in srgb,
+					var(--card-bg) 96%,
+					rgba(255, 255, 255, 0.06)
+				),
+				color-mix(in srgb, var(--card-bg) 88%, transparent)
+			),
+			radial-gradient(
+				circle at top right,
+				color-mix(in srgb, var(--primary) 10%, transparent),
+				transparent 72%
+			);
+		border: 1px solid
+			color-mix(in srgb, var(--primary) 12%, var(--line-color));
 		box-shadow:
 			0 26px 64px rgba(15, 23, 42, 0.14),
 			inset 0 1px 0 rgba(255, 255, 255, 0.14);
@@ -710,17 +840,17 @@ if (!customElements.get("table-of-contents")) {
 		-webkit-backdrop-filter: blur(22px) saturate(1.04);
 	}
 
-	table-of-contents#toc .toc-group {
+	table-of-contents#toc:not([data-toc-variant="rail"]) .toc-group {
 		padding: 0.34rem;
 		border-radius: 1.08rem;
 	}
 
-	table-of-contents#toc .toc-link {
+	table-of-contents#toc:not([data-toc-variant="rail"]) .toc-link {
 		min-height: 2.5rem;
 		border-radius: 1rem;
 	}
 
-	table-of-contents#toc .toc-label {
+	table-of-contents#toc:not([data-toc-variant="rail"]) .toc-label {
 		font-family: var(--owen-font-reading);
 		font-size: 0.88rem;
 		font-weight: 540;
@@ -732,14 +862,14 @@ if (!customElements.get("table-of-contents")) {
 		text-overflow: ellipsis;
 	}
 
-	table-of-contents#toc .toc-group-header .toc-label {
+	table-of-contents#toc:not([data-toc-variant="rail"]) .toc-group-header .toc-label {
 		font-family: var(--owen-font-display);
 		font-weight: 660;
 		letter-spacing: -0.02em;
 		-webkit-line-clamp: 1;
 	}
 
-	table-of-contents#toc .toc-toggle {
+	table-of-contents#toc:not([data-toc-variant="rail"]) .toc-toggle {
 		width: 1.9rem;
 		min-width: 1.9rem;
 		height: 1.9rem;
@@ -749,13 +879,199 @@ if (!customElements.get("table-of-contents")) {
 			0 10px 22px color-mix(in srgb, var(--primary) 8%, transparent);
 	}
 
-	:global(.light) table-of-contents#toc {
+	:global(.light) table-of-contents#toc:not([data-toc-variant="rail"]) {
 		background:
-			linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(252, 244, 248, 0.62)),
-			radial-gradient(circle at top right, rgba(255, 196, 218, 0.16), transparent 72%);
+			linear-gradient(
+				180deg,
+				rgba(255, 255, 255, 0.82),
+				rgba(252, 244, 248, 0.62)
+			),
+			radial-gradient(
+				circle at top right,
+				rgba(255, 196, 218, 0.16),
+				transparent 72%
+			);
 		border-color: rgba(236, 174, 198, 0.18);
 		box-shadow:
 			0 26px 68px rgba(120, 82, 101, 0.14),
 			inset 0 1px 0 rgba(255, 255, 255, 0.76);
+	}
+</style>
+
+<style>
+	table-of-contents#toc[data-toc-variant="rail"] {
+		padding: 0;
+		border: none;
+		border-radius: 0;
+		background: transparent;
+		box-shadow: none;
+		scrollbar-width: thin;
+		scrollbar-color: color-mix(in srgb, var(--primary) 18%, transparent)
+			transparent;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"]::-webkit-scrollbar {
+		display: block;
+		width: 0.32rem;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"]::-webkit-scrollbar-thumb {
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--primary) 18%, transparent);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-active-indicator {
+		left: 0.2rem;
+		right: 0.2rem;
+		border-radius: 1.18rem;
+		border-color: color-mix(in srgb, var(--primary) 10%, transparent);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--primary) 12%, transparent),
+			color-mix(in srgb, var(--primary) 5%, transparent)
+		);
+		box-shadow: 0 14px 28px
+			color-mix(in srgb, var(--primary) 10%, transparent);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-group {
+		gap: 0.34rem;
+		padding: 0.24rem;
+		border-radius: 1.2rem;
+		background: transparent;
+		border: 1px solid transparent;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-group.is-active-group {
+		border-color: color-mix(in srgb, var(--primary) 10%, transparent);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--primary) 7%, transparent),
+			transparent
+		);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-group-header {
+		gap: 0.56rem;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-children {
+		gap: 0.24rem;
+		margin-left: 1.1rem;
+		padding-left: 0.82rem;
+		border-left-color: color-mix(
+			in srgb,
+			var(--primary) 14%,
+			var(--line-color)
+		);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-link {
+		min-height: 2.92rem;
+		padding: 0.76rem 0.9rem;
+		border-radius: 1.1rem;
+		background: color-mix(in srgb, var(--card-bg) 94%, transparent);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-link-child {
+		padding-left: calc(0.92rem + (var(--toc-indent, 1) * 0.82rem));
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-link:hover {
+		background: color-mix(in srgb, var(--primary) 7%, transparent);
+		border-color: color-mix(in srgb, var(--primary) 12%, transparent);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-link.visible {
+		transform: none;
+		font-weight: 630;
+		border-color: color-mix(in srgb, var(--primary) 15%, transparent);
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--primary) 11%, transparent),
+			color-mix(in srgb, var(--primary) 6%, transparent)
+		);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.14),
+			0 10px 22px color-mix(in srgb, var(--primary) 8%, transparent);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-badge {
+		width: 1.35rem;
+		height: 1.35rem;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-badge-parent {
+		min-width: 1.45rem;
+		width: auto;
+		padding: 0 0.38rem;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--primary) 14%, transparent);
+		color: color-mix(in srgb, var(--text-primary) 82%, transparent);
+		font-size: 0.68rem;
+		font-weight: 700;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-dot-square {
+		width: 0.46rem;
+		height: 0.46rem;
+		border-radius: 0.16rem;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-dot-small {
+		width: 0.34rem;
+		height: 0.34rem;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--text-secondary) 24%, transparent);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-label {
+		font-family: var(--owen-font-reading);
+		font-size: 0.95rem;
+		font-weight: 540;
+		line-height: 1.46;
+		letter-spacing: 0.004em;
+		white-space: normal;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-group-header .toc-label {
+		font-family: var(--owen-font-display);
+		font-size: 0.96rem;
+		font-weight: 660;
+		letter-spacing: -0.022em;
+		-webkit-line-clamp: 2;
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-toggle {
+		width: 1.82rem;
+		min-width: 1.82rem;
+		height: 1.82rem;
+		border-radius: 0.78rem;
+		background: color-mix(in srgb, var(--primary) 8%, transparent);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.18),
+			0 8px 18px color-mix(in srgb, var(--primary) 7%, transparent);
+	}
+
+	table-of-contents#toc[data-toc-variant="rail"] .toc-toggle:hover {
+		background: color-mix(in srgb, var(--primary) 13%, transparent);
+	}
+
+	:global(.light) table-of-contents#toc[data-toc-variant="rail"] .toc-link {
+		background: rgba(255, 255, 255, 0.58);
+	}
+
+	:global(.light) table-of-contents#toc[data-toc-variant="rail"] .toc-dot-small {
+		background: rgba(15, 23, 42, 0.14);
+	}
+
+	:global(.light) table-of-contents#toc[data-toc-variant="rail"] .toc-badge-parent {
+		color: rgba(15, 23, 42, 0.78);
+		background: rgba(118, 156, 255, 0.12);
 	}
 </style>

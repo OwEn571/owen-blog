@@ -1,0 +1,200 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+
+import { getAiosNewsroomSnapshot } from "../../../server/aios-newsroom";
+
+export const prerender = false;
+
+type AnyRecord = Record<string, any>;
+
+const snapshot = await getAiosNewsroomSnapshot();
+const report = (snapshot.report as AnyRecord | null) || {};
+const runs = Array.isArray(snapshot.runs) ? snapshot.runs : [];
+
+function formatDateTime(value: unknown) {
+	const text = String(value || "").trim();
+	if (!text) {
+		return "N/A";
+	}
+	return text
+		.replace("T", " ")
+		.replace(/\.\d+/, "")
+		.replace(/\+08:00$/, " CST");
+}
+
+const systemStatusLine = snapshot.available
+	? "AIOS News Ecosystem 在线"
+	: snapshot.error || "AIOS service unavailable";
+---
+
+<MainGridLayout
+	immersiveLayout={true}
+	title="AIOS 系统面板"
+	description="AIOS News Ecosystem 系统面板详情页"
+>
+	<script>
+		import("../../../scripts/right-sidebar-layout.js");
+	</script>
+
+	<div class="module-page newsroom-detail-page" style="--module-accent: 86 168 255;">
+		<section class="module-hero newsroom-detail-hero">
+			<div class="module-copy">
+				<p class="module-eyebrow">AIOS / 系统面板</p>
+				<h1 class="module-title">AIOS News Ecosystem</h1>
+				<p class="module-subtitle">系统状态、时间线与最近运行都收在这里</p>
+				<p class="module-description">
+					系统面板现在只保留这一张 HTML。主展示页不再内嵌预览，点击后再进入这一层详细查看。
+				</p>
+
+				<div class="newsroom-detail-actions">
+					<a href="/lab/aios-newsroom/" class="newsroom-detail-action">
+						<Icon name="mdi:arrow-left" class="text-[1.05rem]" />
+						<span>返回 AIOS 展示页</span>
+					</a>
+					<a href="/api/lab/aios/dashboard.html" class="newsroom-detail-action">
+						<Icon name="mdi:open-in-new" class="text-[1.05rem]" />
+						<span>独立打开系统 HTML</span>
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<section class="module-content-shell newsroom-detail-shell">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">System Panel</p>
+					<h2 class="module-content-title">AIOS News Ecosystem</h2>
+					<p class="module-content-description">
+						工作流时间线、质量判断、领域覆盖和最近运行都通过这一张系统 HTML 展示。
+					</p>
+				</div>
+				<span class="module-panel-badge">
+					{snapshot.available ? "Live" : "Unavailable"}
+				</span>
+			</div>
+
+			<div class="newsroom-detail-meta">
+				<span>{systemStatusLine}</span>
+				<span>{runs.length} 条近期运行记录</span>
+				<span>{formatDateTime(report.generated_at)}</span>
+			</div>
+
+			<div class="newsroom-detail-frame">
+				<iframe
+					src="/api/lab/aios/dashboard.html"
+					title="AIOS News Ecosystem"
+					loading="eager"
+				/>
+			</div>
+		</section>
+	</div>
+</MainGridLayout>
+
+<style>
+	.newsroom-detail-page {
+		overflow: clip;
+		--newsroom-action-bg: rgba(255, 255, 255, 0.05);
+		--newsroom-action-border: rgba(92, 168, 255, 0.16);
+		--newsroom-action-text: rgba(240, 246, 255, 0.86);
+		--newsroom-action-hover-bg: rgba(255, 255, 255, 0.08);
+		--newsroom-action-hover-border: rgba(92, 168, 255, 0.28);
+		--newsroom-muted: rgba(219, 229, 244, 0.68);
+		--newsroom-frame-bg: rgba(5, 10, 24, 0.76);
+		--newsroom-frame-border: rgba(92, 168, 255, 0.14);
+	}
+
+	:global(:root:not(.dark)) .newsroom-detail-page {
+		--newsroom-action-bg: rgba(255, 255, 255, 0.74);
+		--newsroom-action-border: rgba(148, 163, 184, 0.24);
+		--newsroom-action-text: rgba(30, 41, 59, 0.84);
+		--newsroom-action-hover-bg: rgba(255, 255, 255, 0.92);
+		--newsroom-action-hover-border: rgba(92, 168, 255, 0.26);
+		--newsroom-muted: rgba(51, 65, 85, 0.66);
+		--newsroom-frame-bg: rgba(255, 255, 255, 0.86);
+		--newsroom-frame-border: rgba(148, 163, 184, 0.22);
+	}
+
+	.newsroom-detail-hero {
+		padding-bottom: 0.5rem;
+	}
+
+	.newsroom-detail-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.newsroom-detail-action {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.72rem 1rem;
+		border-radius: 999px;
+		border: 1px solid var(--newsroom-action-border);
+		background: var(--newsroom-action-bg);
+		color: var(--newsroom-action-text);
+		text-decoration: none;
+		transition:
+			transform 220ms ease,
+			background-color 220ms ease,
+			border-color 220ms ease;
+	}
+
+	.newsroom-detail-action:hover {
+		transform: translateY(-2px);
+		border-color: var(--newsroom-action-hover-border);
+		background: var(--newsroom-action-hover-bg);
+	}
+
+	.newsroom-detail-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.7rem;
+		margin-bottom: 1rem;
+	}
+
+	.newsroom-detail-meta span {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.5rem 0.85rem;
+		border-radius: 999px;
+		background: var(--newsroom-action-bg);
+		border: 1px solid var(--newsroom-action-border);
+		color: var(--newsroom-muted);
+		font-size: 0.88rem;
+	}
+
+	.newsroom-detail-frame {
+		padding: 0.55rem;
+		border-radius: 1.45rem;
+		border: 1px solid var(--newsroom-frame-border);
+		background: var(--newsroom-frame-bg);
+	}
+
+	.newsroom-detail-frame iframe {
+		display: block;
+		width: 100%;
+		height: 88vh;
+		min-height: 52rem;
+		border: none;
+		border-radius: 1rem;
+		background: white;
+	}
+
+	@media (max-width: 640px) {
+		.newsroom-detail-actions {
+			flex-direction: column;
+		}
+
+		.newsroom-detail-action {
+			width: 100%;
+			justify-content: center;
+		}
+
+		.newsroom-detail-frame iframe {
+			height: 76vh;
+			min-height: 42rem;
+		}
+	}
+</style>

@@ -373,14 +373,14 @@ function getDefaultCardSize(
 }
 
 function getDefaultDescription(moduleKey: ModuleKey, title: string) {
-	switch (moduleKey) {
-		case "study":
-			return `在这里写 ${title} 的学习笔记、专题文章和长期整理。`;
-		case "lab":
-			return `在这里放 ${title} 相关的实验记录、项目拆解和 Demo 文章。`;
-		case "lounge":
-			return `在这里写 ${title} 相关的随笔、状态和生活片段。`;
-		case "archive":
+		switch (moduleKey) {
+			case "study":
+				return `在这里写 ${title} 的学习笔记、专题文章和长期整理。`;
+			case "lab":
+				return `在这里放 ${title} 相关的实验记录、项目拆解和展示文章。`;
+			case "lounge":
+				return `在这里写 ${title} 相关的随笔、状态和生活片段。`;
+			case "archive":
 			return `在这里收纳 ${title} 相关的资源、链接和长期索引。`;
 	}
 }

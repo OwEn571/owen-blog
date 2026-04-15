@@ -219,7 +219,7 @@ print(message.content_blocks)
 ```
 打印结果如下，证明被成功解析。
 
-```
+```text
 [{'type': 'reasoning', 'id': 'rs_abc123', 'reasoning': 'summary 1'},
  {'type': 'reasoning', 'id': 'rs_abc123', 'reasoning': 'summary 2'},
  {'type': 'text', 'text': '...', 'id': 'msg_abc123'}]

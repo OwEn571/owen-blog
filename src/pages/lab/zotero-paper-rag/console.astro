@@ -1,0 +1,181 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { Icon } from "astro-icon/components";
+
+import { getZoteroPaperRagSnapshot } from "../../../server/zotero-paper-rag";
+
+export const prerender = false;
+
+const snapshot = await getZoteroPaperRagSnapshot();
+
+const statusLine = snapshot.available
+	? "Zotero Paper Agent V2 在线"
+	: snapshot.error || "Zotero Paper Agent service unavailable";
+const indexedPapersLine = snapshot.indexedPapers
+	? `${snapshot.indexedPapers} 篇论文已入库`
+	: "索引统计暂不可用";
+const corpusDocsLine = snapshot.corpusDocs
+	? `${snapshot.corpusDocs} 个语料 chunk`
+	: "chunk 统计暂不可用";
+---
+
+<MainGridLayout
+	immersiveLayout={true}
+	title="Zotero Research Console"
+	description="Zotero Paper Agent 的控制台详情页"
+>
+	<script>
+		import("../../../scripts/right-sidebar-layout.js");
+	</script>
+
+	<div class="module-page rag-console-page" style="--module-accent: 86 206 178;">
+		<section class="module-hero rag-console-hero">
+			<div class="module-copy">
+				<p class="module-eyebrow">Zotero Paper Agent / Console</p>
+				<h1 class="module-title">Zotero Research Console</h1>
+				<p class="module-subtitle">
+					论文问答、节点轨迹、证据片段和最终引用都在这一层完整展开。
+				</p>
+				<p class="module-description">
+					这里保留真正可操作的前端入口。主展示页只负责交代项目结构，实际演示时可以直接在这页问问题、看证据、看引用。
+				</p>
+
+				<div class="rag-console-actions">
+					<a href="/lab/zotero-paper-rag/" class="rag-console-action">
+						<Icon name="mdi:arrow-left" class="text-[1.05rem]" />
+						<span>返回项目页</span>
+					</a>
+					<a href="/api/lab/zotero-paper-rag/ui/chat/" class="rag-console-action">
+						<Icon name="mdi:open-in-new" class="text-[1.05rem]" />
+						<span>独立打开代理前端</span>
+					</a>
+				</div>
+			</div>
+		</section>
+
+		<section class="module-content-shell rag-console-shell">
+			<div class="module-content-head">
+				<div>
+					<p class="module-stream-label">Live Console</p>
+					<h2 class="module-content-title">Paper Agent V2</h2>
+					<p class="module-content-description">
+						博客里的 iframe 走代理入口，这样静态资源和流式接口都会稳定落在同一个站点域名下。
+					</p>
+				</div>
+				<span class="module-panel-badge">
+					{snapshot.available ? "Live" : "Unavailable"}
+				</span>
+			</div>
+
+			<div class="rag-console-meta">
+				<span>{statusLine}</span>
+				<span>{indexedPapersLine}</span>
+				<span>{corpusDocsLine}</span>
+			</div>
+
+			<div class="rag-console-frame">
+				<iframe
+					src="/api/lab/zotero-paper-rag/ui/chat/"
+					title="Zotero Research Console"
+					loading="eager"
+				/>
+			</div>
+		</section>
+	</div>
+</MainGridLayout>
+
+<style>
+	.rag-console-page {
+		overflow: clip;
+		--rag-console-action-bg: rgba(255, 255, 255, 0.05);
+		--rag-console-action-border: rgba(86, 206, 178, 0.18);
+		--rag-console-action-text: rgba(239, 247, 243, 0.9);
+		--rag-console-action-hover-bg: rgba(255, 255, 255, 0.08);
+		--rag-console-action-hover-border: rgba(86, 206, 178, 0.28);
+		--rag-console-muted: rgba(215, 231, 224, 0.72);
+		--rag-console-frame-bg: rgba(5, 12, 18, 0.76);
+		--rag-console-frame-border: rgba(86, 206, 178, 0.14);
+	}
+
+	:global(:root:not(.dark)) .rag-console-page {
+		--rag-console-action-bg: rgba(255, 255, 255, 0.76);
+		--rag-console-action-border: rgba(148, 163, 184, 0.24);
+		--rag-console-action-text: rgba(30, 41, 59, 0.84);
+		--rag-console-action-hover-bg: rgba(255, 255, 255, 0.94);
+		--rag-console-action-hover-border: rgba(86, 206, 178, 0.28);
+		--rag-console-muted: rgba(51, 65, 85, 0.7);
+		--rag-console-frame-bg: rgba(255, 255, 255, 0.88);
+		--rag-console-frame-border: rgba(148, 163, 184, 0.22);
+	}
+
+	.rag-console-hero {
+		padding-bottom: 0.5rem;
+	}
+
+	.rag-console-actions,
+	.rag-console-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.rag-console-action,
+	.rag-console-meta span {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.72rem 1rem;
+		border-radius: 999px;
+		border: 1px solid var(--rag-console-action-border);
+		background: var(--rag-console-action-bg);
+		color: var(--rag-console-action-text);
+		text-decoration: none;
+		font-size: 0.88rem;
+	}
+
+	.rag-console-action {
+		transition:
+			transform 220ms ease,
+			background-color 220ms ease,
+			border-color 220ms ease;
+	}
+
+	.rag-console-action:hover {
+		transform: translateY(-2px);
+		border-color: var(--rag-console-action-hover-border);
+		background: var(--rag-console-action-hover-bg);
+	}
+
+	.rag-console-frame {
+		padding: 0.55rem;
+		border-radius: 1.45rem;
+		border: 1px solid var(--rag-console-frame-border);
+		background: var(--rag-console-frame-bg);
+	}
+
+	.rag-console-frame iframe {
+		display: block;
+		width: 100%;
+		height: 88vh;
+		min-height: 52rem;
+		border: none;
+		border-radius: 1rem;
+		background: white;
+	}
+
+	@media (max-width: 640px) {
+		.rag-console-actions {
+			flex-direction: column;
+		}
+
+		.rag-console-action {
+			width: 100%;
+			justify-content: center;
+		}
+
+		.rag-console-frame iframe {
+			height: 76vh;
+			min-height: 42rem;
+		}
+	}
+</style>

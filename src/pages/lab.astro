@@ -1,526 +1,366 @@
 ---
-import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
-import TypewriterText from "@components/atoms/typewriter-text/TypewriterText.astro";
 import { Icon } from "astro-icon/components";
 
-import { labShelf, labShowcases } from "../data/module-blueprint";
+import { labShowcases } from "../data/module-blueprint";
 import MainGridLayout from "../layouts/MainGridLayout.astro";
-import {
-	getModuleDirectoryCards,
-	getModulePostsList,
-	getModuleWriteRoot,
-} from "../utils/module-content-utils";
 
-const labPosts = await getModulePostsList("lab");
-const labCards = await getModuleDirectoryCards("lab", labPosts);
-
-const heroSummary = [
-	{ label: "展示方式", value: "App Store Flow" },
-	{ label: "目录卡片", value: `${labCards.length}` },
-	{ label: "橱窗模块", value: `${labShowcases.length}` },
-	{ label: "已发布文章", value: `${labPosts.length}` },
-];
+const labProjects = labShowcases
+	.filter((item) => item.actionHref.startsWith("/lab/") && !item.actionHref.includes("#"))
+	.map((item) => ({
+		...item,
+		summaryLine: item.stack.slice(0, 3).join(" · "),
+		previewSrc:
+			item.id === "aios-newsroom"
+				? "/api/lab/aios/report.html"
+				: item.iframeSrc,
+	}));
 ---
 
 <MainGridLayout
 	immersiveLayout={true}
 	title="Lab"
-	description="项目橱窗、互动 demo 与实验笔记"
+	description="系统项目、实验样机与可浏览成果"
 >
 	<script>
 		import("../scripts/right-sidebar-layout.js");
 	</script>
 
-	<div class="module-page" style="--module-accent: 140 126 255;">
-		<section class="module-hero module-hero-split">
+	<div class="module-page lab-page" style="--module-accent: 86 168 255;">
+		<section class="module-hero lab-hero">
 			<div class="module-copy">
 				<p class="module-eyebrow">Lab</p>
-				<h1 class="module-title">像展示商品一样展示你的玩具和实验</h1>
-				<p class="module-subtitle"><TypewriterText text="把项目做成可浏览、可试用、可回看的橱窗。" speed={36} deleteSpeed={16} pauseTime={4800} showCaret={false} class="module-subtitle__typed" /></p>
+				<h1 class="module-title">在线项目</h1>
+				<p class="module-subtitle">已上线系统、实验原型与可浏览结果</p>
 				<p class="module-description">
-					项目不需要再缩在冷冰冰的列表里。这里更像 iPad App Store
-					的橱窗区，允许每个原型都拥有自己的光效、预览和姿态。
+					Lab 只保留项目入口。首页负责展示项目本身，详情页再展开成品、系统面板和项目档案。
 				</p>
-				<div class="module-copy-grid">
-					{
-						heroSummary.map((item) => (
-							<article class="module-copy-item">
-								<span class="module-copy-label">
-									{item.label}
-								</span>
-								<strong class="module-copy-value">
-									{item.value}
-								</strong>
-							</article>
-						))
-					}
-				</div>
-			</div>
-
-			<div class="module-stage lab-stage">
-				<div class="module-stage-top">
-					<div class="module-dots" aria-hidden="true">
-						<span></span>
-						<span></span>
-						<span></span>
-					</div>
-					<span class="module-badge">Showcase Shelf</span>
-				</div>
-				<div class="lab-stage-panels" aria-hidden="true">
-					<span></span>
-					<span></span>
-					<span></span>
-				</div>
-				<p class="module-stage-caption">
-					互动性强的卡片可以直接在这里试用，静态项目则保持更强的视觉海报感。这样实验室本身就会有浏览欲。
-				</p>
-				<div class="lab-stage-metrics">
-					<div>
-						<span>Write Root</span>
-						<strong>{getModuleWriteRoot("lab")}</strong>
-					</div>
-					<div>
-						<span>Auto Cards</span>
-						<strong>Directory Driven</strong>
-					</div>
-				</div>
 			</div>
 		</section>
 
-		<ModuleDirectoryDeck
-			eyebrow="Directory Deck"
-			title="Lab 写作目录"
-			description="在 src/content/posts/lab/ 下面新建一级目录，就会自动出现一张新的 Lab 卡片。目录里的 Markdown 会成为该卡片的最近文章。"
-			badge={`${labCards.length} Directories`}
-			cards={labCards}
-			emptyTitle="Lab 还没有实验目录"
-			emptyDescription="先在 Lab 根目录下新建一级文件夹，再把实验笔记或项目文章放进去。"
-			emptyWritePath={getModuleWriteRoot("lab")}
-		/>
-
-		<section class="lab-showcase-grid" id="lab-showcase">
-			{
-				labShowcases.map((item) => (
-					<article
-						class={`lab-card lab-card--${item.aspect}`}
-						style={`--lab-accent: ${item.accent};`}
-					>
-						<div class="lab-card-top">
-							<span class="lab-card-kicker">{item.kicker}</span>
-							<span class="module-panel-badge">
-								{item.status}
-							</span>
-						</div>
-						<div class="lab-card-preview">
-							{item.iframeSrc ? (
-								<iframe
-									src={item.iframeSrc}
-									title={item.title}
-									loading="lazy"
-									referrerpolicy="no-referrer"
-								/>
-							) : (
-								<div class="lab-preview-art" aria-hidden="true">
-									<div class="lab-preview-ring" />
-									<div class="lab-preview-ring" />
-									<div class="lab-preview-ring" />
-								</div>
-							)}
-						</div>
-						<div class="lab-card-copy">
-							<div class="lab-card-title-row">
-								<h2>{item.title}</h2>
-								<div class="module-panel-icon">
-									<Icon
-										name={item.icon}
-										class="text-[1.3rem]"
-									/>
-								</div>
-							</div>
-							<p>{item.description}</p>
-							<a href={item.actionHref} class="module-panel-link">
-								{item.actionLabel}
-							</a>
-						</div>
-					</article>
-				))
-			}
-		</section>
-
-		<section class="module-content-shell" id="lab-shelf">
-			<div class="module-content-head">
-				<div>
-					<p class="module-stream-label">Shelf</p>
-					<h2 class="module-content-title">轻量实验架</h2>
-					<p class="module-content-description">
-						不是所有项目都需要独占大卡片。更轻的实验、工作流与草图，适合整齐地排成一排，像一个正在扩张的工具架。
-					</p>
+			<section class="module-content-shell" id="lab-projects">
+					<div class="module-content-head">
+						<div>
+							<p class="module-stream-label">项目入口</p>
+							<h2 class="module-content-title">当前可进入的项目</h2>
+							<p class="module-content-description">
+								每个项目只保留一句简介和一个结果预览，点击后进入对应的完整展示页。
+							</p>
+					</div>
 				</div>
-				<span class="module-panel-badge">{labShelf.length} Cards</span>
-			</div>
-			<div class="module-panel-grid">
+
+			<div class="lab-project-grid">
 				{
-					labShelf.map((item) => (
-						<article class="module-panel">
-							<div class="module-panel-top">
-								<span class="module-panel-label">
-									Shelf Card
+					labProjects.map((item) => (
+						<a
+							href={item.actionHref}
+							class="lab-project-card"
+							style={`--lab-accent: ${item.accent};`}
+						>
+							<div class="lab-project-copy">
+								<div class="lab-project-card__top">
+									<span class="module-panel-label">{item.kicker}</span>
+									<span class="module-panel-badge">{item.status}</span>
+								</div>
+
+								<div class="lab-project-card__title">
+									<div class="module-panel-icon">
+										<Icon name={item.icon} class="text-[1.15rem]" />
+									</div>
+									<h3>{item.title}</h3>
+								</div>
+
+								<p class="lab-project-card__description">{item.description}</p>
+
+								<p class="lab-project-card__meta">{item.summaryLine}</p>
+
+								<span class="lab-project-card__link">
+									{item.actionLabel}
+									<Icon name="mdi:arrow-top-right" class="text-[1rem]" />
 								</span>
-								<div class="module-panel-icon">
-									<Icon
-										name="mdi:shape-outline"
-										class="text-[1.25rem]"
-									/>
+							</div>
+
+							<div class="lab-project-visual">
+								<div class="lab-project-window">
+									<div class="lab-project-window__top">
+										<div class="lab-project-window__dots" aria-hidden="true">
+											<span></span>
+											<span></span>
+											<span></span>
+										</div>
+										<div class="lab-project-window__label">
+											{item.title}
+										</div>
+									</div>
+
+									{
+											item.previewSrc ? (
+												<iframe
+													src={item.previewSrc}
+													title={`${item.title} 预览`}
+													loading="lazy"
+												/>
+										) : (
+											<div class="lab-project-placeholder" aria-hidden="true">
+												<div class="lab-project-placeholder__grid"></div>
+												<div class="lab-project-placeholder__orb"></div>
+												<div class="lab-project-placeholder__orb"></div>
+											</div>
+										)
+									}
 								</div>
 							</div>
-							<h3 class="module-panel-title">{item.title}</h3>
-							<p class="module-panel-copy">{item.description}</p>
-							<div class="module-panel-meta">{item.meta}</div>
-						</article>
+						</a>
 					))
 				}
-			</div>
-		</section>
-
-		<section class="module-stream" id="lab-roadmap">
-			<div class="module-content-head !mb-0 !pb-0 !border-b-0">
-				<div>
-					<p class="module-stream-label">Roadmap</p>
-					<h2 class="module-content-title">之后继续往里接什么</h2>
-				</div>
-			</div>
-			<div class="module-stream-items">
-				<article class="module-stream-item">
-					<div class="module-stream-time">Step 01</div>
-					<div class="module-stream-content">
-						<h3>把 GitHub API 和项目状态接进来</h3>
-						<p>
-							这样每张卡片就能展示最近更新时间、star、repo
-							链接和真实仓库状态。
-						</p>
-					</div>
-				</article>
-				<article class="module-stream-item">
-					<div class="module-stream-time">Step 02</div>
-					<div class="module-stream-content">
-						<h3>把可运行的 Python 代码块接成 Demo 卡</h3>
-						<p>
-							到时候文章里的交互代码和 Lab
-							的展示卡会形成联动，而不是两套分裂的体验。
-						</p>
-					</div>
-				</article>
 			</div>
 		</section>
 	</div>
 </MainGridLayout>
 
 <style>
-	.lab-stage {
+	.lab-page {
+		overflow: clip;
+		--lab-card-border: rgb(var(--lab-accent) / 0.14);
+		--lab-card-bg:
+			linear-gradient(180deg, rgba(8, 12, 21, 0.42), rgba(5, 8, 15, 0.18)),
+			radial-gradient(circle at top right, rgb(var(--lab-accent) / 0.22), transparent 18rem);
+		--lab-card-shadow:
+			0 30px 88px rgba(0, 0, 0, 0.22),
+			inset 0 1px 0 rgba(255, 255, 255, 0.06);
+		--lab-card-title: rgba(248, 250, 255, 0.96);
+		--lab-card-copy: rgba(223, 231, 244, 0.72);
+		--lab-card-muted: rgba(232, 239, 251, 0.72);
+		--lab-card-link: rgba(236, 243, 255, 0.9);
+		--lab-window-bg: rgba(4, 8, 18, 0.86);
+		--lab-window-top-bg:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+		--lab-window-label: rgba(221, 230, 245, 0.62);
+		--lab-window-dot: rgba(255, 255, 255, 0.24);
+		--lab-window-border: rgba(255, 255, 255, 0.08);
+		--lab-chip-bg: rgba(255, 255, 255, 0.05);
+	}
+
+	.lab-page::before {
+		content: "";
+		position: absolute;
+		inset: auto auto 76% -8rem;
+		width: 22rem;
+		height: 22rem;
+		border-radius: 999px;
+		background: radial-gradient(circle, rgba(92, 168, 255, 0.18), transparent 68%);
+		filter: blur(6px);
+		pointer-events: none;
+	}
+
+	:global(:root:not(.dark)) .lab-page {
+		--lab-card-border: rgb(var(--lab-accent) / 0.12);
+		--lab-card-bg:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(247, 250, 255, 0.58)),
+			radial-gradient(circle at top right, rgb(var(--lab-accent) / 0.12), transparent 18rem);
+		--lab-card-shadow:
+			0 24px 68px rgba(15, 23, 42, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.84);
+		--lab-card-title: rgba(15, 23, 42, 0.92);
+		--lab-card-copy: rgba(51, 65, 85, 0.74);
+		--lab-card-muted: rgba(51, 65, 85, 0.64);
+		--lab-card-link: rgba(30, 41, 59, 0.86);
+		--lab-window-bg: rgba(255, 255, 255, 0.86);
+		--lab-window-top-bg:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(240, 246, 255, 0.74));
+		--lab-window-label: rgba(51, 65, 85, 0.58);
+		--lab-window-dot: rgba(15, 23, 42, 0.18);
+		--lab-window-border: rgba(148, 163, 184, 0.24);
+		--lab-chip-bg: rgba(255, 255, 255, 0.72);
+	}
+
+	.lab-hero {
+		padding-bottom: 0.6rem;
+	}
+
+	.lab-project-grid {
 		display: grid;
-		grid-template-rows: auto auto 1fr auto;
+		grid-template-columns: repeat(1, minmax(0, 1fr));
 		gap: 1rem;
 	}
 
-	.lab-stage-panels {
+	.lab-project-card {
 		display: grid;
-		grid-template-columns: 1.2fr 0.8fr 0.55fr;
-		gap: 0.7rem;
-		min-height: 11rem;
-	}
-
-	.lab-stage-panels span {
-		border-radius: 1.35rem;
-		background:
-			linear-gradient(
-				180deg,
-				rgba(255, 255, 255, 0.08),
-				rgba(255, 255, 255, 0.03)
-			),
-			radial-gradient(
-				circle at top right,
-				rgba(140, 126, 255, 0.22),
-				transparent 12rem
-			);
-		border: 1px solid rgba(140, 126, 255, 0.14);
-	}
-
-	.lab-stage-panels span:nth-child(2) {
-		transform: translateY(0.9rem);
-	}
-
-	.lab-stage-panels span:nth-child(3) {
-		transform: translateY(1.8rem);
-	}
-
-	.lab-stage-metrics {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.75rem;
-	}
-
-	.lab-stage-metrics div {
-		display: flex;
-		flex-direction: column;
-		padding: 0.95rem 1rem;
-		border-radius: 1.15rem;
-		border: 1px solid rgba(140, 126, 255, 0.14);
-		background: linear-gradient(
-			180deg,
-			rgba(255, 255, 255, 0.06),
-			rgba(255, 255, 255, 0.02)
-		);
-	}
-
-	.lab-stage-metrics span {
-		font-size: 0.72rem;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-		color: rgba(223, 231, 244, 0.44);
-	}
-
-	.lab-stage-metrics strong {
-		margin-top: 0.55rem;
-		font-size: 1rem;
-		color: rgba(248, 250, 255, 0.9);
-	}
-
-	.lab-showcase-grid {
-		display: grid;
-		grid-template-columns: repeat(12, minmax(0, 1fr));
-		gap: 1rem;
-	}
-
-	.lab-card {
-		display: flex;
-		flex-direction: column;
-		padding: 1.3rem;
-		border-radius: 1.8rem;
-		border: 1px solid rgb(var(--lab-accent) / 0.14);
-		background:
-			linear-gradient(
-				180deg,
-				rgba(9, 12, 19, 0.36),
-				rgba(5, 8, 14, 0.14)
-			),
-			radial-gradient(
-				circle at top right,
-				rgb(var(--lab-accent) / 0.2),
-				transparent 14rem
-			);
-		box-shadow:
-			0 28px 80px rgba(0, 0, 0, 0.24),
-			inset 0 1px 0 rgba(255, 255, 255, 0.08);
-		backdrop-filter: blur(40px) saturate(1.16);
-		-webkit-backdrop-filter: blur(40px) saturate(1.16);
-		overflow: hidden;
+		grid-template-columns: minmax(0, 0.92fr) minmax(20rem, 0.78fr);
+		gap: 1.15rem;
+		align-items: stretch;
+		padding: 1.35rem;
+		border-radius: 1.9rem;
+		border: 1px solid var(--lab-card-border);
+		background: var(--lab-card-bg);
+		text-decoration: none;
+		color: inherit;
+		box-shadow: var(--lab-card-shadow);
 		transition:
-			transform 260ms ease,
-			border-color 260ms ease,
-			box-shadow 260ms ease;
+			transform 240ms ease,
+			border-color 240ms ease,
+			box-shadow 240ms ease;
 	}
 
-	.lab-card:hover {
-		transform: translateY(-5px) scale(1.01);
-		border-color: rgb(var(--lab-accent) / 0.22);
+	.lab-project-card:hover {
+		transform: translateY(-4px);
+		border-color: rgb(var(--lab-accent) / 0.26);
 		box-shadow:
-			0 34px 90px rgba(0, 0, 0, 0.28),
-			0 0 18px rgb(var(--lab-accent) / 0.16),
-			0 0 42px rgb(var(--lab-accent) / 0.14);
+			0 36px 96px rgba(0, 0, 0, 0.28),
+			0 0 18px rgb(var(--lab-accent) / 0.12);
 	}
 
-	.lab-card--hero {
-		grid-column: span 7;
-		min-height: 31rem;
+	.lab-project-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		justify-content: center;
 	}
 
-	.lab-card--wide {
-		grid-column: span 5;
-		min-height: 15rem;
-	}
-
-	.lab-card--tall {
-		grid-column: span 5;
-		min-height: 15rem;
-	}
-
-	.lab-card--compact {
-		grid-column: span 7;
-		min-height: 15rem;
-	}
-
-	.lab-card-top,
-	.lab-card-title-row {
+	.lab-project-card__top,
+	.lab-project-card__title,
+	.lab-project-card__link,
+	.lab-project-window__top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 1rem;
+		gap: 0.8rem;
 	}
 
-	.lab-card-kicker {
-		font-size: 0.76rem;
-		letter-spacing: 0.16em;
+	.lab-project-card__title {
+		justify-content: flex-start;
+	}
+
+	.lab-project-card h3 {
+		font-size: clamp(1.55rem, 2.5vw, 2.2rem);
+		line-height: 1.05;
+		font-weight: 700;
+		letter-spacing: -0.045em;
+		color: var(--lab-card-title);
+	}
+
+	.lab-project-card__description {
+		max-width: 42rem;
+		color: var(--lab-card-copy);
+		line-height: 1.85;
+	}
+
+	.lab-project-card__meta {
+		color: var(--lab-card-muted);
+		font-size: 0.86rem;
+		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: rgba(232, 238, 248, 0.5);
 	}
 
-	.lab-card-preview {
-		position: relative;
-		margin-top: 1rem;
+	.lab-project-card__link {
+		justify-content: flex-start;
+		color: var(--lab-card-link);
+		font-weight: 600;
+	}
+
+	.lab-project-visual {
+		display: flex;
+		align-items: center;
+	}
+
+	.lab-project-window {
+		width: 100%;
 		border-radius: 1.45rem;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		background: rgba(255, 255, 255, 0.04);
+		border: 1px solid var(--lab-window-border);
+		background: var(--lab-window-bg);
 		overflow: hidden;
+		box-shadow:
+			0 28px 72px rgba(0, 0, 0, 0.24),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
-	.lab-card--hero .lab-card-preview {
-		aspect-ratio: 16 / 10;
+	.lab-project-window__top {
+		padding: 0.8rem 0.95rem;
+		border-bottom: 1px solid var(--lab-window-border);
+		background: var(--lab-window-top-bg);
 	}
 
-	.lab-card--wide .lab-card-preview,
-	.lab-card--tall .lab-card-preview,
-	.lab-card--compact .lab-card-preview {
-		aspect-ratio: 16 / 8;
+	.lab-project-window__dots {
+		display: inline-flex;
+		gap: 0.38rem;
 	}
 
-	.lab-card-preview iframe {
+	.lab-project-window__dots span {
+		width: 0.58rem;
+		height: 0.58rem;
+		border-radius: 999px;
+		background: var(--lab-window-dot);
+	}
+
+	.lab-project-window__label {
+		font-size: 0.78rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--lab-window-label);
+	}
+
+	.lab-project-window iframe {
 		display: block;
 		width: 100%;
-		height: 100%;
-		border: 0;
-		background: #02050c;
+		height: 20rem;
+		border: none;
+		background: white;
 	}
 
-	.lab-preview-art {
+	.lab-project-placeholder {
 		position: relative;
-		width: 100%;
-		height: 100%;
-		min-height: 12rem;
+		height: 20rem;
 		background:
-			radial-gradient(
-				circle at 28% 24%,
-				rgba(130, 160, 255, 0.4),
-				transparent 22%
-			),
-			radial-gradient(
-				circle at 76% 36%,
-				rgba(176, 126, 255, 0.28),
-				transparent 28%
-			),
-			linear-gradient(180deg, rgba(5, 8, 14, 0.94), rgba(9, 12, 19, 0.88));
+			radial-gradient(circle at 24% 22%, rgba(92, 168, 255, 0.26), transparent 24%),
+			radial-gradient(circle at 74% 30%, rgba(88, 226, 201, 0.18), transparent 28%),
+			linear-gradient(180deg, rgba(8, 12, 20, 0.98), rgba(6, 9, 16, 0.92));
 	}
 
-	.lab-preview-ring {
+	.lab-project-placeholder__grid {
 		position: absolute;
-		inset: 50% auto auto 50%;
+		inset: 0;
+		background-image:
+			linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+		background-size: 2.8rem 2.8rem;
+		mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.76), transparent 88%);
+	}
+
+	.lab-project-placeholder__orb {
+		position: absolute;
 		border-radius: 999px;
-		border: 1px solid rgba(255, 255, 255, 0.12);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+	}
+
+	.lab-project-placeholder__orb:nth-child(2) {
+		width: 4.4rem;
+		height: 4.4rem;
+		inset: 50% auto auto 50%;
+		transform: translate(-50%, -50%);
+		background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent 70%);
+	}
+
+	.lab-project-placeholder__orb:nth-child(3) {
+		width: 12rem;
+		height: 12rem;
+		inset: 50% auto auto 50%;
 		transform: translate(-50%, -50%);
 	}
 
-	.lab-preview-ring:nth-child(1) {
-		width: 4rem;
-		height: 4rem;
-		background: radial-gradient(
-			circle,
-			rgba(255, 255, 255, 0.12),
-			transparent 70%
-		);
-	}
-
-	.lab-preview-ring:nth-child(2) {
-		width: 10rem;
-		height: 10rem;
-	}
-
-	.lab-preview-ring:nth-child(3) {
-		width: 16rem;
-		height: 16rem;
-		opacity: 0.54;
-	}
-
-	.lab-card-copy {
-		display: flex;
-		flex: 1;
-		flex-direction: column;
-	}
-
-	.lab-card h2 {
-		font-size: clamp(1.6rem, 2.7vw, 2.35rem);
-		line-height: 1.02;
-		font-weight: 680;
-		letter-spacing: -0.045em;
-		color: rgba(248, 250, 255, 0.94);
-	}
-
-	.lab-card p {
-		margin-top: 0.85rem;
-		color: rgba(223, 231, 244, 0.66);
-		line-height: 1.78;
-	}
-
-	.lab-card .module-panel-link {
-		margin-top: auto;
-		padding-top: 1.2rem;
-	}
-
-	@media (max-width: 1080px) {
-		.lab-card--hero,
-		.lab-card--wide,
-		.lab-card--tall,
-		.lab-card--compact {
-			grid-column: span 6;
+	@media (max-width: 980px) {
+		.lab-project-card {
+			grid-template-columns: repeat(1, minmax(0, 1fr));
 		}
 	}
 
-	@media (max-width: 720px) {
-		.lab-stage-metrics,
-		.lab-showcase-grid {
-			grid-template-columns: 1fr;
+	@media (max-width: 640px) {
+		.lab-project-card {
+			padding: 1rem;
+			border-radius: 1.45rem;
 		}
 
-		.lab-card--hero,
-		.lab-card--wide,
-		.lab-card--tall,
-		.lab-card--compact {
-			grid-column: span 1;
+		.lab-project-window iframe,
+		.lab-project-placeholder {
+			height: 15rem;
 		}
-	}
-
-	:global(:root:not(.dark)) .lab-stage-panels span,
-	:global(:root:not(.dark)) .lab-stage-metrics div,
-	:global(:root:not(.dark)) .lab-card {
-		background:
-			linear-gradient(
-				180deg,
-				rgba(255, 255, 255, 0.48),
-				rgba(247, 250, 255, 0.22)
-			),
-			radial-gradient(
-				circle at top right,
-				rgb(var(--lab-accent) / 0.08),
-				transparent 12rem
-			);
-		box-shadow:
-			0 22px 56px rgba(15, 23, 42, 0.08),
-			inset 0 1px 0 rgba(255, 255, 255, 0.72);
-	}
-
-	:global(:root:not(.dark)) .lab-stage-metrics span,
-	:global(:root:not(.dark)) .lab-card-kicker {
-		color: rgba(15, 23, 42, 0.44);
-	}
-
-	:global(:root:not(.dark)) .lab-stage-metrics strong,
-	:global(:root:not(.dark)) .lab-card h2 {
-		color: rgba(15, 23, 42, 0.9);
-	}
-
-	:global(:root:not(.dark)) .lab-card p {
-		color: rgba(15, 23, 42, 0.62);
-	}
-
-	:global(:root:not(.dark)) .lab-card-preview {
-		background: rgba(255, 255, 255, 0.42);
 	}
 </style>

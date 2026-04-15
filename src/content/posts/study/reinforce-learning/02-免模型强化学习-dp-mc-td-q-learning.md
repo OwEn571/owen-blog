@@ -147,8 +147,8 @@ $$
 $$
 a_t \sim \mu (\cdot|s_t)=\left\{
 \begin{aligned}
-&随机动作, 概率\epsilon; \\
-&argmax_a Q(s_t,a),概率1-\epsilon \end{aligned}
+&\text{随机动作，概率 } \epsilon; \\
+&\operatorname*{argmax}_a Q(s_t,a), \text{概率 } 1-\epsilon \end{aligned}
 \right. \tag{4.3.2}
 $$
 学习策略时 (更新Q值时):

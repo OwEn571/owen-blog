@@ -1,0 +1,146 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+	section: string;
+	title: string;
+	description: string;
+	detail: string;
+	accent?: string;
+	icon?: string;
+}
+
+const {
+	section,
+	title,
+	description,
+	detail,
+	accent = "118 156 255",
+	icon = "mdi:door-closed-lock",
+} = Astro.props;
+---
+
+<div class="module-page module-status-page" style={`--module-accent: ${accent};`}>
+	<section class="module-hero module-hero-split module-status-hero">
+		<div class="module-copy">
+			<p class="module-eyebrow">{section}</p>
+			<h1 class="module-title">{title}</h1>
+			<p class="module-description">{description}</p>
+			<div class="module-copy-grid">
+				<article class="module-copy-item">
+					<span class="module-copy-label">当前状态</span>
+					<strong class="module-copy-value">暂时关闭中</strong>
+				</article>
+				<article class="module-copy-item">
+					<span class="module-copy-label">原因</span>
+					<strong class="module-copy-value">对外展示整理</strong>
+				</article>
+				<article class="module-copy-item">
+					<span class="module-copy-label">说明</span>
+					<strong class="module-copy-value">后续会重新开放</strong>
+				</article>
+			</div>
+		</div>
+
+		<div class="module-stage module-status-stage">
+			<div class="module-stage-top">
+				<div class="module-dots" aria-hidden="true">
+					<span></span>
+					<span></span>
+					<span></span>
+				</div>
+				<span class="module-badge">暂时关闭</span>
+			</div>
+			<div class="module-status-stage__icon" aria-hidden="true">
+				<Icon name={icon} class="text-[3rem]" />
+			</div>
+			<p class="module-stage-caption">{detail}</p>
+		</div>
+	</section>
+
+	<section class="module-content-shell module-status-shell">
+		<div class="module-content-head">
+			<div>
+				<p class="module-stream-label">关闭说明</p>
+				<h2 class="module-content-title">页面说明</h2>
+				<p class="module-content-description">{detail}</p>
+			</div>
+			<span class="module-panel-badge">暂时关闭</span>
+		</div>
+
+		<article class="module-panel module-status-panel">
+			<div class="module-panel-top">
+				<span class="module-panel-label">展示状态</span>
+				<div class="module-panel-icon">
+					<Icon name="mdi:shield-refresh-outline" class="text-[1.2rem]" />
+				</div>
+			</div>
+			<h3 class="module-panel-title">当前仅保留主要展示内容</h3>
+			<p class="module-panel-copy">
+				这个分区正在做内容整理和呈现收束，所以在对外展示阶段先临时关闭，避免未完成内容影响整体体验。
+			</p>
+		</article>
+	</section>
+</div>
+
+<style>
+	.module-status-page {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.module-status-hero {
+		align-items: stretch;
+	}
+
+	.module-status-stage {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		gap: 1rem;
+		min-height: 20rem;
+	}
+
+	.module-status-stage__icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 5.5rem;
+		height: 5.5rem;
+		border-radius: 1.8rem;
+		border: 1px solid rgba(var(--module-accent), 0.18);
+		background:
+			radial-gradient(circle at 30% 26%, rgba(var(--module-accent), 0.24), transparent 34%),
+			linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(247, 250, 255, 0.42));
+		color: rgba(var(--module-accent), 0.92);
+		box-shadow:
+			0 20px 48px rgba(15, 23, 42, 0.1),
+			inset 0 1px 0 rgba(255, 255, 255, 0.62);
+	}
+
+	.module-status-shell {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.module-status-panel {
+		min-height: 10rem;
+	}
+
+	:global(.dark) .module-status-stage__icon {
+		background:
+			radial-gradient(circle at 30% 26%, rgba(var(--module-accent), 0.2), transparent 34%),
+			linear-gradient(180deg, rgba(12, 16, 24, 0.8), rgba(8, 12, 18, 0.52));
+		box-shadow:
+			0 24px 56px rgba(0, 0, 0, 0.24),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+	}
+
+	@media (max-width: 820px) {
+		.module-status-stage {
+			min-height: 16rem;
+		}
+	}
+</style>

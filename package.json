@@ -11,6 +11,7 @@
 		"preview": "astro preview --host 0.0.0.0",
 		"astro": "astro",
 		"type-check": "tsc --noEmit --isolatedDeclarations",
+		"perf:webp": "node scripts/perf/convert-large-images-to-webp.mjs",
 		"new-post": "node scripts/new-post.js",
 		"format": "prettier --write ./src",
 		"lint": "eslint ./src --fix",

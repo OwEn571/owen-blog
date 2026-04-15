@@ -106,28 +106,36 @@ const favicons: Favicon[] =
 <!-- Set the theme before the page is rendered to avoid a flash -->
 <script
 	is:inline
-	define:vars={{
-		DEFAULT_THEME,
-		LIGHT_MODE,
-		DARK_MODE,
-		BANNER_HEIGHT_EXTEND: 30,
-		configHue,
-		pageScaling: siteConfig.pageScaling,
-	}}
->
-	// Load the theme from local storage
-	const theme = localStorage.getItem("theme") || DEFAULT_THEME;
-	let isDark = false;
-	switch (theme) {
-		case LIGHT_MODE:
-			document.documentElement.classList.remove("dark");
-			isDark = false;
-			break;
-		case DARK_MODE:
-			document.documentElement.classList.add("dark");
-			isDark = true;
-			break;
-	}
+		define:vars={{
+			DEFAULT_THEME,
+			LIGHT_MODE,
+			DARK_MODE,
+			SYSTEM_MODE: "system",
+			BANNER_HEIGHT_EXTEND: 30,
+			configHue,
+			pageScaling: siteConfig.pageScaling,
+		}}
+	>
+		// Load the theme from local storage
+		const theme = localStorage.getItem("theme") || DEFAULT_THEME;
+		const resolveSystemDark = () =>
+			window.matchMedia("(prefers-color-scheme: dark)").matches;
+		let isDark = false;
+		switch (theme) {
+			case LIGHT_MODE:
+				document.documentElement.classList.remove("dark");
+				isDark = false;
+				break;
+			case DARK_MODE:
+				document.documentElement.classList.add("dark");
+				isDark = true;
+				break;
+			case SYSTEM_MODE:
+			default:
+				isDark = resolveSystemDark();
+				document.documentElement.classList.toggle("dark", isDark);
+				break;
+		}
 
 	// Set the theme for Expressive Code based on current mode
 	const expressiveTheme = isDark ? "github-dark" : "github-light";

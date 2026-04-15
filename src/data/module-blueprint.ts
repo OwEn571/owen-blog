@@ -79,6 +79,44 @@ export interface LabShowcase {
 	iframeSrc?: string;
 	actionLabel: string;
 	actionHref: string;
+	stack: string[];
+	highlights: string[];
+	metrics: Array<{
+		label: string;
+		value: string;
+	}>;
+}
+
+export interface LabFeaturePillar {
+	title: string;
+	description: string;
+	icon: string;
+	accent: string;
+}
+
+export interface LabShelfCard {
+	title: string;
+	description: string;
+	meta: string;
+	icon: string;
+	accent: string;
+	status: string;
+	tags: string[];
+}
+
+export interface LabSeedIdea {
+	title: string;
+	description: string;
+	path: string;
+	icon: string;
+	accent: string;
+}
+
+export interface LabRoadmapStep {
+	step: string;
+	title: string;
+	description: string;
+	badge: string;
 }
 
 export interface LoungeStory {
@@ -370,74 +408,220 @@ export const studyTiles: StudyTile[] = [
 
 export const labShowcases: LabShowcase[] = [
 	{
-		id: "singularity-ui",
-		kicker: "Featured Prototype",
-		title: "Singularity UI Study",
+		id: "aios-newsroom",
+		kicker: "主力系统",
+		title: "AIOS Newsroom",
 		description:
-			"一块可直接试玩的交互卡，后面可以继续放前端实验、组件互动和视觉小说 demo。",
-		status: "Interactive",
-		icon: "mdi:creation-outline",
+			"把 AIOS kernel、news workflow、dashboard、workflow memory 和动态 agent registry 接成一套真正在线运行的 agent ecosystem。",
+		status: "在线运行",
+		icon: "mdi:hub-outline",
 		aspect: "hero",
-		accent: "136 128 255",
+		accent: "86 168 255",
 		iframeSrc: "/demos/lab-orbit.html",
-		actionLabel: "Open Demo",
-		actionHref: "/lab/#lab-showcase",
+		actionLabel: "进入项目页",
+		actionHref: "/lab/aios-newsroom/",
+		stack: [
+			"AIOS 内核",
+			"工作流状态",
+			"动态 Agents",
+			"HTML 日报",
+		],
+		highlights: [
+			"服务器常驻运行的 AIOS runtime",
+			"日报主线可完整跑通，并保留 state / metrics / snapshot",
+			"中间产物与 workflow memory 正在逐步 AIOS 化",
+		],
+		metrics: [
+			{ label: "Mode", value: "Remote Kernel" },
+			{ label: "Shape", value: "Agent Ecosystem" },
+			{ label: "Output", value: "HTML + JSON" },
+		],
 	},
 	{
-		id: "oj-sprint",
-		kicker: "Build Log",
-		title: "OJ Review Sprint",
-		description: "适合放算法训练回顾、做题工作流和结构化总结。",
-		status: "In Progress",
-		icon: "mdi:lightning-bolt-outline",
+		id: "zotero-paper-rag",
+		kicker: "检索实验",
+		title: "Zotero Paper Agent",
+		description:
+			"把 Zotero 本地论文库、BM25 + Dense 检索、Milvus 向量库和可追溯证据链做成一套真正能在线对话的研究控制台。",
+		status: "V2 在线",
+		icon: "mdi:file-document-multiple-outline",
 		aspect: "wide",
-		accent: "120 174 255",
-		actionLabel: "Read Logs",
-		actionHref: "/study/",
+		accent: "86 206 178",
+		iframeSrc: "/api/lab/zotero-paper-rag/ui/chat/",
+		actionLabel: "进入项目页",
+		actionHref: "/lab/zotero-paper-rag/",
+		stack: ["Zotero", "Milvus", "BM25 + Dense", "轨迹界面"],
+		highlights: [
+			"V2 前端已经可用，可直接进行多轮论文问答",
+			"重建后的索引已经切到带 unstructured 的高质量解析链路",
+			"回答区、节点轨迹、候选论文、证据与引用在同一界面里联动",
+		],
+		metrics: [
+			{ label: "State", value: "V2 Online" },
+			{ label: "Surface", value: "Live Console" },
+			{ label: "Retrieval", value: "BM25 + Milvus" },
+		],
 	},
 	{
-		id: "novel-engine",
-		kicker: "Visual Novel",
-		title: "Narrative Engine Demo",
+		id: "agent-sandbox",
+		kicker: "Agent 系统",
+		title: "Agent Sandbox",
 		description:
-			"视觉小说开发、剧情分支与 UI 试验可以像商品卡片一样单独出场。",
-		status: "Playable",
-		icon: "mdi:star-four-points-outline",
+			"多 agent 编排、memory、trace、tool routing 和评测台，都会更适合在这里做成可以浏览的系统样机。",
+		status: "建设中",
+		icon: "mdi:robot-excited-outline",
 		aspect: "tall",
-		accent: "180 136 255",
-		actionLabel: "View Concept",
-		actionHref: "/lab/#lab-runtime",
+		accent: "255 156 96",
+		actionLabel: "查看预留位",
+		actionHref: "/lab/#lab-shelf",
+		stack: ["规划器", "工具", "轨迹", "记忆"],
+		highlights: [
+			"适合放多 agent demo 和失败复盘",
+			"也能承接你之后的 Agent 面试项目展示",
+		],
+		metrics: [
+			{ label: "State", value: "Building" },
+			{ label: "Focus", value: "Coordination" },
+			{ label: "Next", value: "Trace UI" },
+		],
 	},
 	{
-		id: "python-runtime",
-		kicker: "Tools",
-		title: "Python Runtime Cards",
+		id: "eval-console",
+		kicker: "评测界面",
+		title: "Eval & Replay Console",
 		description:
-			"以后可以把 Python 可运行代码块、数据脚本与实验笔记挂到这里。",
-		status: "Planned",
-		icon: "mdi:language-python",
+			"不是所有实验都要做成完整产品。这个坑位用来放 prompt 对比、rerun 结果、评测快照和回放面板。",
+		status: "规划中",
+		icon: "mdi:chart-timeline-variant-shimmer",
 		aspect: "compact",
-		accent: "102 196 255",
-		actionLabel: "See Plan",
+		accent: "158 142 255",
+		actionLabel: "查看路线图",
 		actionHref: "/lab/#lab-roadmap",
+		stack: ["回放", "评分", "差异对比", "说明"],
+		highlights: [
+			"更适合承接小而频繁的实验结果",
+			"可以和之后的 RAG / Agent 评测视图统一",
+		],
+		metrics: [
+			{ label: "Surface", value: "Metrics First" },
+			{ label: "Purpose", value: "Compare & Replay" },
+			{ label: "State", value: "Planned" },
+		],
 	},
 ];
 
-export const labShelf = [
+export const labFeaturePillars: LabFeaturePillar[] = [
 	{
-		title: "Prompt Playground",
-		description: "适合放 Prompt 模板、对比实验和模型观察结果。",
-		meta: "Cards / Markdown / Preview",
+		title: "Live Surface",
+		description: "不是只放截图，而是尽量让系统、卡片或局部交互真的能被点开和浏览。",
+		icon: "mdi:monitor-dashboard",
+		accent: "86 168 255",
 	},
 	{
-		title: "Interaction Widgets",
-		description: "适合收纳 hover、滚动、磁吸、微交互等前端小玩具。",
-		meta: "Motion / Pointer / Surface",
+		title: "Build Journal",
+		description: "每个系统旁边都应该留有构建路径、复盘、失败记录和架构说明，而不是只看结果图。",
+		icon: "mdi:notebook-edit-outline",
+		accent: "255 156 96",
 	},
 	{
-		title: "Deploy Recipes",
-		description: "把部署、构建、自动同步与域名接入整理成模块化清单。",
-		meta: "Tencent Cloud / CI / Domain",
+		title: "Runtime Trace",
+		description: "部署方式、接口入口、状态指标和可观测性，会逐步成为每个 Lab 项目的一部分。",
+		icon: "mdi:pulse",
+		accent: "86 206 178",
+	},
+];
+
+export const labShelf: LabShelfCard[] = [
+	{
+		title: "Live Demo Card",
+		description:
+			"适合挂真正可操作的页面、嵌入式预览和交互面板，让人点进来就能感受到这个系统在干什么。",
+		meta: "Demo / Preview / Interaction",
+		icon: "mdi:cursor-default-click-outline",
+		accent: "86 168 255",
+		status: "Shipping Pattern",
+		tags: ["Preview", "Runnable", "Frontend Surface"],
+	},
+	{
+		title: "Build Notes Card",
+		description:
+			"不是把实现过程藏起来，而是让每个项目都带着架构讲解、踩坑记录和失败复盘一起出现。",
+		meta: "Architecture / Refactor / Failure Log",
+		icon: "mdi:file-document-edit-outline",
+		accent: "255 156 96",
+		status: "Write Alongside",
+		tags: ["Narrative", "Refactor", "Postmortem"],
+	},
+	{
+		title: "Infra Snapshot Card",
+		description:
+			"部署方式、运行入口、接口地址、服务拆分和观测信息会整理成一张更工程化的系统卡片。",
+		meta: "Deploy / Runtime / Monitoring",
+		icon: "mdi:server-network-outline",
+		accent: "86 206 178",
+		status: "System View",
+		tags: ["Server", "API", "Observability"],
+	},
+	{
+		title: "Eval Snapshot Card",
+		description:
+			"当项目开始追踪指标时，这里会显示对比、评分、版本变化和 rerun 结果，而不是一段空泛结论。",
+		meta: "Metrics / Diff / Replay",
+		icon: "mdi:chart-box-outline",
+		accent: "158 142 255",
+		status: "Metrics View",
+		tags: ["Score", "Compare", "Replay"],
+	},
+];
+
+export const labDirectorySeeds: LabSeedIdea[] = [
+	{
+		title: "AIOS Newsroom",
+		description:
+			"给这次 AIOS 项目留一组专属目录，后面可以同时挂架构文、实验复盘和前端展示页。",
+		path: "src/content/posts/lab/aios-newsroom/",
+		icon: "mdi:hub-outline",
+		accent: "86 168 255",
+	},
+	{
+		title: "RAG Workbench",
+		description:
+			"适合接入分块、检索、重排和评测实验，把 Study 里的知识变成可看的系统工作台。",
+		path: "src/content/posts/lab/rag-workbench/",
+		icon: "mdi:database-search-outline",
+		accent: "86 206 178",
+	},
+	{
+		title: "Agent Sandbox",
+		description:
+			"适合放 agent 协作、tool routing、memory、trace 和控制面实验。",
+		path: "src/content/posts/lab/agent-sandbox/",
+		icon: "mdi:robot-excited-outline",
+		accent: "255 156 96",
+	},
+];
+
+export const labRoadmap: LabRoadmapStep[] = [
+	{
+		step: "Step 01",
+		title: "把 AIOS Newsroom 正式挂成第一张 Lab 主卡",
+		description:
+			"先把这次 AIOS 项目的日报、dashboard、agent registry 和架构说明收进一套真正能浏览的 Lab 展示页。",
+		badge: "Now",
+	},
+	{
+		step: "Step 02",
+		title: "做一组 RAG 与 Agent 的可比较演示页",
+		description:
+			"不是只放一份结论，而是让 chunking、retriever、memory、tool routing 这些差异能在前端被直接比较。",
+		badge: "Next",
+	},
+	{
+		step: "Step 03",
+		title: "给每个实验项目接真实状态和指标",
+		description:
+			"让卡片显示最近更新时间、运行方式、服务状态、关键指标和关联文章，把 Lab 从海报墙推进成真正的系统陈列架。",
+		badge: "Later",
 	},
 ];
 

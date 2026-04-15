@@ -135,9 +135,12 @@ const commentsPath = Astro.props.path;
 			return first.toUpperCase();
 		}
 
-		function createCommentCard(comment) {
+		function createCommentCard(comment, index) {
 			const article = document.createElement("article");
 			article.className = "owen-comments__item";
+			if (index === 0) {
+				article.classList.add("is-featured");
+			}
 
 			const avatar = document.createElement("div");
 			avatar.className = "owen-comments__avatar";
@@ -159,11 +162,15 @@ const commentsPath = Astro.props.path;
 			const meta = document.createElement("div");
 			meta.className = "owen-comments__item-meta";
 
+			const badge = document.createElement("span");
+			badge.className = "owen-comments__item-badge";
+			badge.textContent = index === 0 ? "最新" : `#${index + 1}`;
+
 			const time = document.createElement("time");
 			time.className = "owen-comments__item-time";
 			time.dateTime = comment.createdAt;
 			time.textContent = formatDate(comment.createdAt);
-			meta.append(time);
+			meta.append(badge, time);
 
 			authorGroup.append(author, meta);
 
@@ -195,8 +202,8 @@ const commentsPath = Astro.props.path;
 				return;
 			}
 
-			items.forEach((comment) => {
-				list.append(createCommentCard(comment));
+			items.forEach((comment, index) => {
+				list.append(createCommentCard(comment, index));
 			});
 		}
 
@@ -491,7 +498,7 @@ const commentsPath = Astro.props.path;
 
 	.owen-comments__list {
 		display: grid;
-		gap: 0.9rem;
+		gap: 1rem;
 	}
 
 	.owen-comments__empty,
@@ -519,10 +526,54 @@ const commentsPath = Astro.props.path;
 	}
 
 	.owen-comments__item {
+		position: relative;
 		display: grid;
 		grid-template-columns: auto minmax(0, 1fr);
-		gap: 0.9rem;
-		padding: 1rem 1.05rem;
+		gap: 1rem;
+		padding: 1.05rem 1.1rem 1.12rem;
+		overflow: hidden;
+		transition:
+			transform 0.22s ease,
+			border-color 0.22s ease,
+			box-shadow 0.22s ease;
+	}
+
+	.owen-comments__item::before {
+		content: "";
+		position: absolute;
+		inset: 0 0 auto;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, rgba(118, 156, 255, 0.78), transparent);
+		opacity: 0.72;
+		pointer-events: none;
+	}
+
+	.owen-comments__item::after {
+		content: "";
+		position: absolute;
+		inset: auto -2rem -2rem auto;
+		width: 7rem;
+		height: 7rem;
+		border-radius: 999px;
+		background: radial-gradient(circle, rgba(118, 156, 255, 0.1), transparent 72%);
+		pointer-events: none;
+	}
+
+	.owen-comments__item:hover {
+		transform: translateY(-2px);
+		border-color: rgba(118, 156, 255, 0.18);
+		box-shadow:
+			0 22px 48px rgba(15, 23, 42, 0.07),
+			0 0 20px rgba(118, 156, 255, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.82);
+	}
+
+	.owen-comments__item.is-featured {
+		border-color: rgba(118, 156, 255, 0.16);
+		box-shadow:
+			0 20px 44px rgba(15, 23, 42, 0.06),
+			0 0 22px rgba(118, 156, 255, 0.08),
+			inset 0 1px 0 rgba(255, 255, 255, 0.84);
 	}
 
 	.owen-comments__avatar {
@@ -571,6 +622,7 @@ const commentsPath = Astro.props.path;
 		gap: 0.45rem 0.55rem;
 	}
 
+	.owen-comments__item-badge,
 	.owen-comments__item-time,
 	.owen-comments__item-contact {
 		display: inline-flex;
@@ -579,6 +631,14 @@ const commentsPath = Astro.props.path;
 		padding: 0 0.68rem;
 		border-radius: 999px;
 		font-size: 0.72rem;
+	}
+
+	.owen-comments__item-badge {
+		border: 1px solid rgba(118, 156, 255, 0.12);
+		background: rgba(118, 156, 255, 0.08);
+		color: rgba(76, 95, 138, 0.88);
+		font-weight: 700;
+		letter-spacing: 0.04em;
 	}
 
 	.owen-comments__item-time {
@@ -605,14 +665,18 @@ const commentsPath = Astro.props.path;
 
 	.owen-comments__item-content {
 		margin: 0;
-		padding: 0.95rem 1rem;
-		border-radius: 1rem;
+		padding: 1rem 1.02rem;
+		border-radius: 1.08rem;
 		border: 1px solid rgba(118, 156, 255, 0.1);
-		background: rgba(255, 255, 255, 0.76);
+		background:
+			linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(247, 250, 255, 0.62)),
+			radial-gradient(circle at top right, rgba(118, 156, 255, 0.08), transparent 10rem);
 		line-height: 1.84;
 		white-space: pre-wrap;
 		color: var(--text-normal);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.82),
+			0 12px 28px rgba(15, 23, 42, 0.04);
 	}
 
 	:global(.dark) .owen-comments__eyebrow {
@@ -632,12 +696,26 @@ const commentsPath = Astro.props.path;
 			inset 0 1px 0 rgba(255, 255, 255, 0.05);
 	}
 
+	:global(.dark) .owen-comments__item:hover {
+		border-color: rgba(118, 156, 255, 0.18);
+		box-shadow:
+			0 28px 54px rgba(0, 0, 0, 0.24),
+			0 0 22px rgba(118, 156, 255, 0.12),
+			inset 0 1px 0 rgba(255, 255, 255, 0.06);
+	}
+
 	:global(.dark) .owen-comments__field input,
 	:global(.dark) .owen-comments__field textarea,
 	:global(.dark) .owen-comments__item-content {
 		border-color: rgba(255, 255, 255, 0.08);
 		background: rgba(255, 255, 255, 0.05);
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+	}
+
+	:global(.dark) .owen-comments__item-badge {
+		border-color: rgba(118, 156, 255, 0.2);
+		background: rgba(118, 156, 255, 0.12);
+		color: rgba(210, 223, 252, 0.86);
 	}
 
 	:global(.dark) .owen-comments__item-time {

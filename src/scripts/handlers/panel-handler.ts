@@ -28,10 +28,6 @@ export class PanelHandler {
 			ignoreElements: ["nav-menu-panel", "nav-menu-switch"],
 		},
 		{
-			id: "search-panel",
-			ignoreElements: ["search-panel", "search-bar", "search-switch"],
-		},
-		{
 			id: "mobile-toc-panel",
 			ignoreElements: ["mobile-toc-panel", "mobile-toc-switch"],
 		},

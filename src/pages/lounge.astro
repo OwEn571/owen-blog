@@ -1,5 +1,6 @@
 ---
 import ModuleDirectoryDeck from "@components/features/modules/ModuleDirectoryDeck.astro";
+import TemporaryClosedNotice from "@components/features/modules/TemporaryClosedNotice.astro";
 import TypewriterText from "@components/atoms/typewriter-text/TypewriterText.astro";
 import { Icon } from "astro-icon/components";
 
@@ -11,8 +12,11 @@ import {
 	getModuleWriteRoot,
 } from "../utils/module-content-utils";
 
-const loungePosts = await getModulePostsList("lounge");
-const loungeCards = await getModuleDirectoryCards("lounge", loungePosts);
+const temporarilyClosed = true;
+const loungePosts = temporarilyClosed ? [] : await getModulePostsList("lounge");
+const loungeCards = temporarilyClosed
+	? []
+	: await getModuleDirectoryCards("lounge", loungePosts);
 
 const heroSummary = [
 	{ label: "展示方式", value: "Status + Masonry" },
@@ -31,6 +35,17 @@ const heroSummary = [
 		import("../scripts/right-sidebar-layout.js");
 	</script>
 
+	{
+		temporarilyClosed ? (
+			<TemporaryClosedNotice
+				section="Lounge"
+				title="Lounge 暂时关闭中"
+				description="Lounge 分区正在为对外展示做内容整理与呈现收束，当前先暂停开放。"
+				detail="这部分会在后续整理完成后重新开放，届时会带回更完整的生活记录、状态卡与轻内容体验。"
+				accent="118 196 255"
+				icon="mdi:sofa-outline"
+			/>
+		) : (
 	<div class="module-page" style="--module-accent: 118 196 255;">
 		<section class="module-hero module-hero-split">
 			<div class="module-copy">
@@ -177,6 +192,8 @@ const heroSummary = [
 			</div>
 		</section>
 	</div>
+		)
+	}
 </MainGridLayout>
 
 <style>
