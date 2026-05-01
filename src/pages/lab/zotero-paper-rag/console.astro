@@ -9,7 +9,7 @@ export const prerender = false;
 const snapshot = await getZoteroPaperRagSnapshot();
 
 const statusLine = snapshot.available
-	? "Zotero Paper Agent V2 在线"
+	? "Zotero Paper Agent V4 在线"
 	: snapshot.error || "Zotero Paper Agent service unavailable";
 const indexedPapersLine = snapshot.indexedPapers
 	? `${snapshot.indexedPapers} 篇论文已入库`
@@ -21,8 +21,8 @@ const corpusDocsLine = snapshot.corpusDocs
 
 <MainGridLayout
 	immersiveLayout={true}
-	title="Zotero Research Console"
-	description="Zotero Paper Agent 的控制台详情页"
+	title="Zotero Research Console V4"
+	description="通用智能论文助手 V4 的控制台详情页"
 >
 	<script>
 		import("../../../scripts/right-sidebar-layout.js");
@@ -32,12 +32,12 @@ const corpusDocsLine = snapshot.corpusDocs
 		<section class="module-hero rag-console-hero">
 			<div class="module-copy">
 				<p class="module-eyebrow">Zotero Paper Agent / Console</p>
-				<h1 class="module-title">Zotero Research Console</h1>
+				<h1 class="module-title">Zotero Research Console V4</h1>
 				<p class="module-subtitle">
-					论文问答、节点轨迹、证据片段和最终引用都在这一层完整展开。
+					Agent Loop、Zotero 文献库、论文预览和流式 Markdown 回答都在这一层完整展开。
 				</p>
 				<p class="module-description">
-					这里保留真正可操作的前端入口。主展示页只负责交代项目结构，实际演示时可以直接在这页问问题、看证据、看引用。
+					这里保留真正可操作的前端入口。现在展示的是 V4：会先理解问题、调用论文检索工具、反思证据质量，再把结果组织成可追溯回答。
 				</p>
 
 				<div class="rag-console-actions">
@@ -47,7 +47,7 @@ const corpusDocsLine = snapshot.corpusDocs
 					</a>
 					<a href="/api/lab/zotero-paper-rag/ui/chat/" class="rag-console-action">
 						<Icon name="mdi:open-in-new" class="text-[1.05rem]" />
-						<span>独立打开代理前端</span>
+						<span>独立打开 V4 前端</span>
 					</a>
 				</div>
 			</div>
@@ -57,9 +57,9 @@ const corpusDocsLine = snapshot.corpusDocs
 			<div class="module-content-head">
 				<div>
 					<p class="module-stream-label">Live Console</p>
-					<h2 class="module-content-title">Paper Agent V2</h2>
+					<h2 class="module-content-title">Paper Agent V4</h2>
 					<p class="module-content-description">
-						博客里的 iframe 走代理入口，这样静态资源和流式接口都会稳定落在同一个站点域名下。
+						博客里的 iframe 走 V4 代理入口，流式接口、引用预览、论文库预览都会稳定落在同一个站点域名下。
 					</p>
 				</div>
 				<span class="module-panel-badge">
@@ -76,7 +76,7 @@ const corpusDocsLine = snapshot.corpusDocs
 			<div class="rag-console-frame">
 				<iframe
 					src="/api/lab/zotero-paper-rag/ui/chat/"
-					title="Zotero Research Console"
+					title="Zotero Research Console V4"
 					loading="eager"
 				/>
 			</div>
@@ -160,7 +160,7 @@ const corpusDocsLine = snapshot.corpusDocs
 		min-height: 52rem;
 		border: none;
 		border-radius: 1rem;
-		background: white;
+		background: transparent;
 	}
 
 	@media (max-width: 640px) {
