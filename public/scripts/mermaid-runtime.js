@@ -10,7 +10,120 @@
 		rendering: false,
 		currentTheme: null,
 		loadPromise: null,
+		lightbox: null,
+		delegatedZoomBound: false,
 	};
+
+	function closeMermaidLightbox() {
+		if (!state.lightbox) {
+			return;
+		}
+		state.lightbox.classList.remove("is-open");
+		state.lightbox.setAttribute("aria-hidden", "true");
+		document.body.classList.remove("mermaid-lightbox-open");
+	}
+
+	function ensureMermaidLightbox() {
+		if (state.lightbox) {
+			return state.lightbox;
+		}
+
+		const overlay = document.createElement("div");
+		overlay.className = "mermaid-lightbox";
+		overlay.setAttribute("aria-hidden", "true");
+		overlay.innerHTML = `
+			<div class="mermaid-lightbox__backdrop" data-mermaid-lightbox-close></div>
+			<div class="mermaid-lightbox__dialog" role="dialog" aria-modal="true" aria-label="Mermaid diagram preview">
+				<button type="button" class="mermaid-lightbox__close" data-mermaid-lightbox-close aria-label="关闭放大图">×</button>
+				<div class="mermaid-lightbox__content"></div>
+			</div>
+		`;
+
+		overlay.addEventListener("click", (event) => {
+			const target = event.target;
+			if (target instanceof HTMLElement && target.hasAttribute("data-mermaid-lightbox-close")) {
+				closeMermaidLightbox();
+			}
+		});
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key === "Escape" && state.lightbox?.classList.contains("is-open")) {
+				closeMermaidLightbox();
+			}
+		});
+
+		document.body.appendChild(overlay);
+		state.lightbox = overlay;
+		return overlay;
+	}
+
+	function openMermaidLightbox(sourceElement) {
+		const svg = sourceElement?.querySelector("svg");
+		if (!svg) {
+			return;
+		}
+
+		const overlay = ensureMermaidLightbox();
+		const content = overlay.querySelector(".mermaid-lightbox__content");
+		if (!content) {
+			return;
+		}
+
+		content.innerHTML = "";
+		content.appendChild(svg.cloneNode(true));
+		overlay.classList.add("is-open");
+		overlay.setAttribute("aria-hidden", "false");
+		document.body.classList.add("mermaid-lightbox-open");
+	}
+
+	function bindMermaidZoom(element) {
+		if (!element || element.dataset.mermaidZoomBound === "true") {
+			return;
+		}
+
+		element.dataset.mermaidZoomBound = "true";
+		element.setAttribute("role", "button");
+		element.setAttribute("tabindex", "0");
+		element.setAttribute("aria-label", "点击放大 Mermaid 图表");
+
+		element.addEventListener("click", () => openMermaidLightbox(element));
+		element.addEventListener("keydown", (event) => {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				openMermaidLightbox(element);
+			}
+		});
+	}
+
+	function setupDelegatedZoom() {
+		if (state.delegatedZoomBound) {
+			return;
+		}
+
+		state.delegatedZoomBound = true;
+
+		document.addEventListener("click", (event) => {
+			const target = event.target;
+			if (!(target instanceof Element)) {
+				return;
+			}
+
+			if (target.closest(".mermaid-lightbox")) {
+				return;
+			}
+
+			const mermaidElement = target.closest(".mermaid");
+			if (!(mermaidElement instanceof HTMLElement)) {
+				return;
+			}
+
+			if (!mermaidElement.querySelector("svg")) {
+				return;
+			}
+
+			openMermaidLightbox(mermaidElement);
+		});
+	}
 
 	function normalizeMermaidCode(rawCode) {
 		if (typeof rawCode !== "string") {
@@ -125,6 +238,7 @@
 				const signature = `${theme}:${code}`;
 
 				if (element.dataset.mermaidSignature === signature && element.querySelector("svg")) {
+					bindMermaidZoom(element);
 					continue;
 				}
 
@@ -150,7 +264,9 @@
 						insertedSvg.style.minHeight = "0";
 						insertedSvg.style.display = "block";
 						insertedSvg.style.marginInline = "auto";
+						insertedSvg.style.cursor = "zoom-in";
 					}
+					bindMermaidZoom(element);
 				} catch (error) {
 					console.error("[mermaid] render failed", error);
 					element.innerHTML = `
@@ -209,6 +325,7 @@
 	}
 
 	function initialize() {
+		setupDelegatedZoom();
 		setupObservers();
 		renderMermaidDiagrams();
 		window.renderMermaidDiagrams = renderMermaidDiagrams;

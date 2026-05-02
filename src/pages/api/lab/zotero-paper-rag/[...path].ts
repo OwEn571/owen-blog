@@ -37,19 +37,22 @@ function copyResponseHeaders(source: Headers) {
 		headers.delete(key),
 	);
 	headers.set("Cache-Control", "no-store");
+	if (headers.get("content-type")?.includes("text/event-stream")) {
+		headers.set("X-Accel-Buffering", "no");
+		headers.set("Connection", "keep-alive");
+	}
 	return headers;
 }
 
 function buildChatConfigScript() {
 	return `<script>window.ZOTERO_AGENT_CONFIG=${JSON.stringify({
-		streamEndpoint: `${PROXY_PREFIX}/api/v1/agent/chat/stream/`,
-		chatEndpoint: `${PROXY_PREFIX}/api/v1/agent/chat/`,
-		uploadEndpoint: `${PROXY_PREFIX}/api/v1/uploads/pdf/`,
-		uploadListEndpoint: `${PROXY_PREFIX}/api/v1/uploads/`,
-		uploadDeleteBase: `${PROXY_PREFIX}/api/v1/uploads`,
-		libraryEndpoint: `${PROXY_PREFIX}/api/v1/library/snapshot/`,
-		paperFileBase: `${PROXY_PREFIX}/api/v1/papers`,
-		sessionStorageKey: "zotero-paper-rag-lab-session-id",
+		streamEndpoint: `${PROXY_PREFIX}/api/v1/v4/chat/stream`,
+		chatEndpoint: `${PROXY_PREFIX}/api/v1/v4/chat`,
+		healthEndpoint: `${PROXY_PREFIX}/api/v1/v4/health`,
+		libraryEndpoint: `${PROXY_PREFIX}/api/v1/v4/library`,
+		paperPreviewEndpoint: `${PROXY_PREFIX}/api/v1/v4/library/papers`,
+		citationPreviewEndpoint: `${PROXY_PREFIX}/api/v1/v4/citations/preview`,
+		sessionStorageKey: "zotero-paper-rag-v4-lab-session-id",
 	})};</script>`;
 }
 
@@ -78,7 +81,7 @@ async function handleProxy(context: APIContext) {
 		return new Response("Missing proxied path.", { status: 400 });
 	}
 
-	if (rawPath === "ui/chat") {
+	if (rawPath === "ui/chat" || rawPath === "v4") {
 		const chat = await getZoteroPaperRagChatHtml();
 		return new Response(
 			chat.ok

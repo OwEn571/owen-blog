@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 type JsonValue =
@@ -11,10 +11,25 @@ type JsonValue =
 
 type JsonObject = Record<string, JsonValue>;
 
+type AiosNewsroomReportEntry = {
+	reportId: string;
+	htmlFileName: string;
+	jsonFileName: string | null;
+	txtFileName: string | null;
+	generatedAt: string;
+	dateLabel: string;
+	timeLabel: string;
+	reportTitle: string;
+	reportSubtitle: string;
+	overview: string;
+	metrics: JsonObject | null;
+};
+
 const DEFAULT_AIOS_NEWSROOM_BASE_URL = "http://127.0.0.1:8010";
 const DEFAULT_AIOS_PROJECT_ROOT = "/home/ubuntu/owen/AIOS-NP";
 const DEFAULT_TIMEOUT_MS = 4500;
 const DEFAULT_MCP_SERVER_URL = "http://127.0.0.1:8011/";
+const REPORT_ID_PATTERN = /^\d{8}_\d{6}$/;
 
 function trimTrailingSlash(value: string) {
 	return value.replace(/\/+$/, "");
@@ -76,6 +91,123 @@ async function readOptionalJson(filePath: string | null) {
 	} catch {
 		return null;
 	}
+}
+
+async function fileExists(filePath: string) {
+	try {
+		await access(filePath);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function normalizeReportId(value: string | null | undefined) {
+	const text = String(value || "").trim();
+	return REPORT_ID_PATTERN.test(text) ? text : null;
+}
+
+function buildReportFileName(reportId: string, extension: "html" | "json" | "txt") {
+	return `新闻报_${reportId}.${extension}`;
+}
+
+function parseReportIdFromFileName(fileName: string) {
+	const match = /^新闻报_(\d{8}_\d{6})\.(html|json|txt)$/.exec(fileName);
+	return match ? match[1] : null;
+}
+
+function formatReportDateLabel(reportId: string) {
+	return `${reportId.slice(0, 4)}年${reportId.slice(4, 6)}月${reportId.slice(6, 8)}日`;
+}
+
+function formatReportTimeLabel(reportId: string) {
+	return `${reportId.slice(9, 11)}:${reportId.slice(11, 13)}`;
+}
+
+function formatReportGeneratedAt(reportId: string) {
+	return `${reportId.slice(0, 4)}-${reportId.slice(4, 6)}-${reportId.slice(6, 8)}T${reportId.slice(9, 11)}:${reportId.slice(11, 13)}:${reportId.slice(13, 15)}+08:00`;
+}
+
+async function readAiosNewsroomReportEntry(reportId: string) {
+	const outputDir = getAiosOutputDir();
+	const htmlFileName = buildReportFileName(reportId, "html");
+	const htmlFilePath = path.join(outputDir, htmlFileName);
+	if (!(await fileExists(htmlFilePath))) {
+		return null;
+	}
+
+	const jsonFileName = buildReportFileName(reportId, "json");
+	const txtFileName = buildReportFileName(reportId, "txt");
+	const jsonFilePath = path.join(outputDir, jsonFileName);
+	const txtFilePath = path.join(outputDir, txtFileName);
+	const reportJson = asJsonObject(await readOptionalJson(jsonFilePath));
+
+	return {
+		reportId,
+		htmlFileName,
+		jsonFileName: (await fileExists(jsonFilePath)) ? jsonFileName : null,
+		txtFileName: (await fileExists(txtFilePath)) ? txtFileName : null,
+		generatedAt:
+			String(reportJson?.generated_at || "").trim() ||
+			formatReportGeneratedAt(reportId),
+		dateLabel:
+			String(reportJson?.date_label || "").trim() ||
+			formatReportDateLabel(reportId),
+		timeLabel:
+			String(reportJson?.time_label || "").trim() ||
+			formatReportTimeLabel(reportId),
+		reportTitle:
+			String(reportJson?.report_title || "").trim() || "今日新闻现场",
+		reportSubtitle:
+			String(reportJson?.report_subtitle || "").trim() || "历史日报成品",
+		overview: String(reportJson?.overview || "").trim(),
+		metrics: asJsonObject(reportJson?.metrics) || null,
+	} satisfies AiosNewsroomReportEntry;
+}
+
+export async function listAiosNewsroomReports(limit = 90) {
+	try {
+		const outputDir = getAiosOutputDir();
+		const entries = await readdir(outputDir, { withFileTypes: true });
+		const reportIds = entries
+			.filter(
+				(entry) =>
+					entry.isFile() &&
+					entry.name.startsWith("新闻报_") &&
+					entry.name.endsWith(".html"),
+			)
+			.map((entry) => parseReportIdFromFileName(entry.name))
+			.filter((value): value is string => Boolean(value))
+			.sort((left, right) => right.localeCompare(left, "zh-CN"))
+			.slice(0, limit);
+
+		const reports = await Promise.all(
+			reportIds.map((reportId) => readAiosNewsroomReportEntry(reportId)),
+		);
+
+		return reports.filter(
+			(entry): entry is AiosNewsroomReportEntry => Boolean(entry),
+		);
+	} catch {
+		return [] as AiosNewsroomReportEntry[];
+	}
+}
+
+export async function getAiosNewsroomReportEntry(
+	reportId?: string | null,
+) {
+	const normalizedReportId = normalizeReportId(reportId);
+	if (normalizedReportId) {
+		return readAiosNewsroomReportEntry(normalizedReportId);
+	}
+	const reports = await listAiosNewsroomReports(1);
+	return reports[0] || null;
+}
+
+async function readAiosNewsroomReportHtmlById(reportId: string) {
+	const outputDir = getAiosOutputDir();
+	const filePath = path.join(outputDir, buildReportFileName(reportId, "html"));
+	return readOptionalText(filePath);
 }
 
 async function findLatestOutputFile(extension: "html" | "json" | "txt") {
@@ -597,7 +729,18 @@ export async function getAiosNewsroomSnapshot() {
 	};
 }
 
-export async function getAiosNewsroomReportHtml() {
+export async function getAiosNewsroomReportHtml(reportId?: string | null) {
+	const normalizedReportId = normalizeReportId(reportId);
+	if (normalizedReportId) {
+		const html = await readAiosNewsroomReportHtmlById(normalizedReportId);
+		return {
+			ok: Boolean(html),
+			status: html ? 200 : 404,
+			error: html ? null : `Report ${normalizedReportId} is unavailable.`,
+			html: html || "",
+		};
+	}
+
 	const response = await fetchAiosEndpoint(
 		"/api/ecosystem/output/report/latest/html",
 		"text",

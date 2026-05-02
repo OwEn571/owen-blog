@@ -205,12 +205,14 @@ const archiveLabel = overviewEntry?.data.category || overviewEntry?.data.title |
         <span class="module-panel-badge">{archiveLabel}</span>
       </div>
 
-      <div class="rag-overview-card">
+      <div class="module-panel-grid">
         {
           hasOverviewContent ? (
-            <Markdown class="rag-overview-prose">
-              <OverviewContent />
-            </Markdown>
+            <article class="module-panel rag-doc-card">
+              <Markdown class="post-markdown-flow mb-6 markdown-content onload-animation">
+                <OverviewContent />
+              </Markdown>
+            </article>
           ) : (
             <div class="rag-empty-state">
               <h3>项目文档暂时不可用</h3>
@@ -314,63 +316,19 @@ const archiveLabel = overviewEntry?.data.category || overviewEntry?.data.title |
     text-decoration: none;
   }
 
-  /* ── 文档展开区 ── */
-  .rag-overview-card {
-    padding: 2rem;
+  /* ── 文档展开区：使用标准 prose 渲染，仅加外边距控制 ── */
+  .rag-doc-card {
+    padding: 2rem 2.5rem;
     border: 1px solid var(--rag-action-border);
     border-radius: 1.25rem;
     background: var(--rag-action-bg);
+    grid-column: 1 / -1;
   }
 
-  .rag-overview-prose {
-    max-width: 80ch;
-    margin: 0 auto;
-  }
-
-  .rag-overview-prose :global(h1),
-  .rag-overview-prose :global(h2),
-  .rag-overview-prose :global(h3) {
-    color: var(--rag-action-text);
-    margin-top: 2rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .rag-overview-prose :global(p),
-  .rag-overview-prose :global(li) {
-    color: var(--rag-muted);
-    line-height: 1.75;
-  }
-
-  .rag-overview-prose :global(code) {
-    background: rgba(86, 206, 178, 0.1);
-    padding: 0.15rem 0.4rem;
-    border-radius: 0.35rem;
-    font-size: 0.88rem;
-  }
-
-  .rag-overview-prose :global(pre) {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 1.25rem;
-    border-radius: 0.75rem;
-    overflow-x: auto;
-    margin: 1rem 0;
-  }
-
-  .rag-overview-prose :global(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1rem 0;
-  }
-
-  .rag-overview-prose :global(th),
-  .rag-overview-prose :global(td) {
-    border: 1px solid var(--rag-action-border);
-    padding: 0.5rem 0.75rem;
-    text-align: left;
-  }
-
-  .rag-overview-prose :global(th) {
-    background: rgba(86, 206, 178, 0.1);
+  @media (max-width: 640px) {
+    .rag-doc-card {
+      padding: 1.25rem;
+    }
   }
 
   .rag-empty-state {

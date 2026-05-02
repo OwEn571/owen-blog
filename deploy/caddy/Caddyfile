@@ -8,13 +8,11 @@
 
 (pdf_rag_v3_routes) {
 	handle /v3* {
-		encode zstd gzip
-		reverse_proxy 127.0.0.1:8000
+		redir /v4 308
 	}
 
 	handle /ui/chat-v3* {
-		encode zstd gzip
-		reverse_proxy 127.0.0.1:8000
+		redir /v4 308
 	}
 
 	handle /api/v1/agent/v3* {
@@ -40,6 +38,28 @@
 	handle /static/chat.js* {
 		encode zstd gzip
 		reverse_proxy 127.0.0.1:8000
+	}
+}
+
+(pdf_rag_v4_routes) {
+	handle /v4* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8001
+	}
+
+	handle /api/v1/v4* {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8001 {
+			flush_interval -1
+		}
+	}
+
+	handle /api/lab/zotero-paper-rag/api/v1/v4* {
+		uri strip_prefix /api/lab/zotero-paper-rag
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8001 {
+			flush_interval -1
+		}
 	}
 }
 
@@ -70,6 +90,7 @@ https://www.owen571.top {
 
 https://owen571.top {
 	import pdf_rag_v3_routes
+	import pdf_rag_v4_routes
 
 	import public_asset_matcher
 

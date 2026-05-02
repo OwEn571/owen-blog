@@ -2,15 +2,50 @@
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { Icon } from "astro-icon/components";
 
-import { getAiosNewsroomSnapshot } from "../../../server/aios-newsroom";
+import {
+	getAiosNewsroomReportEntry,
+	getAiosNewsroomSnapshot,
+	listAiosNewsroomReports,
+} from "../../../server/aios-newsroom";
 
 export const prerender = false;
 
 type AnyRecord = Record<string, any>;
 
-const snapshot = await getAiosNewsroomSnapshot();
-const report = (snapshot.report as AnyRecord | null) || {};
-const reportMetrics = (report.metrics as AnyRecord | null) || {};
+const requestedReportId = Astro.url.searchParams.get("report");
+const [snapshot, reportHistory, selectedReportEntry] = await Promise.all([
+	getAiosNewsroomSnapshot(),
+	listAiosNewsroomReports(120),
+	getAiosNewsroomReportEntry(requestedReportId),
+]);
+
+const snapshotReport = (snapshot.report as AnyRecord | null) || {};
+const report = (selectedReportEntry as AnyRecord | null) || snapshotReport;
+const reportMetrics =
+	((selectedReportEntry?.metrics as AnyRecord | null) ||
+		(snapshotReport.metrics as AnyRecord | null) ||
+		{}) as AnyRecord;
+const selectedReportId = selectedReportEntry?.reportId || "";
+const reportTitle = selectedReportEntry?.reportTitle || report.report_title || "AIOS HTML 成品";
+const reportSubtitle =
+	selectedReportEntry?.reportSubtitle || report.report_subtitle || "Latest report HTML";
+const reportGeneratedAt =
+	selectedReportEntry?.generatedAt || report.generated_at || null;
+const reportDateLabel =
+	selectedReportEntry?.dateLabel || report.date_label || "Latest Report";
+const selectedReportHtmlUrl = selectedReportId
+	? `/api/lab/aios/report.html?report=${encodeURIComponent(selectedReportId)}`
+	: "/api/lab/aios/report.html";
+
+const reportGroups = Array.from(
+	reportHistory.reduce((groups, entry) => {
+		const key = entry.dateLabel || "未分组";
+		const existing = groups.get(key) || [];
+		existing.push(entry);
+		groups.set(key, existing);
+		return groups;
+	}, new Map<string, typeof reportHistory>()),
+).map(([dateLabel, entries]) => ({ dateLabel, entries }));
 
 function formatDateTime(value: unknown) {
 	const text = String(value || "").trim();
@@ -40,8 +75,8 @@ const htmlSummaryLine = [
 
 <MainGridLayout
 	immersiveLayout={true}
-	title="AIOS HTML 成品"
-	description="AIOS 最新日报 HTML 成品详情页"
+	title={String(reportTitle)}
+	description="AIOS 日报 HTML 成品详情页，支持按日期和时间切换历史日报"
 >
 	<script>
 		import("../../../scripts/right-sidebar-layout.js");
@@ -51,9 +86,9 @@ const htmlSummaryLine = [
 		<section class="module-hero newsroom-detail-hero">
 			<div class="module-copy">
 				<p class="module-eyebrow">AIOS / HTML 成品</p>
-				<h1 class="module-title">{report.report_title || "AIOS HTML 成品"}</h1>
+				<h1 class="module-title">{reportTitle}</h1>
 				<p class="module-subtitle">
-					{report.report_subtitle || "Latest report HTML"}
+					{reportSubtitle}
 				</p>
 				<p class="module-description">
 					这里保留最终日报的完整 HTML 展示。主页面已经不再嵌它，这一页专门负责详细查看成品。
@@ -64,9 +99,9 @@ const htmlSummaryLine = [
 						<Icon name="mdi:arrow-left" class="text-[1.05rem]" />
 						<span>返回 AIOS 展示页</span>
 					</a>
-					<a href="/api/lab/aios/report.html" class="newsroom-detail-action">
+					<a href={selectedReportHtmlUrl} class="newsroom-detail-action">
 						<Icon name="mdi:open-in-new" class="text-[1.05rem]" />
-						<span>独立打开原始 HTML</span>
+						<span>独立打开当前 HTML</span>
 					</a>
 				</div>
 			</div>
@@ -82,19 +117,60 @@ const htmlSummaryLine = [
 					</p>
 				</div>
 				<span class="module-panel-badge">
-					{report.date_label || "Latest Report"}
+					{reportDateLabel}
 				</span>
 			</div>
 
 			<div class="newsroom-detail-meta">
 				<span>{htmlSummaryLine || "当前版本日报"}</span>
-				<span>{formatDateTime(report.generated_at)}</span>
+				<span>{formatDateTime(reportGeneratedAt)}</span>
+				<span>{reportHistory.length} 份历史日报</span>
 			</div>
+
+			{
+				reportHistory.length > 0 && (
+					<form class="newsroom-detail-picker" method="get">
+						<div class="newsroom-detail-picker__label">
+							<Icon name="mdi:calendar-clock-outline" class="text-[1rem]" />
+							<span>选择日报时间</span>
+						</div>
+						<div class="newsroom-detail-picker__controls">
+							<select
+								name="report"
+								class="newsroom-detail-picker__select"
+								onchange="this.form.submit()"
+							>
+								{reportGroups.map((group) => (
+									<optgroup label={group.dateLabel}>
+										{group.entries.map((entry) => (
+											<option
+												value={entry.reportId}
+												selected={entry.reportId === selectedReportId}
+											>
+												{`${entry.timeLabel} · ${entry.reportTitle}`}
+											</option>
+										))}
+									</optgroup>
+								))}
+							</select>
+							<button type="submit" class="newsroom-detail-picker__button">
+								查看
+							</button>
+							<a href="/lab/aios-newsroom/report/" class="newsroom-detail-picker__latest">
+								最新一份
+							</a>
+						</div>
+						<p class="newsroom-detail-picker__hint">
+							同一天如果多次生成日报，会按具体时间列出。选择后页面会切换到对应的历史 HTML。
+						</p>
+					</form>
+				)
+			}
 
 			<div class="newsroom-detail-frame">
 				<iframe
-					src="/api/lab/aios/report.html"
-					title="AIOS latest report"
+					src={selectedReportHtmlUrl}
+					title={String(reportTitle || "AIOS report")}
 					loading="eager"
 				/>
 			</div>
@@ -176,6 +252,63 @@ const htmlSummaryLine = [
 		font-size: 0.88rem;
 	}
 
+	.newsroom-detail-picker {
+		margin-bottom: 1rem;
+		padding: 1rem;
+		border-radius: 1.1rem;
+		border: 1px solid var(--newsroom-action-border);
+		background: var(--newsroom-action-bg);
+	}
+
+	.newsroom-detail-picker__label {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin-bottom: 0.75rem;
+		color: var(--newsroom-action-text);
+		font-weight: 600;
+	}
+
+	.newsroom-detail-picker__controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+	}
+
+	.newsroom-detail-picker__select {
+		flex: 1 1 18rem;
+		min-width: 16rem;
+		padding: 0.8rem 0.9rem;
+		border-radius: 0.9rem;
+		border: 1px solid var(--newsroom-action-border);
+		background: rgba(255, 255, 255, 0.9);
+		color: #0f172a;
+		font: inherit;
+	}
+
+	.newsroom-detail-picker__button,
+	.newsroom-detail-picker__latest {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.78rem 1rem;
+		border-radius: 0.9rem;
+		border: 1px solid var(--newsroom-action-border);
+		background: var(--newsroom-action-bg);
+		color: var(--newsroom-action-text);
+		font: inherit;
+		text-decoration: none;
+		cursor: pointer;
+	}
+
+	.newsroom-detail-picker__hint {
+		margin: 0.75rem 0 0;
+		color: var(--newsroom-muted);
+		font-size: 0.9rem;
+		line-height: 1.6;
+	}
+
 	.newsroom-detail-frame {
 		padding: 0.55rem;
 		border-radius: 1.45rem;
@@ -201,6 +334,21 @@ const htmlSummaryLine = [
 		.newsroom-detail-action {
 			width: 100%;
 			justify-content: center;
+		}
+
+		.newsroom-detail-picker__controls {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.newsroom-detail-picker__select {
+			min-width: 0;
+			width: 100%;
+		}
+
+		.newsroom-detail-picker__button,
+		.newsroom-detail-picker__latest {
+			width: 100%;
 		}
 
 		.newsroom-detail-frame iframe {

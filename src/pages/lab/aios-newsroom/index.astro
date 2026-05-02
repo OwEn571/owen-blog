@@ -4,7 +4,10 @@ import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { render } from "astro:content";
 import { Icon } from "astro-icon/components";
 
-import { getAiosNewsroomSnapshot } from "../../../server/aios-newsroom";
+import {
+	getAiosNewsroomSnapshot,
+	listAiosNewsroomReports,
+} from "../../../server/aios-newsroom";
 import { getModulePosts } from "../../../utils/module-content-utils";
 import { getPostUrl } from "../../../utils/url-utils";
 
@@ -12,7 +15,10 @@ export const prerender = false;
 
 type AnyRecord = Record<string, any>;
 
-const snapshot = await getAiosNewsroomSnapshot();
+const [snapshot, reportHistory] = await Promise.all([
+	getAiosNewsroomSnapshot(),
+	listAiosNewsroomReports(120),
+]);
 const report = (snapshot.report as AnyRecord | null) || {};
 const reportMetrics = (report.metrics as AnyRecord | null) || {};
 const mcp = (snapshot.mcp as AnyRecord | null) || {};
@@ -100,6 +106,7 @@ async with streamablehttp_client("${mcpServerUrl}") as (read, write, _):
 	title="AIOS Newsroom"
 	description="AIOS Newsroom 的正式项目展示页"
 >
+	<script is:inline src="/scripts/mermaid-runtime.js" defer></script>
 	<script>
 		import("../../../scripts/right-sidebar-layout.js");
 	</script>
@@ -185,11 +192,15 @@ async with streamablehttp_client("${mcpServerUrl}") as (read, write, _):
 					</div>
 					<h3 class="module-panel-title">HTML 成品</h3>
 					<p class="module-panel-copy">
-						展示时优先看最终日报 HTML。首页不再直接嵌入 iframe，点击后进入二级界面再完整浏览。
+						展示时优先看最终日报 HTML。首页不再直接嵌入 iframe，点击后进入二级界面再完整浏览，也支持按日期切换历史日报。
 					</p>
 					<div class="newsroom-panel-stats">
 						<span>{htmlSummaryLine || "当前版本日报"}</span>
-						<span>{formatDateTime(report.generated_at)}</span>
+						<span>
+							{reportHistory.length > 0
+								? `${reportHistory.length} 份历史日报`
+								: formatDateTime(report.generated_at)}
+						</span>
 					</div>
 					<span class="module-panel-link">
 						打开成品详情

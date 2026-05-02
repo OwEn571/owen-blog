@@ -5,12 +5,12 @@ import { getAiosNewsroomReportHtml } from "../../../../server/aios-newsroom";
 
 export const prerender = false;
 
-export const GET: APIRoute = async () => {
-	const report = await getAiosNewsroomReportHtml();
+export const GET: APIRoute = async ({ url }) => {
+	const report = await getAiosNewsroomReportHtml(url.searchParams.get("report"));
 	return new Response(
 		report.ok
 			? injectAiosIframeTheme(report.html, "report")
-			: `<main style="font-family:system-ui;padding:2rem;line-height:1.7"><h1>AIOS Report Unavailable</h1><p>${report.error || "Latest report HTML is unavailable."}</p></main>`,
+			: `<main style="font-family:system-ui;padding:2rem;line-height:1.7"><h1>AIOS Report Unavailable</h1><p>${report.error || "Requested report HTML is unavailable."}</p></main>`,
 		{
 			status: report.ok ? 200 : report.status,
 			headers: {
