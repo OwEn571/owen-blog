@@ -9,7 +9,7 @@ export const prerender = false;
 const snapshot = await getZoteroPaperRagSnapshot();
 
 const statusLine = snapshot.available
-	? "Zotero Paper Agent V2 在线"
+	? "Zotero Paper Agent V5 在线"
 	: snapshot.error || "Zotero Paper Agent service unavailable";
 const indexedPapersLine = snapshot.indexedPapers
 	? `${snapshot.indexedPapers} 篇论文已入库`
@@ -57,7 +57,7 @@ const corpusDocsLine = snapshot.corpusDocs
 			<div class="module-content-head">
 				<div>
 					<p class="module-stream-label">Live Console</p>
-					<h2 class="module-content-title">Paper Agent V2</h2>
+					<h2 class="module-content-title">Paper Agent V5</h2>
 					<p class="module-content-description">
 						博客里的 iframe 走代理入口，这样静态资源和流式接口都会稳定落在同一个站点域名下。
 					</p>

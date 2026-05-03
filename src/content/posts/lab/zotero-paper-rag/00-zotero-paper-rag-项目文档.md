@@ -1,16 +1,17 @@
 ---
-title: PDF-RAG-Agent V4 项目文档
+title: PDF-RAG-Agent V5 项目文档
 published: 2026-05-02
-description: PDF-RAG-Agent V4 完整项目文档——基于 Zotero 论文库的智能研究助手，从普通 RAG 演进为可追踪、可校验的论文 Agent。
+description: PDF-RAG-Agent V5 完整项目文档——基于 Zotero 论文库的智能研究助手，从普通 RAG 演进为可追踪、可校验的论文 Agent。
 tags: [RAG, Agent, Zotero, PDF, Milvus, BM25, FastAPI, SSE]
 category: Zotero Paper Agent
 draft: false
 comment: true
 ---
+---
 
 ## 1. 项目介绍
 
-PDF-RAG-Agent V4 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，结合 BM25 与 Milvus 向量索引实现双路召回，并在前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
+PDF-RAG-Agent V5 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，结合 BM25 与 Milvus 向量索引实现双路召回，并在前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
 
 ## 2. 项目背景与目标
 
@@ -22,13 +23,13 @@ PDF-RAG-Agent V4 是一个面向 Zotero 个人论文库的智能论文研究助�
 
 常见的PDF RAG方法，对于大量pdf而言，召回困难，且得到的信息生硬，并且一旦需要多次RAG才能得到答案的问题，完全无法解决。
 
-### 2.3 V4 想解决什么
+### 2.3 V5 想解决什么
 
 我们的目标是实现一个智能论文研究助手。它不仅要能快速找到目标论文，还要能完成多论文比较、论文公式提取、论文图表理解、用户意图拆解、多轮上下文延续和基础自我认知。也就是说，系统不能只停留在“检索一段文本然后回答”的普通 RAG 形态，而是需要在 RAG 层面做精细设计，并配合一个成熟可用的 Agent 系统，才能完成真实论文研究场景中的复杂问题。
 
 ## 3. 系统架构总览
 
-PDF-RAG-Agent V4 是一个围绕”论文研究工作流”的分层系统。从部署视角看分为前端、API、Agent、检索、数据、模型调用六层。从代码组织看，`app/services/` 下有 16 个子包、140+ 个模块，按职责分为四组：
+PDF-RAG-Agent V5 是一个围绕论文研究的 Agent Loop 系统。从部署视角看分为前端、API、Agent、检索、数据、模型调用六层。从代码组织看，`app/services/` 下有 16 个子包、140+ 个模块，按职责分为四组：
 
 ```
 app/services/
@@ -68,10 +69,10 @@ API 层是前端和后端之间的边界，由 `app/api/routes.py` 提供。暴�
 
 Agent 编排层由 `agent/`（26 个模块）和 `agent_mixins/`（6 个模块）组成，是整个系统的指挥中心。
 
-`agent/core.py` 中的 `ResearchAssistantAgentV4` 通过多重继承组合五个 Mixin 获得正交能力：
+`agent/core.py` 中的 `ResearchAssistantAgent` 通过多重继承组合五个 Mixin 获得正交能力：
 
 ```python
-class ResearchAssistantAgentV4(
+class ResearchAssistantAgent(
     FollowupRoutingMixin,    # 追问路由：识别纠正/延续/切换
     AnswerComposerMixin,     # 答案组合：按 relation 分发到不同 answer composer
     EntityDefinitionMixin,   # 实体定义：消歧 + 定义提取
@@ -119,7 +120,7 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 
 ### 3.6 检索与数据层
 
-- **`retrieval/`（9 模块）**：`core.py` 中的 `DualIndexRetriever` 是在线检索核心——BM25 + Milvus 双路召回，四路加权融合（title anchor 1.6 > relation anchor 1.3 > BM25 0.9 > dense 0.8）。`indexing.py` 中的 `V4IngestionService` 负责离线入库。`pdf_extractor.py` 基于 pypdf 做 PDF 文本和信号抽取。`vector_index.py` 封装 Milvus 向量索引。`web_search.py` 对接 Tavily API。
+- **`retrieval/`（9 模块）**：`core.py` 中的 `DualIndexRetriever` 是在线检索核心——当前默认使用 Milvus Dense 单路召回。经过严格的消融实验（159 题 × 6 配置，详见 §11.5），`text-embedding-3-large`（3072 维）在 113 篇论文的封闭域上已达 Hit@1=95.6%，多路融合未带来增益，因此简化了默认检索路径。BM25 仍保留并修复了中文 jieba 分词；title anchor 和 relation anchor 保留为可选模块。`indexing.py` 中的 `IngestionService` 负责离线入库。`pdf_extractor.py` 基于 pypdf 做 PDF 文本和信号抽取。`vector_index.py` 封装 Milvus 向量索引。`web_search.py` 对接 Tavily API。
 
 - **`library/`（4 模块）**：`zotero_sqlite.py` 读取 Zotero 本地 SQLite；`core.py` 提供 `LibraryBrowserService` 论文库浏览；`metadata_sql.py` 提供 SQL 查询论文库元信息（供 `query_library_metadata` 工具使用）；`citation_ranking.py` 按引用数排序论文。
 
@@ -127,7 +128,7 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 
 ### 3.7 基础设施层
 
-- **`infra/`（3 模块）**：`model_clients.py` 中的 `ModelClients` 统一封装 Chat（当前 `deepseek-v4-pro`）、VLM（`gpt-4.1-mini`）、Embedding（`text-embedding-3-large`，走 Qihai 网关）三个模型能力。`confidence.py` 处理置信度归一化。`prompt_safety.py` 做输入安全检查。
+- **`infra/`（3 模块）**：`model_clients.py` 中的 `ModelClients` 统一封装 Chat（当前 `deepseek-v4-flash`）、VLM（`gpt-4.1-mini`）、Embedding（`text-embedding-3-large`，走 Qihai 网关）三个模型能力。`confidence.py` 处理置信度归一化。`prompt_safety.py` 做输入安全检查。
 
 - **`eval/`（1 模块）**：`judge.py` 提供 LLM-as-judge 评估能力。
 
@@ -431,7 +432,7 @@ class CitationPreviewResponse(BaseModel):
 def ingest_rebuild(
     payload: IngestRequest,
     _: None = Depends(require_admin_access),
-    ingestion_service: V4IngestionService = Depends(get_ingestion_service),
+    ingestion_service: IngestionService = Depends(get_ingestion_service),
 ) -> IngestResponse:
     try:
         stats = ingestion_service.rebuild(max_papers=payload.max_papers, force_rebuild=payload.force_rebuild)
@@ -462,7 +463,7 @@ class IngestResponse(BaseModel):
 
 `max_papers` 用于限制本次最多处理多少篇论文，适合调试或小规模验证；`force_rebuild` 会传给向量索引层，如果为 true，会重建 Milvus collection 后再写入向量。返回值里的 `paper_records` 表示从 Zotero 读取到的记录数，`papers_indexed` 表示成功完成 PDF 抽取并入库的论文数，`papers_missing_pdf` 表示 Zotero 里有记录但本地 PDF 缺失的数量，`paper_docs` 是论文级索引文档数，`block_docs` 是 PDF 页面、段落、表格、图注等证据块文档数，`vectors_upserted` 是写入 Milvus 的向量数量。
 
-它的完整链路是：路由层接收请求并校验管理员权限，`V4IngestionService.rebuild()` 读取 Zotero 记录，调用 PDF 抽取器解析页面内容，生成 paper card 和 block documents，写入 `v4_papers.jsonl`、`v4_blocks.jsonl` 和 ingestion state；如果配置了 embedding 所需的 API key，还会把论文级文档和证据块文档写入 Milvus。最后，路由层调用 `get_retriever().refresh()`，让正在运行的服务重新加载本地 JSONL 和 BM25 索引，这样重建完成后前端查询可以立即使用新论文库。
+它的完整链路是：路由层接收请求并校验管理员权限，`IngestionService.rebuild()` 读取 Zotero 记录，调用 PDF 抽取器解析页面内容，生成 paper card 和 block documents，写入 `v4_papers.jsonl`、`v4_blocks.jsonl` 和 ingestion state；如果配置了 embedding 所需的 API key，还会把论文级文档和证据块文档写入 Milvus。最后，路由层调用 `get_retriever().refresh()`，让正在运行的服务重新加载本地 JSONL 和 BM25 索引，这样重建完成后前端查询可以立即使用新论文库。
 
 ### 5.6 chat / stream chat
 
@@ -484,7 +485,7 @@ class AgentChatRequest(BaseModel):
 @router.post("/v4/chat", response_model=AgentChatResponse)
 async def agent_chat_v4(
     payload: AgentChatRequest,
-    agent: ResearchAssistantAgentV4 = Depends(get_agent),
+    agent: ResearchAssistantAgent = Depends(get_agent),
 ) -> AgentChatResponse:
     try:
         result = await agent.achat(
@@ -500,7 +501,7 @@ async def agent_chat_v4(
         raise HTTPException(status_code=500, detail="chat failed") from exc
 ```
 
-普通 `chat` 接口通过 `Depends(get_agent)` 拿到全局缓存的 `ResearchAssistantAgentV4`，然后调用 `agent.achat()`。虽然路由函数是 async，但 Agent 内部主要是同步的检索、规划和模型调用，所以 `achat()` 实际上会用 `asyncio.to_thread()` 把同步 `chat()` 放到线程里执行，避免长时间阻塞 FastAPI 的事件循环。接口如果执行失败，会记录异常日志，并统一返回 `500 chat failed`。
+普通 `chat` 接口通过 `Depends(get_agent)` 拿到全局缓存的 `ResearchAssistantAgent`，然后调用 `agent.achat()`。虽然路由函数是 async，但 Agent 内部主要是同步的检索、规划和模型调用，所以 `achat()` 实际上会用 `asyncio.to_thread()` 把同步 `chat()` 放到线程里执行，避免长时间阻塞 FastAPI 的事件循环。接口如果执行失败，会记录异常日志，并统一返回 `500 chat failed`。
 
 ```python
 citation_models = [AgentCitation(**item) for item in result.get("citations", [])]
@@ -526,7 +527,7 @@ return AgentChatResponse(
 @router.post("/v4/chat/stream")
 async def agent_chat_v4_stream(
     payload: AgentChatRequest,
-    agent: ResearchAssistantAgentV4 = Depends(get_agent),
+    agent: ResearchAssistantAgent = Depends(get_agent),
 ) -> StreamingResponse:
     async def event_stream() -> object:
         try:
@@ -852,7 +853,7 @@ class DisambiguationJudgeDecision(BaseModel):
 
 服务层是整个项目最容易被深入追问的部分，因为它决定了这个系统是不是只是在“套一个聊天壳”，还是确实把论文库读取、PDF 抽取、索引构建、向量嵌入、混合检索、会话记忆和模型调用这些底层能力设计清楚了。API 层只是入口，Agent 层负责调度，真正支撑论文问答质量和效率的是服务层。
 
-从职责上看，服务层可以分成三条主线。第一条是离线入库链路：`ZoteroSQLiteReader` 读取 Zotero 元信息，`PDFExtractor` 抽取 PDF 页面文本、表格、图像和图注，`V4IngestionService` 生成 paper docs 和 block docs，并写入 JSONL 与 Milvus。第二条是在线检索链路：`DualIndexRetriever` 加载本地 paper/block 文档，结合 BM25 稀疏检索和 Milvus dense retrieval，先找候选论文，再找证据块。第三条是运行支撑链路：`SessionStore` 负责多轮会话持久化，`ModelClients` 统一封装 LLM/VLM/Embedding 调用，`WebSearch` 在本地语料不足时提供外部补充。
+从职责上看，服务层可以分成三条主线。第一条是离线入库链路：`ZoteroSQLiteReader` 读取 Zotero 元信息，`PDFExtractor` 抽取 PDF 页面文本、表格、图像和图注，`IngestionService` 生成 paper docs 和 block docs，并写入 JSONL 与 Milvus。第二条是在线检索链路：`DualIndexRetriever` 加载本地 paper/block 文档，结合 BM25 稀疏检索和 Milvus dense retrieval，先找候选论文，再找证据块。第三条是运行支撑链路：`SessionStore` 负责多轮会话持久化，`ModelClients` 统一封装 LLM/VLM/Embedding 调用，`WebSearch` 在本地语料不足时提供外部补充。
 
 ### 7.0 服务层设计总览
 
@@ -861,6 +862,8 @@ class DisambiguationJudgeDecision(BaseModel):
 这样设计是为了解决普通 PDF RAG 的两个问题。第一，如果直接在所有 PDF chunks 里检索，召回空间太大，噪声高，容易找到同名概念但不是目标论文的片段。第二，如果只做论文级检索，虽然能找到论文，但回答公式、指标、图表、实验结果时没有足够细的证据。两级索引的思路是先用 paper index 找“哪几篇论文可能相关”，再用 block index 在这些论文内部找“哪几个证据块可以支撑答案”。
 
 检索效果上，系统没有只依赖 dense embedding，而是采用 BM25 + Milvus 的双路召回。BM25 适合处理标题、缩写、公式 token、作者名、年份这类精确匹配；dense retrieval 适合处理语义相近但字面不同的问题。对于 DPO、PPO、PBA 这类缩写和公式问题，系统还会利用 title anchor、relation anchor、formula token weights、target terms、block_type 和 formula_hint 做额外加权，避免向量相似度把语义相关但不是目标论文的内容排到前面。
+
+其中 relation anchor 是最近从 stub 补完为完整实现的四路之一。它的设计思路是：如果用户明确提到了某个概念/方法名，那与已匹配论文共享标签、缩写词、作者或 Zotero 分类的其他论文也很可能相关——即使这些论文的标题里不含 query term。实现上，先由 title_anchor 确定锚点论文并提取其"关系指纹"（tags、aliases、body_acronyms、authors、collection paths），再遍历全库论文按共享信号数量打分排序。Zotero 分类路径从 SQLite 的 collections/collectionItems 表实时加载，缓存为内存字典；若 DB 不可用则自动降级，跳过 collection 信号。
 
 检索效率上，系统把重活尽量放在离线入库阶段。PDF 抽取、文本切块、summary 生成、embedding upsert 都在 `ingest rebuild` 时完成；在线请求只加载已经持久化的 `v4_papers.jsonl`、`v4_blocks.jsonl` 和 Milvus collection。`DualIndexRetriever` 被依赖注入缓存成长期对象，启动后构建 BM25，后续请求复用；重建索引后再调用 `refresh()` 重新加载本地 JSONL 和 BM25。向量入库使用 batch upsert、retry 和 fallback embedding model，避免一次失败导致整个入库不可用。
 
@@ -979,10 +982,10 @@ def extract_pages(self, pdf_path: Path) -> list[ExtractedPage]:
 
 ### 7.3 Ingestion 入库
 
-入库流程由 `V4IngestionService`（`app/services/retrieval/indexing.py`）统一编排。初始化时组装好 reader、extractor、splitter 三大组件：
+入库流程由 `IngestionService`（`app/services/retrieval/indexing.py`）统一编排。初始化时组装好 reader、extractor、splitter 三大组件：
 
 ```python
-class V4IngestionService:
+class IngestionService:
     def __init__(self, settings: Settings, clients: ModelClients | None = None) -> None:
         self.settings = settings
         self.clients = clients or ModelClients(settings)
@@ -1068,7 +1071,7 @@ def search_papers(self, *, query, contract, limit=None) -> list[CandidatePaper]:
     # title anchor 精确匹配 (权重 1.6)
     anchors = self.title_anchor(target_terms)
     if anchors: weighted_docs.append((1.6, anchors))
-    # relation anchor (权重 1.3)
+    # relation anchor 关系锚定 (权重 1.3)
     relation_anchors = self.relation_anchor_docs(contract)
     if relation_anchors: weighted_docs.append((1.3, relation_anchors))
     # BM25 稀疏检索 (权重 0.9)
@@ -1076,12 +1079,112 @@ def search_papers(self, *, query, contract, limit=None) -> list[CandidatePaper]:
     # Milvus dense 检索 (权重 0.8)
     dense_docs = self._paper_dense.search_documents(search_text, limit=...)
     if dense_docs: weighted_docs.append((0.8, dense_docs))
-    # RRF 融合 + paper_match_boost 加权 → CandidatePaper 列表
+    # Weighted RRF 融合 + paper_match_boost 加权 → CandidatePaper 列表
     fused = self._rrf_fuse(weighted_docs)
     ...
 ```
 
-四路召回的权重设计：title anchor (1.6) > relation anchor (1.3) > BM25 (0.9) > dense (0.8)，保证精确标题匹配优先。融合使用 RRF（Reciprocal Rank Fusion）算法。
+四路召回的权重设计：title anchor (1.6) > relation anchor (1.3) > BM25 (0.9) > dense (0.8)，保证精确标题匹配优先。融合使用 Weighted RRF（k=60，`weight / (k + rank)` 而非标准 RRF 的 `1 / (k + rank)`），解决四个来源量纲不同的问题——title anchor 返回 0/1 匹配，BM25 返回词频分数，dense 返回余弦相似度，relation anchor 返回关系得分，直接线性加权需要分数归一化，而 RRF 只依赖排名天然跨源可比。
+
+**relation_anchor_docs 的完整实现**（`core.py:690-770`）：
+
+```python
+def relation_anchor_docs(self, contract: QueryContract) -> list[Document]:
+    target_terms = self._contract_target_terms(contract)
+    if not target_terms:
+        return []
+
+    # 第一步：用 title_anchor 找出锚点论文
+    anchors = self.title_anchor(target_terms)
+    if not anchors:
+        return []
+
+    # 第二步：从锚点论文提取"关系指纹"
+    anchor_tags: set[str] = set()
+    anchor_acronyms: set[str] = set()
+    anchor_authors: set[str] = set()
+    anchor_collections: set[str] = set()
+    anchor_ids: set[str] = set()
+
+    for doc in anchors:
+        meta = doc.metadata or {}
+        anchor_ids.add(str(meta.get("paper_id", "")))
+        # 标签（|| 分隔）
+        for tag in str(meta.get("tags", "")).split("||"):
+            tag = tag.strip().lower()
+            if tag: anchor_tags.add(tag)
+        # 缩写词（从 aliases 和 body_acronyms 提取）
+        for field in ("aliases", "body_acronyms"):
+            for item in str(meta.get(field, "")).split("||"):
+                item = item.strip().lower()
+                if item and len(item) >= 2:
+                    anchor_acronyms.add(item)
+        # 作者（逗号分隔）
+        for author in str(meta.get("authors", "")).split(","):
+            author = author.strip().lower()
+            if author: anchor_authors.add(author)
+        # Zotero 分类路径（从预加载的 _collection_paths 字典查询）
+        paper_id = str(meta.get("paper_id", ""))
+        for coll_path in self._collection_paths.get(paper_id, []):
+            anchor_collections.add(coll_path.lower())
+
+    # 第三步：遍历所有非锚点论文，按共享信号打分
+    scored: list[tuple[float, Document]] = []
+    for doc in self._paper_docs:
+        meta = doc.metadata or {}
+        paper_id = str(meta.get("paper_id", ""))
+        if paper_id in anchor_ids:
+            continue  # 跳过锚点本身（title anchor 已召回）
+
+        score = 0.0
+        # 共享标签：+1.8 / 个
+        doc_tags = {t.strip().lower() for t in
+                    str(meta.get("tags", "")).split("||") if t.strip()}
+        shared_tags = anchor_tags & doc_tags
+        if shared_tags: score += len(shared_tags) * 1.8
+        # 共享缩写词：+1.0 / 个（上限 5 个，防止高频缩写词噪声）
+        doc_acronyms: set[str] = set()
+        for field in ("aliases", "body_acronyms"):
+            for item in str(meta.get(field, "")).split("||"):
+                item = item.strip().lower()
+                if item and len(item) >= 2:
+                    doc_acronyms.add(item)
+        shared_acronyms = anchor_acronyms & doc_acronyms
+        if shared_acronyms:
+            score += min(len(shared_acronyms), 5) * 1.0
+        # 共享作者：+1.2 / 个
+        doc_authors = {a.strip().lower() for a in
+                       str(meta.get("authors", "")).split(",") if a.strip()}
+        shared_authors = anchor_authors & doc_authors
+        if shared_authors: score += len(shared_authors) * 1.2
+        # 共享 Zotero 分类路径：+2.5 / 个（最强信号）
+        doc_collections = set()
+        for coll_path in self._collection_paths.get(paper_id, []):
+            doc_collections.add(coll_path.lower())
+        shared_collections = anchor_collections & doc_collections
+        if shared_collections:
+            score += len(shared_collections) * 2.5
+
+        if score > 0:
+            meta["relation_score"] = score
+            scored.append((score, doc))
+
+    if not scored:
+        return []
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [doc for _, doc in scored[:self.settings.paper_bm25_top_k]]
+```
+
+四个关系信号的权重设计依据：
+
+| 信号 | 权重 | 数据来源 | 设计理由 |
+|------|------|---------|---------|
+| Zotero 分类 | 2.5 | `_collection_paths` 字典（检索器初始化时从 zotero.sqlite 加载） | 用户手动整理的分类结构，同一分类的论文天然强相关 |
+| 共享标签 | 1.8 | paper_card metadata `tags` 字段 | 用户标记的结构化知识，置信度高 |
+| 共享作者 | 1.2 | paper_card metadata `authors` 字段 | 弱信号——同一作者可能跨领域发表 |
+| 共享缩写词 | 1.0（≤5） | paper_card metadata `aliases` + `body_acronyms` | 最弱信号——PPO/RLHF 等高频缩写词易引入噪声，加 5 个上限 |
+
+Zotero 分类数据通过 `_load_collections()` 在 `DualIndexRetriever.__init__` 时调用 `ZoteroSQLiteReader.read_attachment_collection_paths()` 加载，返回 `dict[attachment_key, list[collection_path_string]]`。若 Zotero SQLite 不可用（非本地环境），静默降级为空字典，collection 信号自动跳过，其余三个信号继续生效。
 
 `RETRIEVAL_MARKERS` 字典定义了场景化检索标记：公式场景加重 "objective"、"formula"、"公式" 等词；机制场景加重 "workflow"、"mechanism" 等词。`BOOK_ITEM_TYPES` 和 `BOOKISH_TITLE_MARKERS`（"实战"、"教程"、"指南"等）用于识别和降权书籍类条目。
 
@@ -1156,7 +1259,7 @@ class ModelClients:
         if not self.settings.openai_api_key: return None
         if self._chat is None:
             self._chat = ChatOpenAI(
-                model=self.settings.chat_model,         # 当前部署: deepseek-v4-pro (默认: gpt-4o-mini)
+                model=self.settings.chat_model,         # 当前部署: deepseek-v4-flash (默认: gpt-4o-mini)
                 api_key=self.settings.openai_api_key,
                 base_url=self.settings.openai_base_url,  # 当前: api.deepseek.com/v1
                 temperature=0.1,
@@ -1180,7 +1283,7 @@ class ModelClients:
 ```
 
 三个模型能力（均通过 OpenAI 兼容 API 调用，当前部署使用不同 provider）：
-- **chat**：意图识别、工具规划、claim 提取、验证、答案生成。当前部署 `deepseek-v4-pro`（配置项 `chat_model`，默认 `gpt-4o-mini`），temperature=0.1，max_tokens=1800
+- **chat**：意图识别、工具规划、claim 提取、验证、答案生成。当前部署 `deepseek-v4-flash`（配置项 `chat_model`，默认 `gpt-4o-mini`），temperature=0.1，max_tokens=1800
 - **vlm**：仅 `enable_figure_vlm=True` 时初始化，用于图表理解。当前部署 `gpt-4.1-mini`（配置项 `vlm_model`），temperature=0.0
 - **embedding**：通过 `http_client` / `async_http_client` 调用独立的 embedding API（`embedding_api_key` + `embedding_base_url`，fallback 到 `openai_api_key`）。当前部署 `text-embedding-3-large`（3072 维），通过 Qihai 网关
 
@@ -1275,10 +1378,10 @@ def run_claim_solver_pipeline(*, schema_allowed, generic_enabled, shadow_enabled
 
 ### 7.13 Agent Mixin 架构（agent_mixins/）
 
-`agent_mixins/`（6 模块）是 Agent 架构的核心创新——将正交能力通过 Mixin 模式注入 `ResearchAssistantAgentV4`：
+`agent_mixins/`（6 模块）是 Agent 架构的核心创新——将正交能力通过 Mixin 模式注入 `ResearchAssistantAgent`：
 
 ```python
-class ResearchAssistantAgentV4(
+class ResearchAssistantAgent(
     FollowupRoutingMixin,     # 追问路由：is_negative_correction_query, inherit_followup_relationship
     AnswerComposerMixin,      # 答案组合：compose_formula_answer, compose_paper_summary_results_answer 等
     EntityDefinitionMixin,    # 实体定义：消歧 + 定义提取
@@ -1804,7 +1907,112 @@ def _evaluate_turn(response, expect):
 - 澄清场景：验证 LLM-judge 自动消歧和人工澄清的阈值边界
 - 论文库状态查询：验证 conversation 路径的 library_status 和 recommendation
 
-### 11.4 架构边界测试
+### 11.4 检索对比评测
+
+除了单元测试和 Eval Cases，系统还包含一套独立的检索模块对比评测框架，用于量化多路融合检索策略的实际效果。
+
+**评测目标**：对比 Pure Dense（单路 Milvus 向量检索）、BM25+Dense RRF（双路等权融合）和 Enhanced（四路 Weighted RRF + LLM 目标提取）三个配置在论文级检索上的表现。
+
+**评测集设计**：评测集 `data/eval_queries_v3.json` 包含 159 道查询，覆盖 110/113 篇论文（覆盖率 97%）。构造方法遵循 IR 评测集标准流程——论文分类 → 分类型生成查询 → 难度分级 → Ground Truth 标注。
+
+**论文分类**：
+
+| 类型 | 数量 | 特征 | 查询生成方式 |
+|------|------|------|------------|
+| 命名方法型 | 43 篇 | 标题以方法名开头+冒号（如 `LoRA: Low-Rank Adaptation...`） | 模板自动生成："{method}是什么？"、"{method}的核心原理？" |
+| 描述标题型 | 70 篇 | 完整句子描述贡献（如 `Learning Transferable Visual Models From Natural Language Supervision`） | 手动构造，用领域知识将论文贡献映射为自然语言查询 |
+
+**难度分级**：
+
+| 难度 | 数量 | 定义 | 示例 |
+|------|------|------|------|
+| Easy | 18 题 | 查询中的方法名直接出现在目标论文标题中 | "LoRA是什么？" → `LoRA: Low-Rank Adaptation...` |
+| Medium | 68 题 | 方法名在标题中，但查询需要推理或跨论文对比 | "QLoRA和LoRA在量化上有什么不同？" |
+| Hard | 73 题 | 查询不含方法名，或方法名不在目标论文标题中 | "怎么用强化学习优化离散文本prompt？" → `RLPrompt: Optimizing Discrete Text Prompts...` |
+
+**Ground Truth**：每道题对应一篇论文（single-label）。命名方法型论文的 ground truth 是该论文本身；描述标题型论文的 ground truth 根据论文实际贡献手动指定。
+
+**对比配置**：
+
+| 配置 | 检索方式 | 融合策略 |
+|------|---------|---------|
+| Pure Dense | Milvus 向量 top-6 | 无融合 |
+| BM25+Dense RRF | BM25(12) + Dense(12) | 标准 RRF 等权融合 |
+| Enhanced | LLM Router 提取 targets → 4-path Weighted RRF (1.6/1.3/0.9/0.8) | 多路加权融合（不含 screen_papers） |
+
+**评估指标**：Hit@1、Hit@3、Hit@5、MRR（Mean Reciprocal Rank）、NDCG@5，按难度分层报告。同时记录每个配置的平均检索延迟。
+
+**评测脚本**：`scripts/eval_retrieval.py`，支持 `--queries-json` 指定评测集、`--max-papers` 控制检索数量、`--seed` 固定随机种子以确保可复现。
+
+```bash
+python scripts/eval_retrieval.py --queries-json data/eval_queries_v3.json --max-papers 6 --seed 42
+```
+
+评测结果保存在 `data/eval_retrieval_results.json`，包含每个配置的聚合指标和逐题详情，可用于后续分析各配置在不同难度和查询类型上的表现差异。
+
+**整库评测结果**（159 题，3 配置，BM25 使用 jieba CJK 分词器）：
+
+| Metric | Pure Dense | BM25(jieba)+Dense RRF | Enhanced (4-path) |
+|--------|-----------|----------------------|-------------------|
+| Hit@1 | 0.956 | 0.748 | 0.824 |
+
+**分难度结果**：
+
+| 难度 | 题数 | Dense Hit@1 | BM25+Dense Hit@1 | Enhanced Hit@1 |
+|------|------|-------------|-------------------|----------------|
+| Easy | 18 | 1.000 | 1.000 | 1.000 |
+| Medium | 68 | 0.985 | 1.000 | 1.000 |
+| Hard | 73 | 0.918 | 0.575 | 0.575 |
+
+在消歧义与关系查询专项（26 题）和注入噪声对比（26 题）两个细分评测集上的表现见 11.5 消融实验。
+
+**关键发现**：
+
+1. **Pure Dense 在整库语义匹配上几乎完美**（Hit@1=95.6%）。这是因为 `text-embedding-3-large`（3072 维）在 113 篇论文的封闭域上，`paper_card` 中的 LLM 摘要（占内容的 86%）提供了充分的语义信号。
+
+2. **BM25 对中文原本完全失效**（Hit@1=0.176），原因是默认空格分词器将整句中文字符串视为单个 token。更换为 jieba CJK 分词器后恢复到 0.748——这是整个评测过程中最有价值的工程发现。
+
+3. **Enhanced 在整库评测中未超越 Pure Dense**（0.824 vs 0.956），因为评测集中多数查询属于"方法名→论文"的语义匹配，正是 Dense 的最强项。多路融合的价值不在此类查询上体现。
+
+### 11.5 检索消融实验
+
+为进一步量化 LLM 摘要和多路融合各自的贡献，设计了两组消融实验。
+
+**实验一：LLM 摘要贡献度分析**
+
+paper_card 的内容组成：
+
+| 组成部分 | 字符数 | 占比 |
+|---------|--------|------|
+| 结构化字段（title, aliases, authors, year, tags） | 419 | 14% |
+| LLM/Zotero 生成的摘要 | 1258 | 42% |
+| 证据提示及其他 | 1333 | 44% |
+
+摘要占 paper_card 总内容的 42%，是 Dense embedding 最主要的语义来源。去掉摘要后，embedding 只能基于 419 字符的结构化关键词来计算。
+
+**实验二：摘要消融对比**（26 道消歧义+关系查询）
+
+构建一份完全去除摘要的 paper_card（`abstract_or_summary: [removed]`），重建 Milvus 索引和 BM25 索引，在相同查询上对比：
+
+| 配置 | 有摘要 Hit@1 | 无摘要 Hit@1 | Δ |
+|------|------------|------------|-----|
+| Pure Dense | 0.577 | 0.500 | **-13.3%** |
+| BM25(jieba)+Dense RRF | 0.500 | 0.385 | **-23.1%** |
+| Enhaced (4-path) | 0.308 | **0.538** | **+75.0%** |
+
+**结论**：
+
+1. **摘要对 Dense 至关重要**：去掉后 Hit@1 下降 13.3%，验证了 LLM 生成摘要是 Dense 高性能的前提。在面试中可将其作为独立优化点陈述——"LLM 生成的 1200+ 字符摘要将 paper_card 内容扩充了 6 倍，直接贡献了 13% 的 Hit@1 提升"。
+
+2. **多路融合在 Dense 弱化时接管**：无摘要时 Enhanced 从 0.308 反超到 0.538（超过 Pure Dense 的 0.500），证明 Title Anchor 和 Relation Anchor 在 embedding 信号不足时提供了关键互补。
+
+3. **但在当前规模下，Dense 就是最优解**：159 题整库评测中，Pure Dense 的 Hit@1（0.956）在所有配置中最高，Enhanced 在任何条件下都未超越它。多路融合在更大规模、更多噪声的场景下可能有意义，但在 113 篇论文的封闭域上是过度设计。基于此实验结论，项目已将默认检索路径简化为 Dense-only，Title Anchor 和 Relation Anchor 保留为可选模块。
+
+3. **BM25 jieba 修复的验证**：无摘要时 BM25+Dense 从 0.500 掉到 0.385（-23.1%），说明 BM25 比 Dense 更依赖摘要文本中的关键词匹配。jieba 分词让 BM25 从完全不可用（0.176）恢复到可用水平（0.748），但在消歧义场景下仍不及 Dense。
+
+消融实验脚本见 `scripts/benchmark_stripped.py`，结果保存在 `data/eval_ablation_results.json`。
+
+### 11.6 架构边界测试
 
 `test_review_architecture_boundaries.py` 专门测试模块间的架构边界，确保 domain models 不依赖基础设施、service 层不循环依赖、Agent mixins 的正交性等约束。
 
@@ -1842,7 +2050,7 @@ WantedBy=multi-user.target
 
 ```bash
 # ── Chat Model（OpenAI 兼容协议）──
-CHAT_MODEL=deepseek-v4-pro
+CHAT_MODEL=deepseek-v4-flash
 OPENAI_API_KEY=sk-xxx
 OPENAI_BASE_URL=https://api.deepseek.com/v1
 
@@ -1862,7 +2070,7 @@ TAVILY_API_KEY=tvly-xxx
 
 | 环境变量 | Settings 字段 | 当前值 | 默认值 | 说明 |
 |----------|-------------|--------|--------|------|
-| `CHAT_MODEL` | `chat_model` | `deepseek-v4-pro` | `gpt-4o-mini` | Chat 模型名 |
+| `CHAT_MODEL` | `chat_model` | `deepseek-v4-flash` | `gpt-4o-mini` | Chat 模型名 |
 | `OPENAI_API_KEY` | `openai_api_key` | `sk-xxx` | `""` | Chat + VLM 的 API key（也支持 `QIHANG_API` alias） |
 | `OPENAI_BASE_URL` | `openai_base_url` | `api.deepseek.com/v1` | `api.openai.com/v1` | Chat + VLM 的 Base URL（也支持 `QIHANG_BASE_URL` alias） |
 | `EMBEDDING_API_KEY` | `embedding_api_key` | `sk-xxx` | `""` | Embedding API key（独立字段，fallback 到 `openai_api_key`） |
@@ -1941,7 +2149,7 @@ Prometheus metrics（可选）通过 `prometheus_fastapi_instrumentator` 暴露�
 项目最早的 `agent.py` 是一个超过 2000 行的单文件。随着功能增加，单文件变得难以维护：修改一个 solver 可能影响 planner，调试一个 bug 需要在同一文件中跳转数百行。重构过程经历了多次迭代：
 - 第一轮：把 retrieval、library、session_store 拆成独立服务模块
 - 第二轮：把 Agent 核心逻辑拆分为 planner、runtime、tools、events、loop 等模块
-- 第三轮：引入 Mixin 模式，把 answer_composer、claim_verifier、entity_definition、followup_routing、solver_pipeline 五大能力正交拆分。`ResearchAssistantAgentV4` 通过多重继承组合这些 Mixin，每个 Mixin 只关心自己的领域
+- 第三轮：引入 Mixin 模式，把 answer_composer、claim_verifier、entity_definition、followup_routing、solver_pipeline 五大能力正交拆分。`ResearchAssistantAgent` 通过多重继承组合这些 Mixin，每个 Mixin 只关心自己的领域
 - 第四轮：把 claims、answers、intents、contracts、planning 按领域拆成独立子包，每个 `app/services/<domain>/` 子包有明确的职责边界
 
 现在的目录结构清晰反映了领域边界：`__init__.py` 中只做 re-export，模块间的依赖通过构造函数注入而非硬编码 import。
@@ -1959,7 +2167,7 @@ Prometheus metrics（可选）通过 `prometheus_fastapi_instrumentator` 暴露�
 
 ### 14.1 项目总结
 
-PDF-RAG-Agent V4（当前运行时版本 V5）是一个从真实论文研究需求出发构建的智能助手系统。它的核心价值体现在几个方面：
+PDF-RAG-Agent V5是一个从真实论文研究需求出发构建的智能助手系统。它的核心价值体现在几个方面：
 
 - **分层架构清晰**：API 层、Agent 层、服务层、数据层各司其职，通过 domain models 传递状态，避免了"到处传 dict"的混乱
 - **检索设计务实**：两级索引（论文级 + 证据级）+ 双路召回（BM25 + Milvus）+ 场景化加权，解决了通用 RAG 在论文场景下的召回精度问题

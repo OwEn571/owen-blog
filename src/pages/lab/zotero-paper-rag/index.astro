@@ -13,7 +13,7 @@ export const prerender = false;
 const snapshot = await getZoteroPaperRagSnapshot();
 
 const statusLine = snapshot.available
-  ? "Zotero Paper Agent V4 在线"
+  ? "Zotero Paper Agent V5 在线"
   : snapshot.error || "Zotero Paper Agent service unavailable";
 const indexedPapersLine = snapshot.indexedPapers
   ? `${snapshot.indexedPapers} 篇论文已入库`
@@ -59,7 +59,7 @@ const archiveLabel = overviewEntry?.data.category || overviewEntry?.data.title |
           把本地 Zotero 论文库接成一个真的能对话、检索、追证据的研究控制台。
         </p>
         <p class="module-description">
-          这个项目当前主线是 V4（运行时 V5）。它不再是固定工作流，而是把论文检索、证据筛选、歧义澄清、Web 兜底和最终写作都接进 Agent Loop。下方直接展开完整项目文档。
+          这个项目当前主线是 V5（运行时 V5）。它不再是固定工作流，而是把论文检索、证据筛选、歧义澄清、Web 兜底和最终写作都接进 Agent Loop。下方直接展开完整项目文档。
         </p>
 
         <div class="rag-project-actions">
@@ -72,7 +72,7 @@ const archiveLabel = overviewEntry?.data.category || overviewEntry?.data.title |
             class="rag-project-action"
           >
             <Icon name="mdi:open-in-new" class="text-[1.05rem]" />
-            <span>直接打开 V4 前端</span>
+            <span>直接打开 V5 前端</span>
           </a>
           {
             hasOverviewContent && (
@@ -106,7 +106,7 @@ const archiveLabel = overviewEntry?.data.category || overviewEntry?.data.title |
           </p>
         </div>
         <span class="module-panel-badge">
-          {snapshot.available ? "V4 Live" : "Needs Attention"}
+          {snapshot.available ? "V5 Live" : "Needs Attention"}
         </span>
       </div>
 
@@ -126,7 +126,7 @@ const archiveLabel = overviewEntry?.data.category || overviewEntry?.data.title |
             直接进入类 GPT 的聊天前端。问题、节点轨迹、候选论文、证据和引用在同一套界面里联动展示。
           </p>
           <div class="rag-project-stats">
-            <span>Paper Agent V4</span>
+            <span>Paper Agent V5</span>
             <span>Agent Loop + Citations</span>
           </div>
           <span class="module-panel-link">
@@ -205,14 +205,12 @@ const archiveLabel = overviewEntry?.data.category || overviewEntry?.data.title |
         <span class="module-panel-badge">{archiveLabel}</span>
       </div>
 
-      <div class="module-panel-grid">
+      <div class="rag-doc-card">
         {
           hasOverviewContent ? (
-            <article class="module-panel rag-doc-card">
-              <Markdown class="post-markdown-flow mb-6 markdown-content onload-animation">
-                <OverviewContent />
-              </Markdown>
-            </article>
+            <Markdown class="post-markdown-flow mb-6 markdown-content onload-animation">
+              <OverviewContent />
+            </Markdown>
           ) : (
             <div class="rag-empty-state">
               <h3>项目文档暂时不可用</h3>
