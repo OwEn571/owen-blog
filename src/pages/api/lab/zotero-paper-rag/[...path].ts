@@ -46,13 +46,13 @@ function copyResponseHeaders(source: Headers) {
 
 function buildChatConfigScript() {
 	return `<script>window.ZOTERO_AGENT_CONFIG=${JSON.stringify({
-		streamEndpoint: `${PROXY_PREFIX}/api/v1/v4/chat/stream`,
-		chatEndpoint: `${PROXY_PREFIX}/api/v1/v4/chat`,
-		healthEndpoint: `${PROXY_PREFIX}/api/v1/v4/health`,
-		libraryEndpoint: `${PROXY_PREFIX}/api/v1/v4/library`,
-		paperPreviewEndpoint: `${PROXY_PREFIX}/api/v1/v4/library/papers`,
-		citationPreviewEndpoint: `${PROXY_PREFIX}/api/v1/v4/citations/preview`,
-		sessionStorageKey: "zotero-paper-rag-v4-lab-session-id",
+		streamEndpoint: `${PROXY_PREFIX}/api/v1/chat/stream`,
+		chatEndpoint: `${PROXY_PREFIX}/api/v1/chat`,
+		healthEndpoint: `${PROXY_PREFIX}/api/v1/health`,
+		libraryEndpoint: `${PROXY_PREFIX}/api/v1/library`,
+		paperPreviewEndpoint: `${PROXY_PREFIX}/api/v1/library/papers`,
+		citationPreviewEndpoint: `${PROXY_PREFIX}/api/v1/citations/preview`,
+		sessionStorageKey: "zotero-paper-rag-lab-session-id",
 	})};</script>`;
 }
 
@@ -81,7 +81,7 @@ async function handleProxy(context: APIContext) {
 		return new Response("Missing proxied path.", { status: 400 });
 	}
 
-	if (rawPath === "ui/chat" || rawPath === "v4") {
+	if (rawPath === "ui/chat" || rawPath === "ui") {
 		const chat = await getZoteroPaperRagChatHtml();
 		return new Response(
 			chat.ok

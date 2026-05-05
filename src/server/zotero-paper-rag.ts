@@ -126,7 +126,7 @@ async function readLocalIndexStats() {
 
 export async function getZoteroPaperRagSnapshot() {
 	const [health, indexStats] = await Promise.all([
-		fetchZoteroPaperRagEndpoint("/api/v1/v4/health", "json"),
+		fetchZoteroPaperRagEndpoint("/api/v1/health", "json"),
 		readLocalIndexStats(),
 	]);
 
@@ -141,7 +141,7 @@ export async function getZoteroPaperRagSnapshot() {
 }
 
 export async function getZoteroPaperRagChatHtml() {
-	const response = await fetchZoteroPaperRagEndpoint("/v4", "text", 12000);
+	const response = await fetchZoteroPaperRagEndpoint("/", "text", 12000);
 	return {
 		ok: response.ok,
 		status: response.status,
