@@ -53,6 +53,7 @@ function buildChatConfigScript() {
 		paperPreviewEndpoint: `${PROXY_PREFIX}/api/v1/library/papers/`,
 		citationPreviewEndpoint: `${PROXY_PREFIX}/api/v1/citations/preview/`,
 		sessionStorageKey: "zotero-paper-rag-lab-session-id",
+		v: Date.now(),
 	})};</script>`;
 }
 
