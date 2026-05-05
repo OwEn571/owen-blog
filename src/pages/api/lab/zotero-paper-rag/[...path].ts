@@ -46,12 +46,12 @@ function copyResponseHeaders(source: Headers) {
 
 function buildChatConfigScript() {
 	return `<script>window.ZOTERO_AGENT_CONFIG=${JSON.stringify({
-		streamEndpoint: `${PROXY_PREFIX}/api/v1/chat/stream`,
-		chatEndpoint: `${PROXY_PREFIX}/api/v1/chat`,
-		healthEndpoint: `${PROXY_PREFIX}/api/v1/health`,
-		libraryEndpoint: `${PROXY_PREFIX}/api/v1/library`,
-		paperPreviewEndpoint: `${PROXY_PREFIX}/api/v1/library/papers`,
-		citationPreviewEndpoint: `${PROXY_PREFIX}/api/v1/citations/preview`,
+		streamEndpoint: `${PROXY_PREFIX}/api/v1/chat/stream/`,
+		chatEndpoint: `${PROXY_PREFIX}/api/v1/chat/`,
+		healthEndpoint: `${PROXY_PREFIX}/api/v1/health/`,
+		libraryEndpoint: `${PROXY_PREFIX}/api/v1/library/`,
+		paperPreviewEndpoint: `${PROXY_PREFIX}/api/v1/library/papers/`,
+		citationPreviewEndpoint: `${PROXY_PREFIX}/api/v1/citations/preview/`,
 		sessionStorageKey: "zotero-paper-rag-lab-session-id",
 	})};</script>`;
 }
