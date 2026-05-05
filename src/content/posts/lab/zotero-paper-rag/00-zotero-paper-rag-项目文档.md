@@ -7,11 +7,10 @@ category: Zotero Paper Agent
 draft: false
 comment: true
 ---
----
 
 ## 1. 项目介绍
 
-PDF-RAG-Agent V5 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，结合 BM25 与 Milvus 向量索引实现双路召回，并在前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
+PDF-RAG-Agent V5 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，默认使用 Milvus Dense 向量检索（可选 BM25/Title Anchor 多路融合），并在前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
 
 ## 2. 项目背景与目标
 
@@ -44,7 +43,7 @@ app/services/
 │   ├── planning/       research plan, query_shaping, query_rewrite, compound_tasks, solver_dispatch
 │   ├── contracts/      session_context, normalization, contextual_resolver, followup_relationship
 │   ├── claims/         ★ 23 modules: solver_pipeline, 13 deterministic solvers, verifiers, helpers
-│   ├── answers/        entity, evidence_presentation, followup, formula, paper, topology, library_recommendations
+│   ├── answers/        entity, evidence_presentation, citation_whitelist, followup, formula, paper, topology, library_recommendations
 │   ├── entities/       definition_helpers, definition_profiles, type_inference
 │   ├── followup/       candidates, relationship_memory
 │   ├── clarification/  intents, questions, limit_runtime
@@ -72,7 +71,7 @@ Agent 编排层由 `agent/`（26 个模块）和 `agent_mixins/`（6 个模块�
 `agent/core.py` 中的 `ResearchAssistantAgent` 通过多重继承组合五个 Mixin 获得正交能力：
 
 ```python
-class ResearchAssistantAgent(
+class ResearchAssistantAgentV4(
     FollowupRoutingMixin,    # 追问路由：识别纠正/延续/切换
     AnswerComposerMixin,     # 答案组合：按 relation 分发到不同 answer composer
     EntityDefinitionMixin,   # 实体定义：消歧 + 定义提取
@@ -116,7 +115,7 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 - **验证器（verifiers）**：`verifier_pipeline.py` 编排验证流程；`type_verifiers.py` 按 claim 类型做确定性校验（公式完整性、数值精确度、起源引用正确性）；`llm_verifier.py` 处理需要语义判断的复杂验证。
 - **辅助模块**：`formula_text.py`、`metric_text.py`、`visual_helpers.py` 处理公式/指标/图表的文本提取；`paper_helpers.py`、`paper_summary.py` 处理论文元信息；`origin_selection.py` 处理起源论文选择。
 
-与 claims 紧密配合的是 `answers/`（9 模块）、`entities/`（4 模块）、`followup/`（2 模块）和 `clarification/`（3 模块），它们负责将 claim 转化为最终回答、处理实体定义、管理追问候选和生成澄清问题。
+与 claims 紧密配合的是 `answers/`（10 模块）、`entities/`（4 模块）、`followup/`（2 模块）和 `clarification/`（3 模块），它们负责将 claim 转化为最终回答、处理实体定义、管理追问候选和生成澄清问题。
 
 ### 3.6 检索与数据层
 
@@ -853,7 +852,7 @@ class DisambiguationJudgeDecision(BaseModel):
 
 服务层是整个项目最容易被深入追问的部分，因为它决定了这个系统是不是只是在“套一个聊天壳”，还是确实把论文库读取、PDF 抽取、索引构建、向量嵌入、混合检索、会话记忆和模型调用这些底层能力设计清楚了。API 层只是入口，Agent 层负责调度，真正支撑论文问答质量和效率的是服务层。
 
-从职责上看，服务层可以分成三条主线。第一条是离线入库链路：`ZoteroSQLiteReader` 读取 Zotero 元信息，`PDFExtractor` 抽取 PDF 页面文本、表格、图像和图注，`IngestionService` 生成 paper docs 和 block docs，并写入 JSONL 与 Milvus。第二条是在线检索链路：`DualIndexRetriever` 加载本地 paper/block 文档，结合 BM25 稀疏检索和 Milvus dense retrieval，先找候选论文，再找证据块。第三条是运行支撑链路：`SessionStore` 负责多轮会话持久化，`ModelClients` 统一封装 LLM/VLM/Embedding 调用，`WebSearch` 在本地语料不足时提供外部补充。
+从职责上看，服务层可以分成三条主线。第一条是离线入库链路：`ZoteroSQLiteReader` 读取 Zotero 元信息，`PDFExtractor` 抽取 PDF 页面文本、表格、图像和图注，`IngestionService` 生成 paper docs 和 block docs，并写入 JSONL 与 Milvus。第二条是在线检索链路：`DualIndexRetriever` 加载本地 paper/block 文档，使用 Milvus Dense 检索为主（BM25/Title Anchor 可选），先找候选论文，再找证据块。第三条是运行支撑链路：`SessionStore` 负责多轮会话持久化，`ModelClients` 统一封装 LLM/VLM/Embedding 调用，`WebSearch` 在本地语料不足时提供外部补充。
 
 ### 7.0 服务层设计总览
 
@@ -861,7 +860,7 @@ class DisambiguationJudgeDecision(BaseModel):
 
 这样设计是为了解决普通 PDF RAG 的两个问题。第一，如果直接在所有 PDF chunks 里检索，召回空间太大，噪声高，容易找到同名概念但不是目标论文的片段。第二，如果只做论文级检索，虽然能找到论文，但回答公式、指标、图表、实验结果时没有足够细的证据。两级索引的思路是先用 paper index 找“哪几篇论文可能相关”，再用 block index 在这些论文内部找“哪几个证据块可以支撑答案”。
 
-检索效果上，系统没有只依赖 dense embedding，而是采用 BM25 + Milvus 的双路召回。BM25 适合处理标题、缩写、公式 token、作者名、年份这类精确匹配；dense retrieval 适合处理语义相近但字面不同的问题。对于 DPO、PPO、PBA 这类缩写和公式问题，系统还会利用 title anchor、relation anchor、formula token weights、target terms、block_type 和 formula_hint 做额外加权，避免向量相似度把语义相关但不是目标论文的内容排到前面。
+检索效果上，系统默认使用 Milvus Dense 向量检索作为主召回路径。BM25 适合处理标题、缩写、公式 token、作者名、年份这类精确匹配，保留为可选模块（接入 jieba 中文分词后 Hit@1 从 0.176 恢复到 0.748）。对于 DPO、PPO、PBA 这类缩写和公式问题，系统还会利用 title anchor、relation anchor、formula token weights、target terms、block_type 和 formula_hint 做额外加权，避免向量相似度把语义相关但不是目标论文的内容排到前面。
 
 其中 relation anchor 是最近从 stub 补完为完整实现的四路之一。它的设计思路是：如果用户明确提到了某个概念/方法名，那与已匹配论文共享标签、缩写词、作者或 Zotero 分类的其他论文也很可能相关——即使这些论文的标题里不含 query term。实现上，先由 title_anchor 确定锚点论文并提取其"关系指纹"（tags、aliases、body_acronyms、authors、collection paths），再遍历全库论文按共享信号数量打分排序。Zotero 分类路径从 SQLite 的 collections/collectionItems 表实时加载，缓存为内存字典；若 DB 不可用则自动降级，跳过 collection 信号。
 
@@ -992,9 +991,9 @@ class IngestionService:
         self.reader = ZoteroSQLiteReader(settings)
         self.extractor = PDFExtractor(settings=settings, prefer_unstructured=True)
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1200,
-            chunk_overlap=180,
-            separators=["\n\n", "\n", "。", " ", ""],
+            chunk_size=800,
+            chunk_overlap=120,
+            separators=["\n\n", "\n", "。", ". ", " ", ""],
         )
 ```
 
@@ -1084,7 +1083,7 @@ def search_papers(self, *, query, contract, limit=None) -> list[CandidatePaper]:
     ...
 ```
 
-四路召回的权重设计：title anchor (1.6) > relation anchor (1.3) > BM25 (0.9) > dense (0.8)，保证精确标题匹配优先。融合使用 Weighted RRF（k=60，`weight / (k + rank)` 而非标准 RRF 的 `1 / (k + rank)`），解决四个来源量纲不同的问题——title anchor 返回 0/1 匹配，BM25 返回词频分数，dense 返回余弦相似度，relation anchor 返回关系得分，直接线性加权需要分数归一化，而 RRF 只依赖排名天然跨源可比。
+四路召回最初设计为 Weighted RRF 多路融合（title anchor 1.6 / relation anchor 1.3 / BM25 0.9 / dense 0.8）。经过 159 题 × 12 配置消融实验，Pure Dense + paper_query_text QE 在所有条件下均最优（Hit@1=97.5%），多路融合不如 Dense 且慢 6 倍。当前默认使用 Dense-only 检索，BM25/Title Anchor/Relation Anchor 保留为可选模块。
 
 **relation_anchor_docs 的完整实现**（`core.py:690-770`）：
 
@@ -1368,7 +1367,7 @@ def run_claim_solver_pipeline(*, schema_allowed, generic_enabled, shadow_enabled
 
 这四个子包负责将 claim 转化为最终回答：
 
-- **answers/（9 模块）**：`AnswerComposerMixin` 调用各 answer composer。`evidence_presentation.py` 构建引用格式（`citations_from_doc_ids()`、`build_figure_contexts()`）。`entity.py` / `formula.py` / `paper.py` / `followup.py` / `topology.py` / `library_recommendations.py` / `memory_followup.py` 各处理一种 answer 类型。`conversation_state.py` 管理对话回答状态。
+- **answers/（10 模块）**：`AnswerComposerMixin` 调用各 answer composer。`evidence_presentation.py` 构建引用格式（`citations_from_doc_ids()`、`build_figure_contexts()`）。`citation_whitelist.py` 提供回答引用白名单后置过滤（P0-1 安全加固）。`entity.py` / `formula.py` / `paper.py` / `followup.py` / `topology.py` / `library_recommendations.py` / `memory_followup.py` 各处理一种 answer 类型。`conversation_state.py` 管理对话回答状态。
 
 - **entities/（4 模块）**：实体定义相关。`definition_helpers.py` 提供实体定义求解辅助；`definition_profiles.py` 定义实体 marker profile；`supporting_paper_selector.py` 选择支撑论文；`type_inference.py` 推断实体类型。
 
@@ -1381,7 +1380,7 @@ def run_claim_solver_pipeline(*, schema_allowed, generic_enabled, shadow_enabled
 `agent_mixins/`（6 模块）是 Agent 架构的核心创新——将正交能力通过 Mixin 模式注入 `ResearchAssistantAgent`：
 
 ```python
-class ResearchAssistantAgent(
+class ResearchAssistantAgentV4(
     FollowupRoutingMixin,     # 追问路由：is_negative_correction_query, inherit_followup_relationship
     AnswerComposerMixin,      # 答案组合：compose_formula_answer, compose_paper_summary_results_answer 等
     EntityDefinitionMixin,    # 实体定义：消歧 + 定义提取
@@ -2170,7 +2169,7 @@ Prometheus metrics（可选）通过 `prometheus_fastapi_instrumentator` 暴露�
 PDF-RAG-Agent V5是一个从真实论文研究需求出发构建的智能助手系统。它的核心价值体现在几个方面：
 
 - **分层架构清晰**：API 层、Agent 层、服务层、数据层各司其职，通过 domain models 传递状态，避免了"到处传 dict"的混乱
-- **检索设计务实**：两级索引（论文级 + 证据级）+ 双路召回（BM25 + Milvus）+ 场景化加权，解决了通用 RAG 在论文场景下的召回精度问题
+- **检索设计务实**：两级索引（论文级 + 证据级）+ Dense-only 默认检索（可选 BM25/Title Anchor）+ 场景化加权，解决了通用 RAG 在论文场景下的召回精度问题
 - **Agent 链路完整**：Intents → Contract → Plan → Tool Loop → Solver → Verifier → Composer 的七阶段链路，每一阶段都有明确的输入输出和失败处理
 - **可观察性强**：SSE 流式事件 + Runtime 面板 + trace 持久化，让 Agent 的每一步推理都可追踪、可调试
 - **测试覆盖广**：80+ 个测试文件覆盖几乎所有模块，StubModelClients 让测试不依赖外部 API
