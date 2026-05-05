@@ -1339,3 +1339,803 @@ s06 的三层压缩机制本质上是给 Agent **可控的遗忘能力**。人�
 
 另一点：`auto_compact` 里的总结请求是不带工具的 API 调用。这说明 **Agent 的压缩能力本身也在 harness 层面，不在对话循环里**——压缩时模型不开着 bash/edit 等工具，它只用纯文本能力做总结。如果让压缩迭代跑到一半模型突然调了个 bash，那就不是压缩了。这是一种"能力降级"——在特定的 harness 路径上，工具集可以临时收紧。
 
+## 7. s07：任务系统——"比任何一次对话都长命的目标"
+
+s07 解决的是 s03 TodoManager 的两个致命弱点：**内存态（压缩后丢失）** 和 **扁平无依赖**。
+
+s03 的 todo 列表在 Python 内存里，s06 的 auto_compact 一跑，整个消息历史被一条总结替换——todo 状态消失了。而且 todo 就是 `[ ]` `[>]` `[x]` 三态，没有"任务 B 依赖任务 A"的能力。
+
+s07 的解法：**把任务图持久化到磁盘上的 JSON 文件。** 每组文件构成一个带依赖关系的 DAG（有向无环图）。
+
+### (1) 磁盘上的任务图
+
+```
+.tasks/
+  task_1.json  {"id":1, "subject":"Set up project", "status":"completed"}
+  task_2.json  {"id":2, "subject":"Write code", "blockedBy":[1], "status":"pending"}
+  task_3.json  {"id":3, "subject":"Write tests", "blockedBy":[1], "status":"pending"}
+  task_4.json  {"id":4, "subject":"Run CI", "blockedBy":[2,3], "status":"pending"}
+```
+
+对应的有向图：
+
+```
+               +----------+
+          +--> | task 2   | --+
+          |    | pending  |   |
++----------+  +----------+    +--> +----------+
+| task 1   |                         | task 4   |
+| completed| --> +----------+   +--> | blocked  |
++----------+     | task 3   | --+    +----------+
+                 | pending  |
+                 +----------+
+
+顺序:  task 1 必须先完成, 才能开始 2 和 3
+并行:  task 2 和 3 可以同时执行
+依赖:  task 4 要等 2 和 3 都完成
+```
+
+这个语义非常清晰：**什么能做**（pending 且 blockedBy 为空）、**什么被卡住**（blockedBy 里还有未完成的 ID）、**什么做完了**（completed）。
+
+### (2) TaskManager——CRUD + 依赖传播
+
+```python
+class TaskManager:
+    def __init__(self, tasks_dir: Path):
+        self.dir = tasks_dir
+        self.dir.mkdir(exist_ok=True)
+        self._next_id = self._max_id() + 1
+
+    def _max_id(self) -> int:
+        ids = [int(f.stem.split("_")[1]) for f in self.dir.glob("task_*.json")]
+        return max(ids) if ids else 0
+
+    def _load(self, task_id: int) -> dict:
+        path = self.dir / f"task_{task_id}.json"
+        return json.loads(path.read_text())
+
+    def _save(self, task: dict):
+        path = self.dir / f"task_{task['id']}.json"
+        path.write_text(json.dumps(task, indent=2, ensure_ascii=False))
+```
+
+`s07` 是第二个用到文件系统持久化的 session（第一个是 s06 的 `.transcripts/`）。`_next_id` 从已有文件中读取最大值 +1——进程重启后 ID 不冲突。注意它不是靠全局计数器或者自增序列，而是 `glob("task_*.json")` 扫描磁盘，**文件系统本身就是状态存储**。
+
+`create` 方法：
+
+```python
+def create(self, subject: str, description: str = "") -> str:
+    task = {
+        "id": self._next_id, "subject": subject, "description": description,
+        "status": "pending", "blockedBy": [], "owner": "",
+    }
+    self._save(task)
+    self._next_id += 1
+    return json.dumps(task, indent=2, ensure_ascii=False)
+```
+
+owner 字段现在是空字符串——这将来在 s09-s11 的 Agent 团队中会用到，标记任务属于哪个 Agent。
+
+### (3) 依赖传播——完成即解锁
+
+这是 s07 最精巧的机制。当任务完成时，**自动**从所有其他任务的 `blockedBy` 中移除已完成的任务 ID：
+
+```python
+def _clear_dependency(self, completed_id: int):
+    """Remove completed_id from ALL other tasks' blockedBy lists."""
+    for f in self.dir.glob("task_*.json"):
+        task = json.loads(f.read_text())
+        if completed_id in task.get("blockedBy", []):
+            task["blockedBy"].remove(completed_id)
+            self._save(task)
+
+def update(self, task_id: int, status: str = None,
+           add_blocked_by: list = None, remove_blocked_by: list = None) -> str:
+    task = self._load(task_id)
+    if status:
+        if status not in ("pending", "in_progress", "completed"):
+            raise ValueError(f"Invalid status: {status}")
+        task["status"] = status
+        if status == "completed":
+            self._clear_dependency(task_id)    # ← 关键：标记完成时级联解锁
+    if add_blocked_by:
+        task["blockedBy"] = list(set(task["blockedBy"] + add_blocked_by))
+    if remove_blocked_by:
+        task["blockedBy"] = [x for x in task["blockedBy"] if x not in remove_blocked_by]
+    self._save(task)
+    return json.dumps(task, indent=2, ensure_ascii=False)
+```
+
+这里有一个重要的设计：`_clear_dependency` 扫描**全部**任务文件，而不是被完成的那个任务自己反查。这样可以安全处理"任务 A 被任务 B、C、D 共同依赖"的情况——A 完成那一刻，B、C、D 的 blockedBy 都被清理。
+
+此外，`add_blocked_by` 用 `list(set(...))` 去重，防止同一个依赖被加两次。
+
+### (4) 四个 task 工具
+
+```python
+TOOL_HANDLERS = {
+    "bash":        lambda **kw: run_bash(kw["command"]),
+    "read_file":   lambda **kw: run_read(kw["path"], kw.get("limit")),
+    "write_file":  lambda **kw: run_write(kw["path"], kw["content"]),
+    "edit_file":   lambda **kw: run_edit(kw["path"], kw["old_text"], kw["new_text"]),
+    "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
+    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw.get("status"),
+                                              kw.get("addBlockedBy"), kw.get("removeBlockedBy")),
+    "task_list":   lambda **kw: TASKS.list_all(),
+    "task_get":    lambda **kw: TASKS.get(kw["task_id"]),
+}
+```
+
+四个工具的职责很明确：增、改、列、查。注意没有删除——任务完成了就是标记为 completed，留下痕迹。
+
+### (5) s03 TodoWrite vs s07 TaskManager 对比
+
+| | s03 TodoWrite | s07 TaskManager |
+|------|---------|-----------|
+| 存储 | Python 内存 | `.tasks/` 磁盘 JSON |
+| 持久性 | 进程内 | 跨进程重启 |
+| 依赖关系 | 无 | `blockedBy` 有向图 |
+| 压缩安全性 | 丢失（在 messages 里） | 存活（在文件系统里） |
+| 字段 | id, text, status | id, subject, description, status, blockedBy, owner |
+| 并发 | 无 | owner 字段（为 s09+ 准备） |
+
+### (6) 为什么是"第二个关键枢纽"
+
+s07 在整个 12 个 session 序列中处于中点位置（`s01-s06 | s07-s12`），文档特别用 `|` 分隔。这不是偶然的——**s07 是一切合作的骨架**：
+
+- **s08** 的后台线程读取任务列表，自动认领 pending 任务
+- **s09-s10** 的 Agent 团队通过 `owner` 字段协商任务分配
+- **s12** 的 worktree 隔离用任务 ID 绑定工作目录
+
+任务图是"被动的数据"，但它解耦了生产者和消费者——Agent A 创建任务，Agent B 执行任务，它们不需要直接通信，只需要读写同一个 `.tasks/` 目录。
+
+### (7) s06 → s07 变化总结
+
+| 组件 | s06 | s07 |
+|------|-----|-----|
+| 工具数 | 5 | 8 (+4 task) |
+| 持久化 | .transcripts/（只存档） | .tasks/（活跃状态） |
+| 规划引擎 | 无（s06 没带 todo） | TaskManager + DAG |
+| 依赖关系 | 无 | blockedBy 自动传播 |
+| 循环变化 | 三层压缩 | 回到简单 dispatch（压缩暂未整合） |
+
+### (8) 运行
+
+```
+python agents/s07_task_system.py
+```
+
+推荐测试 prompt：
+
+- `Create 3 tasks: "Setup project", "Write code", "Write tests". Make them depend on each other in order.`
+- `List all tasks and show the dependency graph`
+- `Complete task 1 and then list tasks to see task 2 unblocked`
+- `Create a task board for refactoring: parse → transform → emit → test, where transform and emit can run in parallel after parse`
+
+试试关掉进程再重开，调用 task_list——任务还在磁盘上。
+
+---
+
+## 关键洞察
+
+s07 的核心思想一句话：**状态在对话之外。** s03 的 todo 在 messages 里（压缩后消失），s07 的 task 在文件系统里（压缩后还在）。这是从"对话级 Agent"迈向"项目级 Agent"的一道门槛——对话可以结束，任务可以继续。
+
+从架构层面看，`_clear_dependency` 是一次**被动传播**：不是模型主动说"现在任务 B 的 blockedBy 可以移除了"，而是 harness 在任务 A 标记为 completed 那一刻自动做了级联更新。模型只需要知道"某件事做完了"，harness 负责把"做完"这件事的后果传到所有相关节点。这就是 harness 比 prompt 强的根本原因——harness 能做一致性的级联操作，prompt 只能做文本建议。
+
+## 8. s08：后台任务——"慢操作丢后台，Agent 继续想下一步"
+
+s08 解决的是 Agent 的 I/O 阻塞问题。
+
+`npm install` 跑 3 分钟、`pytest` 跑 2 分钟、`docker build` 跑 5 分钟——s04 的 `run_subagent` 和普通的 bash 都是同步阻塞的，Agent 只能干等。用户说"装依赖 + 顺便建个配置文件"，Agent 得一个一个来。
+
+s08 的解法：**后台线程 + 通知队列。模型 spawn 任务后立即拿到 task_id，继续干别的事；任务完成后结果注入下一轮对话。**
+
+### (1) BackgroundManager——线程池的朴素版
+
+```python
+class BackgroundManager:
+    def __init__(self):
+        self.tasks = {}                   # task_id → {status, result, command}
+        self._notification_queue = []     # 完成的任务结果
+        self._lock = threading.Lock()     # 线程安全
+```
+
+不是线程池——就是 `threading.Thread` 每次新建一个线程。daemon 线程，主进程退出时自动终止。
+
+### (2) `run()`——启动即返回
+
+```python
+def run(self, command: str) -> str:
+    task_id = str(uuid.uuid4())[:8]       # 8 位随机 ID
+    self.tasks[task_id] = {
+        "status": "running", "result": None, "command": command
+    }
+    thread = threading.Thread(
+        target=self._execute, args=(task_id, command), daemon=True
+    )
+    thread.start()
+    return f"Background task {task_id} started: {command[:80]}"
+```
+
+关键：**函数立即返回**，模型看到一个 task_id，可以接着干别的事。和 s04 的 `run_subagent` 完全不同——那个是同步阻塞直到子 Agent 完成。
+
+### (3) `_execute()`——线程内的 subprocess
+
+```python
+def _execute(self, task_id: str, command: str):
+    try:
+        r = subprocess.run(
+            command, shell=True, cwd=WORKDIR,
+            capture_output=True, text=True, timeout=300    # 5分钟超时
+        )
+        output = (r.stdout + r.stderr).strip()[:50000]
+        status = "completed"
+    except subprocess.TimeoutExpired:
+        output = "Error: Timeout (300s)"
+        status = "timeout"
+    except Exception as e:
+        output = f"Error: {e}"
+        status = "error"
+
+    self.tasks[task_id]["status"] = status
+    self.tasks[task_id]["result"] = output or "(no output)"
+
+    # 线程安全地推入通知队列
+    with self._lock:
+        self._notification_queue.append({
+            "task_id": task_id, "status": status,
+            "command": command[:80], "result": (output or "(no output)")[:500],
+        })
+```
+
+和 `run_bash` 几乎一样——`subprocess.run` + 超时 + 截断。区别只有两个：
+
+- **timeout 从 120s 变成 300s** — 后台任务预期是长任务，给了更长的超时
+- **结果推入通知队列而不是直接返回** — 线程不能直接往 messages 里写，所以走队列
+
+### (4) `drain_notifications()`——循环中唯一的线程交汇点
+
+```python
+def drain_notifications(self) -> list:
+    with self._lock:
+        notifs = list(self._notification_queue)
+        self._notification_queue.clear()
+    return notifs
+
+def check(self, task_id: str = None) -> str:
+    """查询单个任务状态或列出所有"""
+    if task_id:
+        t = self.tasks.get(task_id)
+        if not t:
+            return f"Error: Unknown task {task_id}"
+        return f"[{t['status']}] {t['command'][:60]}\n{t.get('result') or '(running)'}"
+    # 列出所有
+    lines = []
+    for tid, t in self.tasks.items():
+        lines.append(f"{tid}: [{t['status']}] {t['command'][:60]}")
+    return "\n".join(lines) if lines else "No background tasks."
+```
+
+`drain_notifications` 是一次性操作——取走所有待通知，清空队列。这保证了每条通知只被注入一次。
+
+### (5) 循环注入——LLM 调用前的"收件箱检查"
+
+```python
+def agent_loop(messages: list):
+    while True:
+        # 每次 LLM 调用前，清空通知队列
+        notifs = BG.drain_notifications()
+        if notifs and messages:
+            notif_text = "\n".join(
+                f"[bg:{n['task_id']}] {n['status']}: {n['result']}"
+                for n in notifs
+            )
+            messages.append({
+                "role": "user",
+                "content": f"<background-results>\n{notif_text}\n</background-results>"
+            })
+
+        response = client.messages.create(...)
+```
+
+模型的核心循环是单线程的——**只有 subprocess 在后台线程跑，agent loop 本身不并发**。流程是：
+
+```
+Round N:   模型调 background_run("npm install") → 拿到 task_id
+Round N+1: 模型干别的事（比如 background_run("pip install") 或 read_file）
+Round N+2: drain_notifications() 发现 npm 跑完了 → 作为 <background-results> 注入
+           模型看到结果，决定下一步
+```
+
+这不叫 agent 并发思考，这叫 **I/O 并行 + Agent 顺序执行**。Agent 本身还是单线程地一轮轮走，只是等待 I/O 的时间被利用了。
+
+### (6) 工具定义
+
+```python
+# 两个新工具
+{"name": "background_run", "description": "Run command in background thread. Returns task_id immediately.",
+ "input_schema": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}},
+
+{"name": "check_background", "description": "Check background task status. Omit task_id to list all.",
+ "input_schema": {"type": "object", "properties": {"task_id": {"type": "string"}}}},
+```
+
+注意 `check_background` 的 `task_id` 不是 required——省略时列出所有任务。模型可以不知道自己 spawn 了哪些任务，调一次 `check_background()` 就能看到全局。
+
+### (7) s07 → s08 变化总结
+
+| 组件 | s07 | s08 |
+|------|-----|-----|
+| 工具数 | 8 (4 task + 4 base) | 6 (2 bg + 4 base，task 工具暂未整合) |
+| 执行方式 | 仅阻塞 | 阻塞 + 后台线程 |
+| 通知机制 | 无 | 每轮排空通知队列 |
+| 并发模型 | 纯串行 | I/O 并行、Agent 顺序 |
+| 循环变化 | dispatch 分发 | + drain_notifications 前置注入 |
+
+### (8) 运行
+
+```
+python agents/s08_background_tasks.py
+```
+
+推荐测试 prompt：
+
+- `Run "sleep 5 && echo done" in the background, then create a file while it runs`
+- `Start 3 background tasks: "sleep 2", "sleep 4", "sleep 6". Check their status.`
+
+---
+
+## 关键洞察
+
+s08 引入了 harness 中第一个真正异步的组件，但保持了 Agent 循环的单线程心智模型。这其实是一个重要的架构选择：**模型不需要理解线程——它只知道"我上次 spawn 了一个东西，现在收到了它的结果"。** 后台线程是 harness 层的事，模型的思维还是线性的。
+
+另外值得注意：s04 的 `run_subagent` 是同步的，为什么不用后台线程包装它？因为子 Agent 需要的是"上下文隔离"，不是"执行并行"——父 Agent 在等子 Agent 的结论才能继续。而后台任务 (`npm install`) 没有这种依赖关系，模型可以继续干别的事。这就是两种异步的不同：一个是"我不等你，我干别的"，一个是"我要你的结果才能继续"。
+
+## 9. s09：Agent 团队——"多个模型，通过文件协调"
+
+s09 是从单 Agent 到多 Agent 的一道门槛。在此之前的所有 session 都是"一个模型、一个 loop"，s04 的子 Agent 是一次性的生成-返回-销毁，s08 的后台任务只能跑 shell 不能做 LLM 决策。
+
+s09 引入了三个新能力：
+
+1. **持久化队友** — 有名字、有角色、有状态，跨多轮存活，不是一次性
+2. **文件邮箱通信** — append-only JSONL 收件箱，Agent 之间发消息
+3. **每个队友独立 agent loop** — 每个人在自己的线程里跑完整的 while-tool_use 循环
+
+### (1) s04 Subagent vs s09 Teammate
+
+```
+Subagent (s04):   spawn → execute → return summary → destroyed
+Teammate (s09):   spawn → working → idle → working → ... → shutdown
+```
+
+s04 的子 Agent 像函数调用——传参、执行、返回、清理。s09 的队友像**员工**——有名字 "alice"，有角色 "coder"，有生命周期 `working → idle → working → idle`，可以反复复派任务。
+
+### (2) 目录结构
+
+```
+.team/
+  config.json              # 团队名册 + 各成员状态
+  inbox/
+    alice.jsonl            # alice 的收件箱（append-only）
+    bob.jsonl              # bob 的收件箱
+    lead.jsonl             # 领导的收件箱
+```
+
+### (3) TeammateManager——队友生命周期
+
+```python
+class TeammateManager:
+    def __init__(self, team_dir: Path):
+        self.dir = team_dir
+        self.dir.mkdir(exist_ok=True)
+        self.config_path = self.dir / "config.json"
+        self.config = self._load_config()   # 从磁盘恢复
+        self.threads = {}                    # 名字 → 线程
+
+    def _load_config(self) -> dict:
+        if self.config_path.exists():
+            return json.loads(self.config_path.read_text())
+        return {"team_name": "default", "members": []}
+```
+
+`config.json` 每次更新都 `_save_config()` 写回磁盘。进程重启后队员名册还在。
+
+`spawn()` 方法：
+
+```python
+def spawn(self, name: str, role: str, prompt: str) -> str:
+    member = self._find_member(name)
+    if member:
+        if member["status"] not in ("idle", "shutdown"):
+            return f"Error: '{name}' is currently {member['status']}"
+        member["status"] = "working"
+    else:
+        member = {"name": name, "role": role, "status": "working"}
+        self.config["members"].append(member)
+    self._save_config()
+    thread = threading.Thread(
+        target=self._teammate_loop,
+        args=(name, role, prompt),
+        daemon=True,
+    )
+    self.threads[name] = thread
+    thread.start()
+    return f"Spawned '{name}' (role: {role})"
+```
+
+如果同名队友处于 `idle` 状态，就唤醒它并给新 prompt；如果是新名字，创建并启动线程。这实现了"队友复用"——不需要每次都创建新 Agent。
+
+### (4) MessageBus——文件级通信协议
+
+这是 s09 最核心的发明。JSONL 文件做邮箱：
+
+```python
+class MessageBus:
+    def __init__(self, inbox_dir: Path):
+        self.dir = inbox_dir
+        self.dir.mkdir(parents=True, exist_ok=True)
+
+    def send(self, sender: str, to: str, content: str,
+             msg_type: str = "message", extra: dict = None) -> str:
+        if msg_type not in VALID_MSG_TYPES:
+            return f"Error: Invalid type '{msg_type}'"
+        msg = {
+            "type": msg_type, "from": sender,
+            "content": content, "timestamp": time.time(),
+        }
+        if extra:
+            msg.update(extra)
+        inbox_path = self.dir / f"{to}.jsonl"
+        with open(inbox_path, "a") as f:        # ← append-only
+            f.write(json.dumps(msg) + "\n")
+        return f"Sent {msg_type} to {to}"
+
+    def read_inbox(self, name: str) -> list:
+        inbox_path = self.dir / f"{name}.jsonl"
+        if not inbox_path.exists():
+            return []
+        messages = []
+        for line in inbox_path.read_text().strip().splitlines():
+            if line:
+                messages.append(json.loads(line))
+        inbox_path.write_text("")               # ← drain after read
+        return messages
+```
+
+关键设计：**读即清空**。`read_inbox` → 读所有行 → `write_text("")` 删文件。每条消息只被消费一次，不会重复处理。
+
+5 种消息类型（定义了但 s09 只用到前 2 种，后 3 种留给 s10）：
+
+```python
+VALID_MSG_TYPES = {
+    "message",              # 普通文本消息
+    "broadcast",            # 发给所有人
+    "shutdown_request",     # 请求关闭 (s10)
+    "shutdown_response",    # 同意/拒绝关闭 (s10)
+    "plan_approval_response", # 审批计划 (s10)
+}
+```
+
+还有 `broadcast` 方法，遍历所有队友逐个发：
+
+```python
+def broadcast(self, sender: str, content: str, teammates: list) -> str:
+    count = 0
+    for name in teammates:
+        if name != sender:
+            self.send(sender, name, content, "broadcast")
+            count += 1
+    return f"Broadcast to {count} teammates"
+```
+
+### (5) 队友的 agent loop——缩水但完整的版本
+
+每个队友在自己的线程里跑：
+
+```python
+def _teammate_loop(self, name: str, role: str, prompt: str):
+    sys_prompt = (
+        f"You are '{name}', role: {role}, at {WORKDIR}. "
+        f"Use send_message to communicate. Complete your task."
+    )
+    messages = [{"role": "user", "content": prompt}]
+    tools = self._teammate_tools()   # bash/read/write/edit/send_message/read_inbox
+    for _ in range(50):              # 安全限制 50 轮
+        # 每轮检查收件箱
+        inbox = BUS.read_inbox(name)
+        for msg in inbox:
+            messages.append({"role": "user", "content": json.dumps(msg)})
+
+        response = client.messages.create(
+            model=MODEL, system=sys_prompt,
+            messages=messages, tools=tools, max_tokens=8000,
+        )
+        messages.append({"role": "assistant", "content": response.content})
+        if response.stop_reason != "tool_use":
+            break
+        # 执行工具（通过 _exec 分发）
+        results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                output = self._exec(name, block.name, block.input)
+                results.append({
+                    "type": "tool_result", "tool_use_id": block.id,
+                    "content": str(output),
+                })
+        messages.append({"role": "user", "content": results})
+
+    # 完成后回到 idle 状态
+    member = self._find_member(name)
+    if member and member["status"] != "shutdown":
+        member["status"] = "idle"
+        self._save_config()
+```
+
+注意队友的 `sys_prompt` 和 Leader 不同——队友被告知自己的名字和角色，被要求"完成你的任务"，Leader 则被告知"你是团队领导，派发任务"。
+
+### (6) 领导（Lead）的循环——收件箱注入
+
+```python
+def agent_loop(messages: list):
+    while True:
+        # 每轮先检查收件箱
+        inbox = BUS.read_inbox("lead")
+        if inbox:
+            messages.append({
+                "role": "user",
+                "content": f"<inbox>{json.dumps(inbox, indent=2)}</inbox>",
+            })
+        # 正常 loop...
+```
+
+领导和队友的通信模式是对称的——都走 `BUS.read_inbox`，都通过 JSONL 文件交换消息。领导给 alice 发消息 → `alice.jsonl` 新增一行 → alice 下轮 `read_inbox` 读到 → 清空。
+
+### (7) 九工具全貌
+
+Leader 有 9 个工具：
+
+```python
+TOOL_HANDLERS = {
+    "bash":            ...,  # 基础工具
+    "read_file":       ...,
+    "write_file":      ...,
+    "edit_file":       ...,
+    "spawn_teammate":  ...,  # 创建/唤醒队友
+    "list_teammates":  ...,  # 列出团队状态
+    "send_message":    ...,  # 点对点发消息
+    "read_inbox":      ...,  # 读 lead 的收件箱
+    "broadcast":       ...,  # 广播给全员
+}
+```
+
+Leader 有 bash/edit 等完整能力（它可以亲自干活），也有团队管理能力。队友只有 6 个工具——没有 `spawn_teammate` / `list_teammates` / `broadcast`（防止递归管理）。
+
+### (7.5) 什么时候用哪种模式？
+
+到 s09 为止，我们已经有了三种 Agent 协作模式。怎么选？代码没有显式写决策逻辑，但从设计意图可以看出一个判断框架：
+
+| | 单 Agent (s01-s02) | Subagent (s04) | Agent 团队 (s09) |
+|------|-----------|------------|----------|
+| 适用场景 | 简单任务，几步完成 | 探索/搜索，需要上下文隔离 | 复杂多步任务，可并行 |
+| 任务特征 | 单一目标，线性执行 | 读多文件但只需结论 | 角色有分工 (coder/tester) |
+| 生命周期 | 一次性对话 | spawn→执行→返回→销毁 | spawn→work→idle→work→... |
+| 通信 | 无（用户↔Agent） | 单向：父→子 prompt，子→父 summary | 双向：JSONL 收件箱 |
+| 上下文 | 父对话共享 | 子独立上下文（隔离） | 各自独立上下文 |
+| 并发 | 串行 | 串行（父阻塞等子） | 并行（各自线程） |
+| 典型 prompt | "列出所有 py 文件" | "找一下这个项目用什么测试框架" | "alice 写代码，bob 写测试" |
+
+**决策逻辑模型（LLM 自己判断）：**
+
+模型看到任务后，会基于自己的判断决定调哪个工具：
+- 需要自己查文件但不想污染对话 → 调 `task` 工具 spawn 一个子 Agent
+- 任务可以分给不同角色并行 → 调 `spawn_teammate` 创建队友
+- 简单的读/写/改 → 直接用 bash / read_file / write_file / edit_file
+
+harness 不替模型做这个决策。它只是**把三种工具都提供出来，让模型自己判断场景**。这和之前的原则一致——模型拥有判断权，harness 拥有执行权。
+
+值得一提的是：这些模式不是互斥的。Leader 可以 spawn 一个 teammate（alice），alice 在处理任务时也可以在自己的 loop 里用 bash/read/write——团队模式是单 Agent 模式的超集，团队里的每个成员本质上还是一个独立 Agent。
+
+### (8) s08 → s09 变化总结
+
+| 组件 | s08 | s09 |
+|------|-----|-----|
+| Agent 数量 | 1 | 1 Lead + N 队友 |
+| 工具数 | 6 | 9 (+spawn/send/read_inbox/broadcast，同时也有 check) |
+| 持久化 | 无 | config.json + JSONL 收件箱 |
+| 线程 | 跑 shell | 跑完整 agent loop |
+| 通信 | 无（通知队列是单向） | 双向文件邮箱 |
+| 生命周期 | 一次性守护线程 | idle ↔ working 循环 |
+
+### (9) 运行
+
+```
+python agents/s09_agent_teams.py
+```
+
+内置命令（非 LLM 路径）：
+
+- `/team` — 直接查看 `.team/config.json` 中的团队名册
+- `/inbox` — 直接查看 lead 的收件箱
+
+推荐测试 prompt：
+
+- `Spawn alice (coder) and bob (tester). Have alice send bob a message.`
+- `Broadcast "status update: phase 1 complete" to all teammates`
+
+---
+
+## 关键洞察
+
+s09 用最简单的通信原语——**文件追加 + 读后清空**——实现了多 Agent 协作。没有消息队列、没有 RPC、没有 WebSocket。JSONL 收件箱就是一个单写者多读者、append-only 的日志。
+
+这个设计有两个极简主义洞察：
+
+1. **文件即协议** — 不需要定义通信协议格式，JSONL 每一行就是一条消息。没有握手、没有 ack、没有重试。读即清空 = 消息确认（如果进程在读后崩溃前没处理完，消息会丢——但对 Agent 来说，丢消息不是故障，它会在下一轮收到新消息时继续工作）。
+
+2. **收件箱读清是幂等屏障** — `read_inbox` 返回后文件为空。这意味着一个队友同一时间只有一个线程在消费它的收件箱（因为只有一个 teammate loop）。没有锁竞争，没有重复消费。
+
+对比 s04 的 subagent，s09 的队友和 subagent 有本质不同：subagent 共享文件系统但不共享通信通道；teammate 通过收件箱随时可以收到新任务。**通信通道是 Agent 从"工具"升级为"成员"的分界线。**
+
+## 10. s10：团队协议——"模型之间的结构化握手"
+
+s09 的队友能干活能通信，但缺少两样东西：**优雅关机**和**计划审批**。
+
+直接杀线程会留下写了一半的文件、过期的 config.json。高风险变更（"重构认证模块"）队友拿到就开干，没有审批环节。s10 用一个统一的模式解决这两个问题：**request_id 关联 + 两态 FSM**。
+
+### (1) 统一的 FSM——一个模式，两个场景
+
+```
+Shutdown Protocol                  Plan Approval Protocol
+==================                 ======================
+Lead             Teammate           Teammate           Lead
+  |                 |                 |                 |
+  |--shutdown_req-->|                 |--plan_req------>|
+  | {req_id:"abc"}  |                 | {req_id:"xyz"}  |
+  |                 |                 |                 |
+  |<--shutdown_resp-|                 |<--plan_resp-----|
+  | {req_id:"abc",  |                 | {req_id:"xyz",  |
+  |  approve:true}  |                 |  approve:true}  |
+
+共享状态机:  [pending] ──approve──> [approved]
+            [pending] ──reject───> [rejected]
+```
+
+两个场景方向不同但结构完全一样：一方发带唯一 ID 的请求，另一方引用同一 ID 响应。
+
+### (2) 请求追踪器——全局状态
+
+```python
+# 全局字典，用 request_id 做 key
+shutdown_requests = {}   # {req_id: {target|from: name, status: "pending"|"approved"|"rejected"}}
+plan_requests = {}        # {req_id: {from: name, plan: text, status: ...}}
+_tracker_lock = threading.Lock()
+```
+
+这两个全局 dict 在 s09 的基础上加了一层**状态可观测性**——s09 发完消息就完了，不知道对方处理了没有。s10 通过 request_id 可以查到每笔请求的状态。
+
+### (3) 关机协议——"请停下手里的活"
+
+Leader 发起：
+
+```python
+def handle_shutdown_request(teammate: str) -> str:
+    req_id = str(uuid.uuid4())[:8]
+    with _tracker_lock:
+        shutdown_requests[req_id] = {"target": teammate, "status": "pending"}
+    BUS.send(
+        "lead", teammate, "Please shut down gracefully.",
+        "shutdown_request", {"request_id": req_id},
+    )
+    return f"Shutdown request {req_id} sent to '{teammate}' (status: pending)"
+```
+
+队友收到后，在 `_exec` 中处理：
+
+```python
+# 队友的 _exec 方法中
+if tool_name == "shutdown_response":
+    req_id = args["request_id"]
+    approve = args["approve"]
+    with _tracker_lock:
+        if req_id in shutdown_requests:
+            shutdown_requests[req_id]["status"] = "approved" if approve else "rejected"
+    BUS.send(
+        sender, "lead", args.get("reason", ""),
+        "shutdown_response", {"request_id": req_id, "approve": approve},
+    )
+    return f"Shutdown {'approved' if approve else 'rejected'}"
+```
+
+队友的 loop 中检测自己的 shutdown_response 是否被批准：
+
+```python
+# 队友 _teammate_loop 的工具执行后
+if block.name == "shutdown_response" and block.input.get("approve"):
+    should_exit = True    # 批准 → 退出循环
+# ...
+# 循环结束时
+member["status"] = "shutdown" if should_exit else "idle"
+```
+
+注意这里有一个微妙的设计：**队友不是被 Leader 直接关掉的。** Leader 发请求 → 队友自己决定 approve/reject → 如果 approve，队友自己的 loop 检测到并退出。是"请求退出"不是"强制终止"。
+
+### (4) 计划审批——"干之前先让我看一眼"
+
+方向上和关机相反——是队友向 Leader 提审批：
+
+```python
+# 队友 _exec 中
+if tool_name == "plan_approval":
+    plan_text = args.get("plan", "")
+    req_id = str(uuid.uuid4())[:8]
+    with _tracker_lock:
+        plan_requests[req_id] = {"from": sender, "plan": plan_text, "status": "pending"}
+    BUS.send(
+        sender, "lead", plan_text, "plan_approval_response",
+        {"request_id": req_id, "plan": plan_text},
+    )
+    return f"Plan submitted (request_id={req_id}). Waiting for lead approval."
+```
+
+Leader 审查：
+
+```python
+def handle_plan_review(request_id: str, approve: bool, feedback: str = "") -> str:
+    with _tracker_lock:
+        req = plan_requests.get(request_id)
+    if not req:
+        return f"Error: Unknown plan request_id '{request_id}'"
+    with _tracker_lock:
+        req["status"] = "approved" if approve else "rejected"
+    BUS.send(
+        "lead", req["from"], feedback, "plan_approval_response",
+        {"request_id": request_id, "approve": approve, "feedback": feedback},
+    )
+    return f"Plan {req['status']} for '{req['from']}'"
+```
+
+这里的 `feedback` 参数允许 Leader 附加说明："计划可以，但别动数据库迁移部分"。
+
+### (5) 工具膨胀——12 个工具
+
+```python
+TOOL_HANDLERS = {
+    # 基础 (4):  bash, read_file, write_file, edit_file
+    # 团队管理 (2): spawn_teammate, list_teammates
+    # 通信 (3): send_message, read_inbox, broadcast
+    # 协议 (3): shutdown_request, shutdown_response, plan_approval
+}
+```
+
+从 s09 的 9 个涨到 12 个。注意 `shutdown_request` 和 `shutdown_response` Leader 和队友都有，但用途不同——Leader 用 `shutdown_request` 发请求，用 `shutdown_response` 查状态；队友用 `shutdown_request` 收请求，用 `shutdown_response` 回响应。同名工具在不同角色的 context 里含义不同。
+
+### (6) s09 → s10 变化总结
+
+| 组件 | s09 | s10 |
+|------|-----|-----|
+| 工具数 | 9 | 12 (+shutdown_req/resp +plan) |
+| 关机 | 自然退出（线程结束） | 请求-响应握手 |
+| 计划控制 | 无 | 队友提交 + Leader 审批 |
+| 请求追踪 | 无 | request_id + 全局 dict |
+| 状态机 | 仅 config.json 的 status | pending → approved/rejected FSM |
+
+### (7) 运行
+
+```
+python agents/s10_team_protocols.py
+```
+
+推荐测试 prompt：
+
+- `Spawn alice as a coder. Then request her shutdown.`
+- `List teammates to see alice's status after shutdown approval`
+- `Spawn bob with a risky refactoring task. Review and reject his plan.`
+
+---
+
+## 关键洞察
+
+s10 引入了一个可复用的协议模式：**request_id + FSM + 收件箱**。关机协议和计划审批代码结构几乎一样，只有消息类型名不同。任何需要"请求→响应"的协作都可以套用这个模板——task assignment、resource lock、permission escalation——都是同一个 FSM。
+
+另一个有趣的细节：关机是**协商不是命令**。Leader 不能强制 kill 队友的线程——它只能发 `shutdown_request`，队友自己决定是否 approve。这个设计和 Kubernetes 的 graceful shutdown 逻辑一致：发 SIGTERM 给进程，进程自己清理后退出。**harness 不替 Agent 做决定——这个原则跨了 10 个 session 从未改变。**
+
