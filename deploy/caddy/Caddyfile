@@ -47,8 +47,34 @@
 		reverse_proxy 127.0.0.1:8001
 	}
 
+	# SSE streaming — no compression
+	handle /api/v1/v4/chat/stream {
+		reverse_proxy 127.0.0.1:8001 {
+			flush_interval -1
+		}
+	}
+	handle /api/v1/v4/chat/stream/ {
+		reverse_proxy 127.0.0.1:8001 {
+			flush_interval -1
+		}
+	}
+
 	handle /api/v1/v4* {
 		encode zstd gzip
+		reverse_proxy 127.0.0.1:8001 {
+			flush_interval -1
+		}
+	}
+
+	# SSE streaming (lab path) — no compression
+	handle /api/lab/zotero-paper-rag/api/v1/v4/chat/stream {
+		uri strip_prefix /api/lab/zotero-paper-rag
+		reverse_proxy 127.0.0.1:8001 {
+			flush_interval -1
+		}
+	}
+	handle /api/lab/zotero-paper-rag/api/v1/v4/chat/stream/ {
+		uri strip_prefix /api/lab/zotero-paper-rag
 		reverse_proxy 127.0.0.1:8001 {
 			flush_interval -1
 		}
@@ -108,6 +134,7 @@ https://owen571.top {
 }
 
 :8080 {
+	import pdf_rag_v4_routes
 	import public_asset_matcher
 
 	handle @public_static_assets {

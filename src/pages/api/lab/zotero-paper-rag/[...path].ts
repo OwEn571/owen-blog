@@ -102,13 +102,17 @@ async function handleProxy(context: APIContext) {
 	const targetUrl = buildTargetUrl(context.request, rawPath);
 
 	try {
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 120_000);
 		const upstream = await fetch(targetUrl, {
 			method,
 			headers: copyRequestHeaders(context.request.headers),
 			body: hasBody ? context.request.body : undefined,
 			redirect: "manual",
+			signal: controller.signal,
 			...(hasBody ? { duplex: "half" as const } : {}),
 		});
+		clearTimeout(timeout);
 
 		return new Response(upstream.body, {
 			status: upstream.status,
