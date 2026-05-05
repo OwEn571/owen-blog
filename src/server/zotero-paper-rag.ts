@@ -12,7 +12,7 @@ type JsonValue =
 type JsonObject = Record<string, JsonValue>;
 
 const DEFAULT_ZOTERO_PAPER_RAG_BASE_URL = "http://127.0.0.1:8001";
-const DEFAULT_ZOTERO_PAPER_RAG_ROOT = "/home/ubuntu/owen/pdf-rag-agent";
+const DEFAULT_ZOTERO_PAPER_RAG_ROOT = "/home/ubuntu/owen/pdf-rag-agent-v4";
 const DEFAULT_TIMEOUT_MS = 8000;
 
 function trimTrailingSlash(value: string) {
@@ -126,7 +126,7 @@ async function readLocalIndexStats() {
 
 export async function getZoteroPaperRagSnapshot() {
 	const [health, indexStats] = await Promise.all([
-		fetchZoteroPaperRagEndpoint("/api/v1/v4/health", "json"),
+		fetchZoteroPaperRagEndpoint("/api/v1/health", "json"),
 		readLocalIndexStats(),
 	]);
 
@@ -141,7 +141,7 @@ export async function getZoteroPaperRagSnapshot() {
 }
 
 export async function getZoteroPaperRagChatHtml() {
-	const response = await fetchZoteroPaperRagEndpoint("/v4", "text", 12000);
+	const response = await fetchZoteroPaperRagEndpoint("/", "text", 12000);
 	return {
 		ok: response.ok,
 		status: response.status,
