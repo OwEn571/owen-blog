@@ -1,7 +1,7 @@
 ---
-title: PDF-RAG-Agent V5 项目文档
+title: PDF-RAG-Agent 项目文档
 published: 2026-05-02
-description: PDF-RAG-Agent V5 完整项目文档——基于 Zotero 论文库的智能研究助手，从普通 RAG 演进为可追踪、可校验的论文 Agent。
+description: PDF-RAG-Agent 完整项目文档——基于 Zotero 论文库的智能研究助手，从普通 RAG 演进为可追踪、可校验的论文 Agent。
 tags: [RAG, Agent, Zotero, PDF, Milvus, BM25, FastAPI, SSE]
 category: Zotero Paper Agent
 draft: false
@@ -10,7 +10,7 @@ comment: true
 
 ## 1. 项目介绍
 
-PDF-RAG-Agent V5 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，默认使用 Milvus Dense 向量检索（可选 BM25/Title Anchor 多路融合），并在前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
+PDF-RAG-Agent 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，默认使用 Milvus Dense 向量检索（可选 BM25/Title Anchor 多路融合），并在前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
 
 ## 2. 项目背景与目标
 
@@ -22,20 +22,20 @@ PDF-RAG-Agent V5 是一个面向 Zotero 个人论文库的智能论文研究助�
 
 常见的PDF RAG方法，对于大量pdf而言，召回困难，且得到的信息生硬，并且一旦需要多次RAG才能得到答案的问题，完全无法解决。
 
-### 2.3 V5 想解决什么
+### 2.3 想解决什么
 
 我们的目标是实现一个智能论文研究助手。它不仅要能快速找到目标论文，还要能完成多论文比较、论文公式提取、论文图表理解、用户意图拆解、多轮上下文延续和基础自我认知。也就是说，系统不能只停留在“检索一段文本然后回答”的普通 RAG 形态，而是需要在 RAG 层面做精细设计，并配合一个成熟可用的 Agent 系统，才能完成真实论文研究场景中的复杂问题。
 
 ## 3. 系统架构总览
 
-PDF-RAG-Agent V5 是一个围绕论文研究的 Agent Loop 系统。从部署视角看分为前端、API、Agent、检索、数据、模型调用六层。从代码组织看，`app/services/` 下有 16 个子包、140+ 个模块，按职责分为四组：
+PDF-RAG-Agent 是一个围绕论文研究的 Agent Loop 系统。从部署视角看分为前端、API、Agent、检索、数据、模型调用六层。从代码组织看，`app/services/` 下按职责分为四组：
 
 ```
 app/services/
 ├── 基础设施
 │   └── infra/          model_clients, confidence, prompt_safety
 ├── 数据与检索
-│   ├── library/        zotero_sqlite, metadata_sql, citation_ranking
+│   ├── library/        core, zotero_sqlite, metadata_sql, citation_ranking
 │   ├── retrieval/      DualIndexRetriever, indexing, pdf_extractor, vector_index, web_search
 │   └── memory/         session_store, learnings, artifacts, research
 ├── 领域逻辑（14 个子包）
@@ -58,7 +58,7 @@ app/services/
 
 ### 3.1 前端层
 
-前端层由 `app/static/v4.html` 提供单页页面，包含 Zotero 论文库侧栏、聊天区、运行时 Inspector、引用来源和 PDF 预览区域。用户的问题通过普通聊天接口或 SSE 流式接口发送到 API 层，前端再根据后端返回的 `session`、`contract`、`agent_plan`、`plan`、`observation`、`agent_step`、`thinking_delta`、`tool_call`、`candidate_papers`、`screened_papers`、`evidence`、`solver_selection`、`claims`、`verification`、`reflection`、`confidence`、`answer_delta` 和 `final` 等事件实时更新界面。它的重点不是承载复杂业务逻辑，而是提升系统可观察性。
+前端层由 `app/static/index.html` 提供单页页面，包含 Zotero 论文库侧栏、聊天区、运行时 Inspector、引用来源和 PDF 预览区域。用户的问题通过普通聊天接口或 SSE 流式接口发送到 API 层，前端再根据后端返回的 `session`、`contract`、`agent_plan`、`plan`、`observation`、`agent_step`、`thinking_delta`、`tool_call`、`candidate_papers`、`screened_papers`、`evidence`、`solver_selection`、`claims`、`verification`、`reflection`、`confidence`、`answer_delta` 和 `final` 等事件实时更新界面。它的重点不是承载复杂业务逻辑，而是提升系统可观察性。
 
 ### 3.2 API 层
 
@@ -88,7 +88,7 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 `agent/` 目录下的其他关键模块：
 - `planner.py` — `AgentPlanner`：tool-calling / JSON / fallback 三级 plan 生成
 - `runtime.py` — `AgentRuntime`：conversation 和 research 两条 tool loop 执行路径
-- `tool_registries.py` — 构建 conversation (12 工具) 和 research (18 工具) 的 `RegisteredAgentTool` 字典
+- `tool_registries.py` — 构建 conversation (12 工具) 和 research (19 工具) 的 `RegisteredAgentTool` 字典
 - `tools.py` — 20 个 `AgentToolSpec`（LLM 可见） + `AgentToolExecutor`（运行时调度）
 - `research_*_handlers.py` — 四个 research 阶段的 handler：search / compose / verification / reflection
 - `compound.py` — 复合查询分解（”比较 DPO 和 PPO” → 两个子任务并行）
@@ -119,7 +119,7 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 
 ### 3.6 检索与数据层
 
-- **`retrieval/`（9 模块）**：`core.py` 中的 `DualIndexRetriever` 是在线检索核心——当前默认使用 Milvus Dense 单路召回。经过严格的消融实验（159 题 × 6 配置，详见 §11.5），`text-embedding-3-large`（3072 维）在 113 篇论文的封闭域上已达 Hit@1=95.6%，多路融合未带来增益，因此简化了默认检索路径。BM25 仍保留并修复了中文 jieba 分词；title anchor 和 relation anchor 保留为可选模块。`indexing.py` 中的 `IngestionService` 负责离线入库。`pdf_extractor.py` 基于 pypdf 做 PDF 文本和信号抽取。`vector_index.py` 封装 Milvus 向量索引。`web_search.py` 对接 Tavily API。
+- **`retrieval/`（9 模块）**：`core.py` 中的 `DualIndexRetriever` 是在线检索核心——当前默认使用 Milvus Dense 单路召回。经过严格的消融实验（159 题 × 6 配置，详见 §11.5），`text-embedding-3-large`（3072 维）在 113 篇论文的封闭域上已达 Hit@1=97.5%，多路融合未带来增益，因此简化了默认检索路径。BM25 仍保留并修复了中文 jieba 分词；title anchor 和 relation anchor 保留为可选模块。`indexing.py` 中的 `IngestionService` 负责离线入库。`pdf_extractor.py` 基于 pypdf 做 PDF 文本和信号抽取。`vector_index.py` 封装 Milvus 向量索引。`web_search.py` 对接 Tavily API。
 
 - **`library/`（4 模块）**：`zotero_sqlite.py` 读取 Zotero 本地 SQLite；`core.py` 提供 `LibraryBrowserService` 论文库浏览；`metadata_sql.py` 提供 SQL 查询论文库元信息（供 `query_library_metadata` 工具使用）；`citation_ranking.py` 按引用数排序论文。
 
@@ -137,7 +137,7 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 
 ### 4.1 app/main.py
 
-`app/main.py` 是整个 FastAPI 后端的装配入口。它本身不负责论文问答、检索或 Agent 推理，而是负责把应用运行所需的几类东西串起来：读取配置、初始化日志、定义生命周期、创建 FastAPI 应用、注册 API 路由、提供 `/v4` / `/v5` 前端页面，并在依赖存在时暴露 `/metrics` 监控指标。
+`app/main.py` 是整个 FastAPI 后端的装配入口。它本身不负责论文问答、检索或 Agent 推理，而是负责把应用运行所需的几类东西串起来：读取配置、初始化日志、定义生命周期、创建 FastAPI 应用、注册 API 路由、提供前端页面（`/` 返回 index.html，`/v4` `/v5` 301 重定向到 `/`），并在依赖存在时暴露 `/metrics` 监控指标。
 
 ```python
 from __future__ import annotations
@@ -182,7 +182,7 @@ settings = get_settings()
 setup_logging(settings.log_level)
 ```
 
-这里完成了入口文件的基础准备工作。`APP_DIR` 指向 `app` 目录，`STATIC_DIR` 指向 `app/static` 目录，后面 `/v4` 会从这里返回 `v4.html`。`settings = get_settings()` 会读取环境变量和项目 `.env`，并确保运行时目录存在；`setup_logging(settings.log_level)` 则根据配置初始化日志。
+这里完成了入口文件的基础准备工作。`APP_DIR` 指向 `app` 目录，`STATIC_DIR` 指向 `app/static` 目录，后面 `/v4` 会从这里返回 `index.html`。`settings = get_settings()` 会读取环境变量和项目 `.env`，并确保运行时目录存在；`setup_logging(settings.log_level)` 则根据配置初始化日志。
 
 ### 4.2 FastAPI 应用创建
 
@@ -190,7 +190,7 @@ setup_logging(settings.log_level)
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    description="Tool-calling Zotero paper research agent V5",
+    description="Zotero paper research agent",
     lifespan=lifespan,
 )
 ```
@@ -216,21 +216,21 @@ if settings.cors_allow_origins:
 app.include_router(router, prefix="/api/v1")
 ```
 
-这句把 `app/api/routes.py` 中定义的 API 路由统一挂载到 `/api/v1` 前缀下面。也就是说，路由文件里定义的 `/v4/chat`、`/v4/health` 等接口，最终会变成 `/api/v1/v4/chat`、`/api/v1/v4/health`。其中 `/api/v1` 是 接口协议版本，`/v4` 则对应当前 PDF-RAG-Agent V4 这套业务版本。
+这句把 `app/api/routes.py` 中定义的 API 路由统一挂载到 `/api/v1` 前缀下面。也就是说，路由文件里定义的 `/v4/chat`、`/v4/health` 等接口，最终会变成 `/api/v1/chat`、`/api/v1/health`。其中 `/api/v1` 是 接口协议版本，`/api/v1` 为协议版本前缀。
 
 ```python
 @app.get("/", include_in_schema=False)
 def root() -> RedirectResponse:
-    return RedirectResponse(url="/v5", status_code=307)
+    return RedirectResponse(url="/", status_code=307)
 ```
 
-根路径 `/` 提供一个兜底跳转，用于本地直连或反向代理未单独配置首页时，将访问重定向到 `/v5` 前端页面（当前运行时版本）。在线上部署中，真实入口通常由域名和 Nginx 配置决定，例如 `owen571.top` 可以直接作为用户访问入口，所以这里不应该理解成项目唯一入口，而只是 FastAPI 内部的默认访问兜底。
+根路径 `/` 提供一个兜底跳转，用于本地直连或反向代理未单独配置首页时，直接返回前端页面（当前运行时版本）。在线上部署中，真实入口通常由域名和 Nginx 配置决定，例如 `owen571.top` 可以直接作为用户访问入口，所以这里不应该理解成项目唯一入口，而只是 FastAPI 内部的默认访问兜底。
 
 ```python
-@app.get("/v4", include_in_schema=False)
-def v4_ui() -> FileResponse:
+@app.get("/legacy", include_in_schema=False)
+def ui_legacy() -> FileResponse:
     return FileResponse(
-        STATIC_DIR / "v4.html",
+        STATIC_DIR / "index.html",
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
@@ -240,9 +240,9 @@ def v4_ui() -> FileResponse:
 
 
 @app.get("/v5", include_in_schema=False)
-def v5_ui() -> FileResponse:
+def ui_index() -> FileResponse:
     return FileResponse(
-        STATIC_DIR / "v4.html",
+        STATIC_DIR / "index.html",
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
@@ -251,7 +251,7 @@ def v5_ui() -> FileResponse:
     )
 ```
 
-`/v4` 和 `/v5` 返回的是同一个静态 HTML 页面，也就是 `app/static/v4.html`。浏览器拿到这个页面后，会执行其中的 JavaScript，再去请求 `/api/v1/v4/chat/stream`、`/api/v1/v4/library` 等后端接口。这里设置 `Cache-Control: no-store` 是为了避免浏览器缓存旧版前端页面，方便前端持续迭代和线上刷新。两个路径并存是为了兼容不同版本的前端入口（`/v4` 和 `/v5` 指向同一个最新前端页面，当前运行时版本为 V5）。
+`/v4` 和 `/v5` 返回的是同一个静态 HTML 页面，也就是 `app/static/index.html`。浏览器拿到这个页面后，会执行其中的 JavaScript，再去请求 `/api/v1/chat/stream`、`/api/v1/library` 等后端接口。这里设置 `Cache-Control: no-store` 是为了避免浏览器缓存旧版前端页面，方便前端持续迭代和线上刷新。两个路径并存是为了兼容不同版本的前端入口（`/v4` 和 `/v5` 指向同一个最新前端页面，当前运行时版本为 V5）。
 
 ### 4.4 lifespan 资源释放
 
@@ -326,7 +326,7 @@ def health() -> HealthResponse:
     return HealthResponse()
 ```
 
-这个接口没有请求参数，也不会触发 Agent、检索器或模型调用，只是直接返回一个 `HealthResponse`。由于 `routes.py` 中的路由会在 `main.py` 里统一挂载到 `/api/v1` 前缀下，所以它的真实访问路径是 `/api/v1/v4/health`。前端启动时会请求这个接口，用返回值判断服务是否在线、当前 runtime 是否支持结构化摘要，以及后端暴露的 canonical tools 是否为 `read_memory`、`search_corpus`、`web_search`、`query_library_metadata`、`compose`、`ask_human`。
+这个接口没有请求参数，也不会触发 Agent、检索器或模型调用，只是直接返回一个 `HealthResponse`。由于 `routes.py` 中的路由会在 `main.py` 里统一挂载到 `/api/v1` 前缀下，所以它的真实访问路径是 `/api/v1/health`。前端启动时会请求这个接口，用返回值判断服务是否在线、当前 runtime 是否支持结构化摘要，以及后端暴露的 canonical tools 是否为 `read_memory`、`search_corpus`、`web_search`、`query_library_metadata`、`compose`、`ask_human`。
 
 ```python
 class HealthResponse(BaseModel):
@@ -370,7 +370,7 @@ def paper_preview(
     return PaperPreviewResponse(**payload)
 ```
 
-`paper_preview` 用于根据 `paper_id` 返回某篇论文的预览信息。这里的 `paper_id` 来自 URL 路径，例如 `/api/v1/v4/library/papers/xxx/preview`。路由层会调用 `library_service.paper_preview(paper_id)`，如果找不到对应论文，就抛出 `404 paper not found`；如果找到，就包装成 `PaperPreviewResponse` 返回。这个响应里包含论文基础信息和若干证据片段，供前端右侧 Preview 面板展示。
+`paper_preview` 用于根据 `paper_id` 返回某篇论文的预览信息。这里的 `paper_id` 来自 URL 路径，例如 `/api/v1/library/papers/xxx/preview`。路由层会调用 `library_service.paper_preview(paper_id)`，如果找不到对应论文，就抛出 `404 paper not found`；如果找到，就包装成 `PaperPreviewResponse` 返回。这个响应里包含论文基础信息和若干证据片段，供前端右侧 Preview 面板展示。
 
 ```python
 @router.get("/v4/library/papers/{paper_id}/pdf")
@@ -404,7 +404,7 @@ def citation_preview(
     return CitationPreviewResponse(**payload)
 ```
 
-这个接口和前面的论文预览不同，它不是按路径参数接收 `paper_id`，而是通过 query 参数接收 `doc_id` 和 `paper_id`，真实访问形式类似 `/api/v1/v4/citations/preview?doc_id=xxx&paper_id=yyy`。其中 `doc_id` 更精确，指向某一个 evidence block；`paper_id` 更粗，指向某一篇论文。服务层会优先用 `doc_id` 找 block 级证据，如果找不到，再尝试用 `paper_id` 找论文级信息。
+这个接口和前面的论文预览不同，它不是按路径参数接收 `paper_id`，而是通过 query 参数接收 `doc_id` 和 `paper_id`，真实访问形式类似 `/api/v1/citations/preview?doc_id=xxx&paper_id=yyy`。其中 `doc_id` 更精确，指向某一个 evidence block；`paper_id` 更粗，指向某一篇论文。服务层会优先用 `doc_id` 找 block 级证据，如果找不到，再尝试用 `paper_id` 找论文级信息。
 
 ```python
 class CitationPreviewResponse(BaseModel):
@@ -462,7 +462,7 @@ class IngestResponse(BaseModel):
 
 `max_papers` 用于限制本次最多处理多少篇论文，适合调试或小规模验证；`force_rebuild` 会传给向量索引层，如果为 true，会重建 Milvus collection 后再写入向量。返回值里的 `paper_records` 表示从 Zotero 读取到的记录数，`papers_indexed` 表示成功完成 PDF 抽取并入库的论文数，`papers_missing_pdf` 表示 Zotero 里有记录但本地 PDF 缺失的数量，`paper_docs` 是论文级索引文档数，`block_docs` 是 PDF 页面、段落、表格、图注等证据块文档数，`vectors_upserted` 是写入 Milvus 的向量数量。
 
-它的完整链路是：路由层接收请求并校验管理员权限，`IngestionService.rebuild()` 读取 Zotero 记录，调用 PDF 抽取器解析页面内容，生成 paper card 和 block documents，写入 `v4_papers.jsonl`、`v4_blocks.jsonl` 和 ingestion state；如果配置了 embedding 所需的 API key，还会把论文级文档和证据块文档写入 Milvus。最后，路由层调用 `get_retriever().refresh()`，让正在运行的服务重新加载本地 JSONL 和 BM25 索引，这样重建完成后前端查询可以立即使用新论文库。
+它的完整链路是：路由层接收请求并校验管理员权限，`IngestionService.rebuild()` 读取 Zotero 记录，调用 PDF 抽取器解析页面内容，生成 paper card 和 block documents，写入 `papers.jsonl`、`blocks.jsonl` 和 ingestion state；如果配置了 embedding 所需的 API key，还会把论文级文档和证据块文档写入 Milvus。最后，路由层调用 `get_retriever().refresh()`，让正在运行的服务重新加载本地 JSONL 和 BM25 索引，这样重建完成后前端查询可以立即使用新论文库。
 
 ### 5.6 chat / stream chat
 
@@ -570,7 +570,7 @@ return StreamingResponse(
 
 
 流式返回的总链路：用户点击发送
--> fetch POST /api/v1/v4/chat/stream
+-> fetch POST /api/v1/chat/stream
 -> FastAPI StreamingResponse 打开长连接
 -> Agent 在线程里执行 run_agent_chat_turn()
 -> 执行过程中 emit_event(item) 把事件放入 asyncio.Queue
@@ -595,7 +595,7 @@ def admin_list_tool_proposals(
     return {"items": list_tool_proposals(data_dir=settings.data_dir, include_code=include_code)}
 ```
 
-`GET /v4/admin/tools/proposals` 列出所有工具提案，可选参数 `include_code` 控制是否返回提案中的 Python 代码。
+`GET /api/v1/admin/tools/proposals` 列出所有工具提案，可选参数 `include_code` 控制是否返回提案中的 Python 代码。
 
 ```python
 @router.get("/v4/admin/tools/proposals/{proposal_id}")
@@ -603,7 +603,7 @@ def admin_get_tool_proposal(proposal_id: str, ...) -> dict[str, object]:
     return load_tool_proposal(data_dir=settings.data_dir, proposal_id=proposal_id, include_code=include_code)
 ```
 
-`GET /v4/admin/tools/proposals/{proposal_id}` 获取单个工具提案的完整内容，包括代码和元信息。
+`GET /api/v1/admin/tools/proposals/{proposal_id}` 获取单个工具提案的完整内容，包括代码和元信息。
 
 ```python
 @router.post("/v4/admin/tools/proposals/{proposal_id}/sandbox")
@@ -616,7 +616,7 @@ def admin_run_tool_proposal_sandbox(proposal_id: str, payload: ToolProposalSandb
     )
 ```
 
-`POST /v4/admin/tools/proposals/{proposal_id}/sandbox` 在沙盒环境中执行工具提案代码，验证其功能是否正常。`ToolProposalSandboxRequest` 包含 `args`（工具参数）、`timeout_seconds`（超时限制，最大 30s）和 `memory_limit_mb`（内存限制，64-2048 MB）。
+`POST /api/v1/admin/tools/proposals/{proposal_id}/sandbox` 在沙盒环境中执行工具提案代码，验证其功能是否正常。`ToolProposalSandboxRequest` 包含 `args`（工具参数）、`timeout_seconds`（超时限制，最大 30s）和 `memory_limit_mb`（内存限制，64-2048 MB）。
 
 ```python
 @router.post("/v4/admin/tools/proposals/{proposal_id}/status")
@@ -631,7 +631,7 @@ def admin_transition_tool_proposal_status(proposal_id: str, payload: ToolProposa
     )
 ```
 
-`POST /v4/admin/tools/proposals/{proposal_id}/status` 切换工具提案的状态（如 `draft` → `sandboxed` → `active` 或 `deprecated`）。`ToolProposalTransitionRequest` 包含 `next_status`（下一状态）、`code_sha256`（代码哈希用于校验完整性）、`reviewer`（审核人）、`note`（备注）和 `sandbox_report`（沙盒测试报告）。
+`POST /api/v1/admin/tools/proposals/{proposal_id}/status` 切换工具提案的状态（如 `draft` → `sandboxed` → `active` 或 `deprecated`）。`ToolProposalTransitionRequest` 包含 `next_status`（下一状态）、`code_sha256`（代码哈希用于校验完整性）、`reviewer`（审核人）、`note`（备注）和 `sandbox_report`（沙盒测试报告）。
 
 所有工具提案接口都需要通过 `require_admin_access` 校验管理员身份，与 `ingest rebuild` 一样的安全控制。
 
@@ -864,7 +864,7 @@ class DisambiguationJudgeDecision(BaseModel):
 
 其中 relation anchor 是最近从 stub 补完为完整实现的四路之一。它的设计思路是：如果用户明确提到了某个概念/方法名，那与已匹配论文共享标签、缩写词、作者或 Zotero 分类的其他论文也很可能相关——即使这些论文的标题里不含 query term。实现上，先由 title_anchor 确定锚点论文并提取其"关系指纹"（tags、aliases、body_acronyms、authors、collection paths），再遍历全库论文按共享信号数量打分排序。Zotero 分类路径从 SQLite 的 collections/collectionItems 表实时加载，缓存为内存字典；若 DB 不可用则自动降级，跳过 collection 信号。
 
-检索效率上，系统把重活尽量放在离线入库阶段。PDF 抽取、文本切块、summary 生成、embedding upsert 都在 `ingest rebuild` 时完成；在线请求只加载已经持久化的 `v4_papers.jsonl`、`v4_blocks.jsonl` 和 Milvus collection。`DualIndexRetriever` 被依赖注入缓存成长期对象，启动后构建 BM25，后续请求复用；重建索引后再调用 `refresh()` 重新加载本地 JSONL 和 BM25。向量入库使用 batch upsert、retry 和 fallback embedding model，避免一次失败导致整个入库不可用。
+检索效率上，系统把重活尽量放在离线入库阶段。PDF 抽取、文本切块、summary 生成、embedding upsert 都在 `ingest rebuild` 时完成；在线请求只加载已经持久化的 `papers.jsonl`、`blocks.jsonl` 和 Milvus collection。`DualIndexRetriever` 被依赖注入缓存成长期对象，启动后构建 BM25，后续请求复用；重建索引后再调用 `refresh()` 重新加载本地 JSONL 和 BM25。向量入库使用 batch upsert、retry 和 fallback embedding model，避免一次失败导致整个入库不可用。
 
 ### 7.1 Zotero 读取
 
@@ -1189,14 +1189,14 @@ Zotero 分类数据通过 `_load_collections()` 在 `DualIndexRetriever.__init__
 
 ### 7.5 Milvus 向量索引
 
-向量索引由 `CollectionVectorIndex`（`app/services/retrieval/vector_index.py`）封装，底层对接 Milvus（本地部署 `http://localhost:19530`）。系统维护两个 collection：`zprag_v4_papers` 和 `zprag_v4_blocks`。Embedding 使用独立的 `embedding_api_key` + `embedding_base_url`（fallback 到 `openai_api_key`），当前部署通过 Qihai 网关调用 `text-embedding-3-large`（3072 维），失败自动降级到 `text-embedding-3-small`（1536 维）。
+向量索引由 `CollectionVectorIndex`（`app/services/retrieval/vector_index.py`）封装，底层对接 Milvus（本地部署 `http://localhost:19530`）。系统维护两个 collection：`zprag_papers` 和 `zprag_blocks`。Embedding 使用独立的 `embedding_api_key` + `embedding_base_url`（fallback 到 `openai_api_key`），当前部署通过 Qihai 网关调用 `text-embedding-3-large`（3072 维），失败自动降级到 `text-embedding-3-small`（1536 维）。
 
 配置项（`app/core/config.py`）：
 
 ```python
 milvus_uri: str = "http://localhost:19530"
-milvus_paper_collection: str = "zprag_v4_papers"
-milvus_block_collection: str = "zprag_v4_blocks"
+milvus_paper_collection: str = "zprag_papers"
+milvus_block_collection: str = "zprag_blocks"
 embedding_model: str = "text-embedding-3-large"        # 3072 维
 embedding_fallback_model: str = "text-embedding-3-small"  # 1536 维
 embedding_request_timeout_seconds: float = 120.0
@@ -1396,7 +1396,7 @@ class ResearchAssistantAgentV4(
 `tools/`（3 模块）支持在不修改核心代码的情况下扩展 Agent 能力：
 
 - `proposals.py` — 工具提案管理：`list_tool_proposals()`、`load_tool_proposal()`、`run_tool_proposal_sandbox()`、`transition_tool_proposal_status()`。生命周期：draft → sandboxed → active → deprecated
-- `registry_helpers.py` — 1200+ 行的工具注册基础设施，为 `tool_registries.py` 提供 handler 辅助函数
+- `registry_helpers.py` — 700+ 行的工具注册基础设施，为 `tool_registries.py` 提供 handler 辅助函数
 - `dynamic_context.py` — 动态工具上下文管理
 
 工具提案的 JSON manifest 包含 name、when、returns、input_schema、dangerous、streaming 等字段，与内置 `AgentToolSpec` 格式兼容，由 `agent_tool_manifest()` 合并后统一呈现给 LLM planner。
@@ -1765,15 +1765,15 @@ def extract_agent_query_contract(*, agent, query, session, mode,
 
 ## 9. 前端交互
 
-前端由 `app/static/v4.html` 提供，是一个单页式论文研究工作台。页面布局分为四个主要区域：
+前端由 `app/static/index.html` 提供，是一个单页式论文研究工作台。页面布局分为四个主要区域：
 
-**左侧 Zotero 论文库侧栏**：启动时通过 `GET /api/v1/v4/library` 加载论文列表，按 Zotero collection 分类展示，每篇论文显示标题、作者、年份和标签。点击论文可以触发右侧的 PDF 预览和论文信息面板。
+**左侧 Zotero 论文库侧栏**：启动时通过 `GET /api/v1/library` 加载论文列表，按 Zotero collection 分类展示，每篇论文显示标题、作者、年份和标签。点击论文可以触发右侧的 PDF 预览和论文信息面板。
 
-**中间聊天区**：用户输入问题后，前端通过 `POST /api/v1/v4/chat/stream` 建立 SSE 长连接，实时接收后端事件。聊天区支持 Markdown 渲染（含 LaTeX 数学公式）、引用标记点击、流式文本追加和思考过程展示（`thinking_delta` 事件）。
+**中间聊天区**：用户输入问题后，前端通过 `POST /api/v1/chat/stream` 建立 SSE 长连接，实时接收后端事件。聊天区支持 Markdown 渲染（含 LaTeX 数学公式）、引用标记点击、流式文本追加和思考过程展示（`thinking_delta` 事件）。
 
 **右侧 Runtime Inspector**：展示 Agent 执行过程中的关键事件。包括 session 信息、query contract（结构化意图）、agent plan（工具计划）、plan（研究计划细节）、observation（LLM 中间观察，如 disambiguation judge 决策）、agent_step（工具步骤开始）、thinking_delta（模型思考过程流式输出）、tool_call（工具调用和摘要）、candidate_papers / screened_papers（候选论文和筛选结果）、evidence（检索到的证据块数量）、solver_selection（solver 选择结果）、claims（生成的结论数量）、verification（grounding 校验状态）、confidence（置信度评估）和 reflection（Agent 自我反思）。
 
-**引用来源和 PDF 预览**：点击回答中的引用标记或 Runtime 面板中的 evidence 条目，前端会调用 `GET /api/v1/v4/citations/preview?doc_id=...&paper_id=...` 获取证据详情，并在 PDF 预览区展示对应论文的 PDF 页面（通过 `GET /api/v1/v4/library/papers/{paper_id}/pdf` 加载 PDF，使用 PDF.js 渲染到指定页码）。
+**引用来源和 PDF 预览**：点击回答中的引用标记或 Runtime 面板中的 evidence 条目，前端会调用 `GET /api/v1/citations/preview?doc_id=...&paper_id=...` 获取证据详情，并在 PDF 预览区展示对应论文的 PDF 页面（通过 `GET /api/v1/library/papers/{paper_id}/pdf` 加载 PDF，使用 PDF.js 渲染到指定页码）。
 
 前端代码没有使用 React/Vue 等框架，而是基于原生 JavaScript + DOM 操作实现，配合 CSS Grid 布局。SSE 事件解析使用 fetch + ReadableStream reader，每个事件的 event 类型和 data payload 被解析后路由到对应的 UI 更新函数。Runtime 面板按时间线展示事件卡片，每张卡片显示事件类型、工具名、摘要和 payload 详情。前端的价值不在于前端工程复杂度，而在于把后端 Agent 的完整执行过程可视化，让用户不仅看到最终答案，也能看到 Agent 如何理解问题、调用工具、检索证据、消歧候选和完成校验。
 
@@ -1865,7 +1865,7 @@ SSE 流式接口实时推送 Agent 执行全过程：Intent → Contract → Pla
 
 ### 11.2 Eval Cases
 
-Eval cases 定义在 `evals/cases_test_md.yaml` 中，使用 YAML 格式。`scripts/run_v4_eval.py` 通过 HTTP 调用 `/api/v1/v4/chat` 接口自动判断通过/失败：
+Eval cases 定义在 `evals/cases_test_md.yaml` 中，使用 YAML 格式。`scripts/run_v4_eval.py` 通过 HTTP 调用 `/api/v1/chat` 接口自动判断通过/失败：
 
 ```python
 # Eval case 结构示例
@@ -1967,7 +1967,7 @@ python scripts/eval_retrieval.py --queries-json data/eval_queries_v3.json --max-
 
 **关键发现**：
 
-1. **Pure Dense 在整库语义匹配上几乎完美**（Hit@1=95.6%）。这是因为 `text-embedding-3-large`（3072 维）在 113 篇论文的封闭域上，`paper_card` 中的 LLM 摘要（占内容的 86%）提供了充分的语义信号。
+1. **Pure Dense 在整库语义匹配上几乎完美**（Hit@1=97.5%）。这是因为 `text-embedding-3-large`（3072 维）在 113 篇论文的封闭域上，`paper_card` 中的 LLM 摘要（占内容的 86%）提供了充分的语义信号。
 
 2. **BM25 对中文原本完全失效**（Hit@1=0.176），原因是默认空格分词器将整句中文字符串视为单个 token。更换为 jieba CJK 分词器后恢复到 0.748——这是整个评测过程中最有价值的工程发现。
 
@@ -2086,15 +2086,15 @@ TAVILY_API_KEY=tvly-xxx
 ### 12.3 服务端口与路由
 
 FastAPI 服务监听 8001 端口，主要路由：
-- `/` → 重定向到 `/v5`
-- `/v4` / `/v5` → 前端页面 `v4.html`
-- `/api/v1/v4/health` → 健康检查
-- `/api/v1/v4/library` → 论文库列表
-- `/api/v1/v4/chat` → 普通问答（一次性返回）
-- `/api/v1/v4/chat/stream` → SSE 流式问答
-- `/api/v1/v4/ingest/rebuild` → 索引重建（需 admin key）
-- `/api/v1/v4/citations/preview` → 引用预览
-- `/api/v1/v4/tools/proposals` → 动态工具提案管理
+- `/` → 直接返回 index.html
+- `/v4` / `/v5` → 前端页面 `index.html`
+- `/api/v1/health` → 健康检查
+- `/api/v1/library` → 论文库列表
+- `/api/v1/chat` → 普通问答（一次性返回）
+- `/api/v1/chat/stream` → SSE 流式问答
+- `/api/v1/ingest/rebuild` → 索引重建（需 admin key）
+- `/api/v1/citations/preview` → 引用预览
+- `/api/v1/tools/proposals` → 动态工具提案管理
 - `/metrics` → Prometheus metrics（可选）
 
 ### 12.4 安全控制
