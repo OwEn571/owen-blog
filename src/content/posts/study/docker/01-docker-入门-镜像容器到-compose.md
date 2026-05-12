@@ -125,6 +125,8 @@ Docker Desktop 往往会借助 QEMU 去兼容不同架构，但并不是所有�
 - 能用原生 ARM64 镜像最好
 - 不行再考虑 `--platform`
 
+> QEMU 是一个开源的硬件虚拟化/模拟器。在 Docker Desktop 里，当你用 `--platform linux/amd64` 拉一个 x86 镜像到 ARM Mac 上时，Docker 会通过 QEMU 在后台**模拟一个 x86 CPU**来运行那个容器。代价是性能会明显下降（通常比原生架构慢几倍），所以官方建议优先用原生架构镜像。
+
 ### 3.4 国内镜像源
 由于担心镜像源在海外访问缓慢，对于docker desktop来说，我们可以在这里配置一下国内源：
 ![alt text](image.png)
