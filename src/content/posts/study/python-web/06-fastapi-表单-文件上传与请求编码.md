@@ -2,8 +2,8 @@
 title: FastAPI 请求编码切换：表单、文件上传与 UploadFile
 published: 2026-03-28
 description: 从 JSON 切到 multipart/form-data，把 Form、File、UploadFile、表单模型和多文件上传一并收进请求编码这一层。
-tags: [FastAPI, Form, UploadFile]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Form, UploadFile]
+category: PythonWeb
 draft: false
 comment: true
 ---

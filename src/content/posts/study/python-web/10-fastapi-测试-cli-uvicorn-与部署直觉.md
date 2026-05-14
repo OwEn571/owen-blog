@@ -2,8 +2,8 @@
 title: FastAPI 验证与运行：Testing、CLI、Uvicorn 与 Workers
 published: 2026-03-24
 description: 把测试、调试、fastapi CLI、uvicorn、手动运行和 workers 收到一起，形成一条更完整的“本地开发到部署”的路径。
-tags: [FastAPI, Testing, Uvicorn, Deployment]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Testing, Uvicorn, Deployment]
+category: PythonWeb
 draft: false
 comment: true
 ---

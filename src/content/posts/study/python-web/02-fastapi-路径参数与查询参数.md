@@ -2,8 +2,8 @@
 title: FastAPI 输入基础：路径参数与查询参数
 published: 2026-04-01
 description: 把 URL 上最常见的两类输入拆开：路径参数负责定位资源，查询参数负责表达筛选和附加条件。
-tags: [FastAPI, Path Params, Query Params]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Path Params, Query Params]
+category: PythonWeb
 draft: false
 comment: true
 ---

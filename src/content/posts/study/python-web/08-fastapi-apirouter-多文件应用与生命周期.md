@@ -2,8 +2,8 @@
 title: FastAPI Bigger Applications：APIRouter、多文件应用与生命周期
 published: 2026-03-26
 description: 当单文件应用开始变大，把 APIRouter、include_router、多文件结构和 lifespan 放到同一条工程化路径里看。
-tags: [FastAPI, APIRouter, Lifespan]
-category: FastAPI
+tags: [PythonWeb, FastAPI, APIRouter, Lifespan]
+category: PythonWeb
 draft: false
 comment: true
 ---

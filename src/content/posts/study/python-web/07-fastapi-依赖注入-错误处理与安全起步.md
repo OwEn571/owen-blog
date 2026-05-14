@@ -2,8 +2,8 @@
 title: FastAPI 组织逻辑：Depends、yield、错误处理与安全起步
 published: 2026-03-27
 description: 从 Depends 开始，把共享逻辑、yield 资源清理、HTTPException、自定义异常处理和 OAuth2PasswordBearer 串成一层。
-tags: [FastAPI, Depends, Security]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Depends, Security]
+category: PythonWeb
 draft: false
 comment: true
 ---

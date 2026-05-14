@@ -1,9 +1,0 @@
-{
-  "title": "FastAPI",
-  "eyebrow": "Backend",
-  "description": "把 FastAPI 官方教程里偏碎片化的章节重新收成一条更适合入门的学习路径：从应用入口、输入输出、依赖、安全，一路排到测试、CLI 和部署直觉。",
-  "size": "wide",
-  "accent": "102 204 232",
-  "icon": "mdi:api",
-  "order": 28
-}

@@ -2,8 +2,8 @@
 title: FastAPI 参数校验：Query、Path、Body、Cookie、Header
 published: 2026-03-30
 description: 把 Query、Path、Body、Cookie、Header 统一进一个心智模型：参数从哪里来，以及怎样利用 Annotated 和 Pydantic 做精细校验。
-tags: [FastAPI, Validation, Query, Header]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Validation, Query, Header]
+category: PythonWeb
 draft: false
 comment: true
 ---
@@ -78,6 +78,8 @@ async def read_items(
 
 - `item_id` 必须大于等于 1
 - 对外暴露的查询参数名是 `item-query`
+
+> **Java Web 对比**：FastAPI 的 `Query(gt=0, alias="item-query")` 在 Spring 里等价于 `@RequestParam(value = "item-query") @Positive Integer itemId`——都是声明式校验 + 参数映射。Pydantic 的 `AfterValidator` 等同于 JSR-303 的 `@Constraint` 自定义校验注解。两边思路一样：把校验规则从业务代码里抽出来，声明在参数定义旁边。
 
 ## 4. 自定义校验：`AfterValidator`
 

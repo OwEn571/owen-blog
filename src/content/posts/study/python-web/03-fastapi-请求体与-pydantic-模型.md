@@ -2,8 +2,8 @@
 title: FastAPI 请求体：Pydantic 模型、多参数与嵌套结构
 published: 2026-03-31
 description: 当输入不再只是 URL 参数，而是一整个 JSON 请求体时，FastAPI 如何借助 Pydantic 做解析、校验、嵌套和文档生成。
-tags: [FastAPI, Pydantic, Request Body]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Pydantic, Request Body]
+category: PythonWeb
 draft: false
 comment: true
 ---

@@ -2,8 +2,8 @@
 title: FastAPI 扩展层：中间件、CORS 与后台任务
 published: 2026-03-25
 description: 把路由之外那层请求包裹逻辑收起来：中间件、CORS 配置，以及请求结束后再执行的后台任务。
-tags: [FastAPI, Middleware, CORS]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Middleware, CORS]
+category: PythonWeb
 draft: false
 comment: true
 ---

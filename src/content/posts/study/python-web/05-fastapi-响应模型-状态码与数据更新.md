@@ -2,8 +2,8 @@
 title: FastAPI 输出层：响应模型、状态码与数据更新
 published: 2026-03-29
 description: 从 response_model 开始，把输出约束、状态码、路径操作配置、jsonable_encoder、PUT/PATCH 更新语义一起收进一层。
-tags: [FastAPI, Response Model, Status Code]
-category: FastAPI
+tags: [PythonWeb, FastAPI, Response Model, Status Code]
+category: PythonWeb
 draft: false
 comment: true
 ---

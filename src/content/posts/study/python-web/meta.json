@@ -1,0 +1,9 @@
+{
+  "title": "Python Web",
+  "eyebrow": "Backend",
+  "description": "以 FastAPI 为主线框架，把 Python Web 后端开发的核心知识串起来：从 ASGI 协议、路由、校验、中间件，到测试、部署与容器化。框架会变，请求→路由→响应→部署这条链路不会。",
+  "size": "wide",
+  "accent": "102 204 232",
+  "icon": "mdi:api",
+  "order": 28
+}

@@ -2,8 +2,8 @@
 title: FastAPI 起步：应用入口、fastapi dev、entrypoint 与 uvicorn
 published: 2026-04-02
 description: 从第一个 FastAPI 应用开始，把 app 实例、fastapi dev、pyproject entrypoint、uvicorn 以及 async 并发直觉一次串起来。
-tags: [FastAPI, FastAPI CLI, Uvicorn]
-category: FastAPI
+tags: [PythonWeb, FastAPI, FastAPI CLI, Uvicorn]
+category: PythonWeb
 draft: false
 comment: true
 ---
@@ -129,6 +129,8 @@ from main import app
 
 - `fastapi dev` / `fastapi run`：更像 FastAPI 提供的易用封装
 - `uvicorn main:app`：直接操作 ASGI 服务器
+
+> **Java Web 对比**：`app = FastAPI()` 相当于 Spring Boot 的 `@SpringBootApplication` + `SpringApplication.run()`——创建应用上下文并注册路由。`uvicorn main:app` 相当于 `mvn spring-boot:run` 或 `java -jar app.jar`。FastAPI 用装饰器注册路由（`@app.get`），Spring 用注解（`@GetMapping`），底层做的事一样：在内存路由表中建立 URL pattern → handler 映射。
 
 ## 6. `--reload` 为什么只该停留在开发阶段
 

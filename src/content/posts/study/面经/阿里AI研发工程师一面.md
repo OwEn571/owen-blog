@@ -137,7 +137,28 @@ MCP的话，我觉得最主要的用处就是动态文档更新的时候，暴�
 
 （打开https://skills.sh/，他表明没错他们公司的人目前也在广泛用这个下载skill，指出了他想要的skill-creator，说我没有实际使用过）
 
-> **AI**：整个 Skill 部分回答偏乱，有几个偏差需要纠正：① Skill 不只是"固定化提示词"——核心是**按需加载上下文**。Skill 触发前只有 name + description（两行），LLM invoke 后才注入完整文档，解决 MCP 全量 tool schema 塞入 system prompt 的上下文膨胀问题。② MCP vs Skill 的对比维度：Skill 的主体是指令（告诉 Agent 怎么做），MCP 的主体是工具（给 Agent 一个可调用的函数接口）。③ 面试官点名 skill-creator 你没用过，这个可以诚实说没实际用但了解原理。④ Skill 做任务分步（类似 milestone）是你用 Skill 的一种方式，但这不是 Skill 的标准定义——更像是在用 Claude Code 的 /plan 或 TODO 机制。
+> **AI**：整个 Skill 部分回答偏乱，有几个偏差需要纠正。**面试最核心的问题是 Q18"什么时候用哪个"你没给出清晰的决策规则。**
+
+**MCP 和 Skill 的本质区别**：
+
+| | MCP | Skill |
+|---|---|---|
+| 本质 | 工具协议——给 Agent 一个**可调用的函数接口** | 指令文档——给 Agent 一份**按需加载的操作手册** |
+| Agent 操作方式 | 结构化 tool call（JSON in/out） | bash 命令 + 文件读写（CLI 操作） |
+| 上下文占用 | 所有 tool schema 一次性注入 system prompt | 只有 name + description 两行常驻，invoke 后才加载完整文档 |
+| 适合任务 | 结构化数据读写、API 调用、数据库查询 | 多步骤操作流程、环境配置、特定工具的使用方法 |
+| 典型场景 | 查企业文档库、读写数据库、调外部 API | 怎么编译这个项目、怎么配置 Caddy、PDF 解析流程 |
+
+**什么时候用 MCP**：任务需要**确定性输入输出**——查一条记录、写一个字段，Agent 通过结构化 tool call 精确控制参数。MCP 的 tool schema 定义了参数类型和返回值，LLM 不会出现"自由发挥"的偏差。而且 MCP Server 可以跑在远程，适合企业级数据源的统一暴露。
+
+**什么时候用 Skill**：任务是**操作流程**——需要多步 CLI 命令、需要理解环境上下文、需要安装依赖。Skill 的 markdown 指令正文在 invoke 时才加载，不占常驻 token。适合"一次性知识"——比如"docker compose 的常用命令"这类查完就忘的东西，不值得用 MCP 做一个永久 tool schema。
+
+**什么时候两者都用**：比如"部署这个项目"——Skill 告诉 Agent 部署步骤（先跑测试、再 build、再 restart），其中"查询 K8s 集群状态"这一步通过 MCP tool call 完成。Skill 管流程，MCP 管数据。
+
+**你面试中的回答偏差**：
+- 说"MCP 是动态文档更新时暴露一个 MCP"——这确实是 MCP 的一种用法，但不是核心区别。MCP 的核心是工具接口，不是文档
+- 说"Skill 是说明书"——对但不完整，Skill 的关键创新是**延迟加载**（触发前不占上下文），这一点你没提到
+- 面试官的追问"你知道 skill-creator 吗"你没用过——诚实说是对的，但可以补充"我理解它的原理是按需注入指令文档，类似 `/command` 触发时动态加载手册"
 
 ### Q20. 我来问一些工程化的问题，我看到你简历中写到你会Redis，你具体有应用到项目中吗？应用到了你具体存的键值是什么样的？
 
@@ -218,8 +239,109 @@ MCP的话，我觉得最主要的用处就是动态文档更新的时候，暴�
 | P2 | 工程化经验梳理 | 整理自己实际做过的：Docker 部署、Caddy SSE 压缩 Bug 排查、systemd、Prometheus、Redis 缓存 |
 
 **二面预测题**：
-1. AgentRuntime 可扩展性——多数据源接入、多 Agent 状态隔离
-2. 大规模语料检索退化——113 篇结论不适用 500+ 篇，如何重新设计
-3. Python 并发模型——asyncio vs threading、GIL 影响、ThreadPoolExecutor 行为
-4. 系统设计——单机改多租户 SaaS，瓶颈在哪
-5. 更深的工程问题——Docker 分层构建优化、Caddy/nginx 配置、CI/CD
+
+---
+
+### 预测 Q1. AgentRuntime 可扩展性——多数据源接入、多 Agent 状态隔离
+
+**多数据源接入**：当前 `AgentToolSpec` 注册表已经做到了工具定义与执行解耦。接入新数据源只需三步：① 在 `retrieval/core.py` 新增一个 retriever 方法（如 `search_arxiv`）→ ② 在 `tool_registries.py` 注册为新的 `AgentToolSpec`（定义 name/when/input_schema）→ ③ 在 `runtime_helpers.py` 的 `next_research_action` 回退链里加入新工具。Planner 不需要改——LLM 看到新的 tool schema 会自动学习何时调用它。
+
+`AgentToolSpec` 的三层设计（Spec 定义 → RegisteredAgentTool 注入 handler → AgentToolExecutor 并行执行 + 去重）让新增工具不影响现有工具。但当前工具的 `input_schema` 是手写 JSON Schema——数据源多了之后应该自动从 Pydantic model 生成 Schema，减少手写工作量。
+
+**多 Agent 状态隔离**：当前单 Agent 不和别的 Agent 通信，状态都在 `SessionContext` 里。如果未来需要多 Agent 协作（比如一个 Agent 负责检索、一个负责校验、一个负责合成），需要考虑：① 每个 Agent 独立的状态 dict，通过 `conversation_memory` 的 `target_bindings` 共享已确认的事实（论文-概念映射）；② Agent 之间用消息队列传递 `QueryContract`，而不是共享内存；③ 跨 Agent 的任务编排可以用 LangGraph 的 `StateGraph`，当前自建 loop 的"队列优先"模型不适合多 Agent 的条件分支。
+
+---
+
+### 预测 Q2. 大规模语料检索退化——113 篇结论不适用 500+ 篇，如何重新设计
+
+**承认当前结论的局限**：消融实验的"Pure Dense > Hybrid"严格局限在 113 篇、3072 维 embedding。BEIR 和 MTEB 基准表明，语料超过 500-1000 篇时 hybrid 反超 Pure Dense。原因是 Dense embedding 存在 hubness 问题——语义空间中相似论文互相拥挤，Dense 无法区分"相关论文"和"提出该概念的论文"。
+
+**如果扩展到 1000+ 篇，重新设计的策略**：
+
+| 层 | 当前（113篇） | 大规模改造 |
+|----|-------------|-----------|
+| **粗召回** | Dense top-12 | Hybrid 双路召回：Dense top-50 + BM25 top-50，RRF 融合 → 取 top-30 |
+| **精排** | 无（靠 Dense 直接排序） | Cross-encoder reranker（如 BGE-reranker-v2）对 30 篇候选做精细语义打分 → top-10 |
+| **BM25 权重** | 关闭 | 对 origin 类查询（"谁提出的"）加大 BM25 权重到 1.5（因为 origin 依赖精确字符串匹配），对定义类查询保 Dense 主导 |
+| **分片** | 单 Milvus collection | 按领域分 partition（ML/AI、生物、物理等），Router 先判断领域再定向检索子集合 |
+
+**核心改动**：在 Paper Discovery 阶段加入 re-ranker，这是对当前 `run_agent_paper_search` 的最小侵入式改动——在 `screen_papers` 之前插入 `rerank_candidates` 即可。BM25 字面匹配对学术缩写（如 "L_GRPO"、"π_θ·KL"）的区分度是 Dense 无法替代的，大规模下必须启用。
+
+---
+
+### 预测 Q3. Python 并发模型——asyncio vs threading、GIL 影响、ThreadPoolExecutor 行为
+
+**asyncio（协程）vs threading（线程）的本质区别**：
+
+- **调度者不同**：asyncio 是用户态事件循环调度协程（协作式——协程在 `await` 处主动让出），threading 是操作系统内核调度线程（抢占式——随时可能被 CPU 中断切走）
+- **内存开销**：一个线程约 8MB 栈空间，一个协程约几 KB。所以 asyncio 能撑几万并发，threading 通常几百到几千
+- **Python GIL 的影响**：GIL 限制同一时刻只有一个线程执行 Python 字节码，所以多线程在 Python 里不能并行跑 CPU 密集型代码。但 I/O 操作会释放 GIL（`socket.recv()` 底层调 C 函数时不持有 GIL），所以多线程对 I/O 密集型仍有效。asyncio 单线程事件循环，GIL 不影响
+
+**项目中的 ThreadPoolExecutor**：`execute_tool_loop` 里用 `ThreadPoolExecutor(max_workers=4)` 并行执行工具。为什么用线程而不是协程？因为部分工具函数是同步的（如 `grep_corpus` 读文件、`query_library_metadata` 查 SQLite），在线程池里跑不会阻塞事件循环。代价是线程切换开销 + GIL 竞争——但因为工具主要是 I/O（读文件、调 LLM API），GIL 在 I/O 时释放，实际影响很小。
+
+**如果被追问"为什么不用 ProcessPoolExecutor"**：进程隔离更强（绕过 GIL），但进程间共享数据要序列化（pickle），`AgentToolExecutor` 的状态 dict（论文列表、evidence blocks）序列化开销大。线程共享内存，state dict 直接访问。
+
+---
+
+### 预测 Q4. 系统设计——单机改多租户 SaaS，瓶颈在哪
+
+**瓶颈从近到远**：
+
+| 优先级 | 瓶颈 | 当前状态 | 改造方案 |
+|--------|------|---------|---------|
+| P0 | **SQLite 并发写** | WAL 模式，多个 uvicorn worker 写同一 session 表串行排队 | 迁移到 PostgreSQL + asyncpg 连接池，行级锁替代 RLock |
+| P0 | **Milvus 多租户检索污染** | 所有用户共享一个 collection，大租户噪音淹没小租户 | metadata 加 `tenant_id`，检索时 `filter expr='tenant_id=="xxx"'` |
+| P1 | **LLM API 限流** | 无速率控制，多租户同时请求可能打爆 API key | Token bucket 每租户限流，Redis 计数器实现 |
+| P1 | **会话内存膨胀** | SessionContext 全量加载到内存，10 个租户 × 24 轮历史 OK，1000 个租户 → OOM | 惰性加载：请求来了才从 DB 取 session，处理完写回；LRU 淘汰冷 session |
+| P2 | **单点故障** | 服务器挂了全部停 | Milvus 主从复制、PostgreSQL 流复制、Redis 哨兵 |
+
+**为什么 Milvus 不是第一个瓶颈**：单机 Milvus standalone 在 11K chunks 下检索 827ms。100 个租户每人 100 篇 ≈ 1M chunks，此时需要 Milvus 分布式（proxy + data node + index node），但这是万级租户的事。
+
+**数据隔离策略选择**：每个租户独立 collection（强隔离、管理复杂）vs 共享 collection + partition tag（轻量、但有跨租户检索风险）。推荐后者——用 `tenant_id` field + 检索 filter，配合 Milvus 的 RBAC 限制每个 API key 只能查对应 partition。
+
+---
+
+### 预测 Q5. 更深的工程问题——Docker 分层构建、Caddy 配置、CI/CD
+
+**Docker 分层构建优化**：
+
+```dockerfile
+# 反模式：每次代码改动都让 pip install 缓存失效
+COPY . .
+RUN pip install -r requirements.txt
+
+# 优化：先拷依赖文件，利用 Docker 层缓存
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+```
+
+Docker 每行指令一层。`COPY . .` 后文件变了 → 该层及之后所有层重建。先 `COPY requirements.txt` → 依赖没变 → `RUN pip install` 命中缓存 → 构建从 2 分钟降到 10 秒。更激进的做法用 multi-stage build：第一阶段装构建依赖（gcc、python-dev），第二阶段只复制运行时文件 → 镜像从 800MB 缩到 200MB。
+
+**Caddy SSE 配置**（你项目踩过的坑）：
+
+```caddy
+# SSE 流式端点不能走压缩——压缩缓冲区会破坏 chunked transfer 边界
+handle /api/v1/chat/stream {
+    reverse_proxy 127.0.0.1:8001 {
+        flush_interval -1   # 禁用缓冲，数据即到即发
+    }
+}
+
+# 普通 API 可以走压缩
+handle /api/v1/* {
+    reverse_proxy 127.0.0.1:8001
+    encode zstd gzip
+}
+```
+
+排查这个 Bug 花了整整一天：`curl -v` 发现 `transfer closed with outstanding read data remaining` → git blame 锁定 AI 生成的 commit → AI 从旧路由配置复制了 `encode zstd gzip` 到 SSE 端点。教训：AI 擅长模式复制不擅长语义理解，网关配置需要人工审查。
+
+**CI/CD**：当前 `git pull + systemctl restart`。自动化方案：
+- GitHub Actions on push to main → `docker compose build` → `docker compose up -d`（基础设施不变只重启 API）
+- 或者保持 systemd，CI 只做：`ssh server 'cd project && git pull && systemctl restart pdf-rag-agent-v4'`
+- 上线前检查：`pytest` 全量 648 个测试必须通过、`ruff check` 无新增 lint 错误
+
+## 结果
+
+横向两天之后挂了，也可能是我笔试写的太拉胯了，QAQ
