@@ -23,6 +23,7 @@ mkdir -p "${BLOG_DATA_DIR}"
 export HOME="/home/ubuntu/owen"
 export COREPACK_HOME="${COREPACK_HOME:-/home/ubuntu/owen/.cache/node/corepack}"
 export PYTHON="${PYTHON:-/home/ubuntu/miniconda3/envs/blog/bin/python}"
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
 
 unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY
 
@@ -33,4 +34,5 @@ if [[ -z "${PNPM_BIN}" || ! -f "${PNPM_BIN}" ]]; then
   exit 1
 fi
 
+rm -rf "${ROOT_DIR}/dist"
 node "${PNPM_BIN}" build

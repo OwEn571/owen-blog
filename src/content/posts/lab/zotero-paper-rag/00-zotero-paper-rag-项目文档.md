@@ -1,8 +1,9 @@
 ---
 title: PDF-RAG-Agent 项目文档
 published: 2026-05-02
+updated: 2026-05-18
 description: PDF-RAG-Agent 完整项目文档——基于 Zotero 论文库的智能研究助手，从普通 RAG 演进为可追踪、可校验的论文 Agent。
-tags: [RAG, Agent, Zotero, PDF, Milvus, BM25, FastAPI, SSE]
+tags: [RAG, Agent, Zotero, PDF, Milvus, BM25, FastAPI, SSE, Redis]
 category: Zotero Paper Agent
 draft: false
 comment: true
@@ -10,7 +11,7 @@ comment: true
 
 ## 1. 项目介绍
 
-PDF-RAG-Agent 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，默认使用 Milvus Dense 向量检索（可选 BM25/Title Anchor 多路融合），并在前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
+PDF-RAG-Agent 是一个面向 Zotero 个人论文库的智能论文研究助手。它基于 FastAPI、SSE 流式对话和可视化前端，将用户问题先解析为结构化意图，再通过会话记忆、本地 PDF 语料检索、必要的 Web 搜索、证据抽取、claim 生成与 grounding 校验，最终输出带引用来源的 Markdown 回答。系统支持 PDF 文本、表格、图像/图注等多模态证据处理，默认使用 Milvus Dense 向量检索（BM25/Title Anchor 保留为工具和兜底能力），并使用 Redis 缓存 query embedding 与 dense retrieval 这类可复用中间结果，而不缓存多轮对话的最终回答。前端实时展示 Intent、Tool Loop、Evidence、Verification 和 PDF 预览，让论文问答从普通 RAG 升级为一个可追踪、可校验、支持多轮研究上下文的论文 Agent。
 
 ## 2. 项目背景与目标
 
@@ -33,12 +34,12 @@ PDF-RAG-Agent 是一个围绕论文研究的 Agent Loop 系统。从部署视角
 ```
 app/services/
 ├── 基础设施
-│   └── infra/          model_clients, confidence, prompt_safety
+│   └── infra/          model_clients, redis_cache, upstream_errors, confidence, prompt_safety
 ├── 数据与检索
 │   ├── library/        core, zotero_sqlite, metadata_sql, citation_ranking
 │   ├── retrieval/      DualIndexRetriever, indexing, pdf_extractor, vector_index, web_search
 │   └── memory/         session_store, learnings, artifacts, research
-├── 领域逻辑（14 个子包）
+├── 领域逻辑（10 个子包）
 │   ├── intents/        LLMIntentRouter, research, conversation, library, figure, followup, marker_matching
 │   ├── planning/       research plan, query_shaping, query_rewrite, compound_tasks, solver_dispatch
 │   ├── contracts/      session_context, normalization, contextual_resolver, followup_relationship
@@ -51,7 +52,7 @@ app/services/
 │   └── tools/          dynamic_context, proposals, registry_helpers
 └── Agent 编排
     ├── agent/          ★ 26 modules: core, loop, planner, runtime, chat_runtime, compound, handlers, traces
-    └── agent_mixins/   answer_composer, claim_verifier, entity_definition, followup_routing, solver_pipeline
+    └── agent_mixins/   answer_composer, claim_verifier, entity_definition, followup_routing, solver_pipeline, concept_reasoning
 ```
 
 与前几版最大的架构变化：Agent 核心不再是一个巨大的单文件，而是拆成了 `agent/`（编排）和 `agent_mixins/`（正交能力注入）两层。领域逻辑也不在 Agent 内部耦合——`claims/`（23 个模块）、`intents/`、`planning/`、`contracts/`、`answers/` 都是独立的领域子包，Agent 通过组合它们完成推理。
@@ -66,9 +67,9 @@ API 层是前端和后端之间的边界，由 `app/api/routes.py` 提供。暴�
 
 ### 3.3 Agent 编排层
 
-Agent 编排层由 `agent/`（26 个模块）和 `agent_mixins/`（6 个模块）组成，是整个系统的指挥中心。
+Agent 编排层由 `agent/`（26 个模块）和 `agent_mixins/`（6 个模块，其中 5 个是真正的 Mixin，`concept_reasoning.py` 是概念推理常量/辅助模块）组成，是整个系统的指挥中心。
 
-`agent/core.py` 中的 `ResearchAssistantAgent` 通过多重继承组合五个 Mixin 获得正交能力：
+`agent/core.py` 中的 `ResearchAssistantAgentV4` 通过多重继承组合五个 Mixin 获得正交能力：
 
 ```python
 class ResearchAssistantAgentV4(
@@ -97,15 +98,75 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 
 ### 3.4 意图与规划层
 
-意图与规划层由三个子包构成，负责理解用户问题并生成执行计划：
+意图与规划层由三个子包构成，负责把“用户自然语言问题”翻译成“系统可执行的研究任务”。这层最重要的产物是 `QueryContract`，可以把它理解成一份任务单：它不直接回答问题，而是告诉后续检索、solver 和回答生成模块“这到底是什么问题、要查谁、要什么证据、最后应该怎么答”。
 
 - **`intents/`（10 模块）**：`router.py` 中的 `LLMIntentRouter` 使用 tool-calling 模式做意图路由（5 个 tool choice → 20+ 种 relation）。`research.py`、`conversation.py`、`library.py`、`figure.py`、`followup.py`、`memory.py` 分别处理不同类型的意图标记和 answer slot 推断。`contract_adapter.py` 在 relation 和 answer_slots 之间做双向转换。`marker_matching.py` 提供 `MarkerProfile` 机制匹配用户问题中的关键词。
 
-- **`planning/`（7 模块）**：`research.py` 构建 `ResearchPlan`（召回模式、证据数量、solver 顺序）；`query_shaping.py` 从问题中提取 targets；`query_rewrite.py` 做多查询改写；`compound_tasks.py` 分解复合查询；`solver_dispatch.py` 和 `solver_goals.py` 决定哪些 solver 需要执行。
+- **`planning/`（7 模块）**：`research.py` 构建 `ResearchPlan`（召回模式、证据数量、solver 顺序）；`query_shaping.py` 从问题中提取 targets；`query_rewrite.py` 提供轻量 MQE/HyDE/step-back 风格的检索 query 改写工具；`compound_tasks.py` 分解复合查询；`solver_dispatch.py` 和 `solver_goals.py` 决定哪些 solver 需要执行。
 
 - **`contracts/`（8 模块）**：`session_context.py` 构建每次 LLM 调用的会话上下文（含历史压缩）；`normalization.py` 规范化 targets；`contextual_resolver.py` 根据会话上下文消解实体引用；`conversation_memory.py` 管理跨轮次的 memory bindings；`followup_relationship.py` 处理追问关系继承。
 
 > **关于 QueryContract**：`QueryContract` 仍然是意图解析后的核心数据结构（定义在 `domain/models.py`），但它的构建不再是单一模块的责任。`extract_agent_query_contract()` 在 `contract_extraction.py` 中组合了 router 输出、target 抽取、followup 继承、pending clarification 处理等多个来源，最后统一规范化。
+
+更准确地说，3.4 这一层不是全部都在“构建 `QueryContract`”。`intents/` 和 `contracts/` 主要负责生成、修正和继承 `QueryContract`；`planning/` 则更多是在拿到 `QueryContract` 之后，继续生成 `ResearchPlan`、检索 query、复合子任务和 solver 顺序。可以把它理解成三步：
+
+1. 用户自然语言问题 → `QueryContract`：回答“这是什么类型的问题、目标对象是谁、需要什么证据”。
+2. `QueryContract` → `ResearchPlan`：回答“召回多少论文、需要多少证据、先跑哪些 solver”。
+3. `QueryContract` + `ResearchPlan` → 检索 query / tools / solver：真正开始检索、抽证据、生成 claim 和回答。
+
+`QueryContract` 的字段可以这样理解：
+
+| 字段 | 含义 | 例子 |
+| --- | --- | --- |
+| `clean_query` | 清理后的用户问题，是后续判断和兜底检索的基础文本 | `Transformer架构最先由哪篇论文提出？` |
+| `interaction_mode` | 决定走对话模式还是研究模式。`conversation` 通常不检索论文，`research` 会进入论文检索和证据链路 | `research` |
+| `relation` | 后端任务类型，决定倾向使用哪类 solver。它比自然语言问题更结构化 | `origin_lookup`、`formula_lookup`、`paper_summary_results` |
+| `targets` | 用户真正关心的对象，可能是论文、方法、模型、数据集、指标等 | `["Transformer"]` |
+| `answer_slots` | 回答需要填哪些“槽位”。可以理解成答案需求标签，通常会映射到 `relation` 和证据需求 | `["origin"]`、`["formula"]`、`["paper_summary"]` |
+| `requested_fields` | 这次回答需要哪些信息字段，不是 HTTP request，而是“证据字段需求” | `["paper_title", "year", "evidence"]` |
+| `required_modalities` | 需要从哪些证据形态里找答案 | `["paper_card", "page_text"]`、`["table", "caption"]` |
+| `answer_shape` | 希望最终答案是什么形态 | `narrative`、`bullets`、`table` |
+| `precision_requirement` | 精度要求，影响校验严格程度。查公式、年份、指标通常更严格 | `exact`、`high`、`normal` |
+| `continuation_mode` | 判断是不是追问，以及是否继承上一轮研究上下文 | `fresh`、`followup`、`context_switch` |
+| `allow_web_search` | 是否允许在本地论文库之外调用 Web 搜索 | `false` |
+| `notes` | 调试和解释用的内部标记，记录某些意图判断来自哪条规则或哪个 answer slot | `origin_marker_shortcut` |
+
+这里最容易混的是 `relation` 和 `answer_slots`。简单说：
+
+- `relation` 是“这类问题归哪个任务类型处理”，偏后端路由，比如 `origin_lookup` 表示查起源论文。
+- `answer_slots` 是“答案里要填什么内容”，偏回答需求，比如 `origin` 表示要回答提出者/提出论文/年份/证据。
+- 通常一个 `relation` 会对应一个主要 `answer_slot`，但复杂问题可以有多个 slot，比如既要公式又要变量解释，或者既要总结又要结果。
+
+再看一个典型的 `QueryContract`。比如用户问：
+
+```text
+Transformer架构最先由哪篇论文提出？
+```
+
+系统会倾向于整理成类似下面的结构：
+
+```json
+{
+  "clean_query": "Transformer架构最先由哪篇论文提出？",
+  "interaction_mode": "research",
+  "relation": "origin_lookup",
+  "targets": ["Transformer"],
+  "answer_slots": ["origin"],
+  "requested_fields": ["paper_title", "year", "evidence"],
+  "required_modalities": ["paper_card", "page_text"],
+  "answer_shape": "narrative",
+  "precision_requirement": "exact",
+  "continuation_mode": "fresh",
+  "allow_web_search": false,
+  "notes": [
+    "deterministic_intent",
+    "origin_marker_shortcut",
+    "answer_slot=origin"
+  ]
+}
+```
+
+这份结构的价值在于：后面的检索和回答不再只面对一句模糊的自然语言，而是知道 `targets` 是 `Transformer`，问题类型是 `origin_lookup`，需要精确找到提出该对象的论文标题、年份和证据页文本。因此 Query Enhancement 的核心不是简单改写 query，而是把 query 变成可执行的研究合约。
 
 ### 3.5 Claim 求解与验证层
 
@@ -123,13 +184,15 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 
 - **`library/`（4 模块）**：`zotero_sqlite.py` 读取 Zotero 本地 SQLite；`core.py` 提供 `LibraryBrowserService` 论文库浏览；`metadata_sql.py` 提供 SQL 查询论文库元信息（供 `query_library_metadata` 工具使用）；`citation_ranking.py` 按引用数排序论文。
 
-- **`memory/`（4 模块）**：`session_store.py` 提供 `SQLiteSessionStore`（生产）和 `InMemorySessionStore`（测试）；`learnings.py` 管理持久化学习；`artifacts.py` 管理工具执行产物；`research.py` 管理研究记忆。
+- **`memory/`（4 模块）**：`session_store.py` 提供项目自定义的 `SQLiteSessionStore`（生产）和 `InMemorySessionStore`（测试），不是 LangChain / LangGraph 的 session store 或 checkpointer；`learnings.py` 管理持久化学习；`artifacts.py` 管理工具执行产物；`research.py` 管理研究记忆。
 
 ### 3.7 基础设施层
 
-- **`infra/`（3 模块）**：`model_clients.py` 中的 `ModelClients` 统一封装 Chat（当前 `deepseek-v4-flash`）、VLM（`gpt-4.1-mini`）、Embedding（`text-embedding-3-large`，走 Qihai 网关）三个模型能力。`confidence.py` 处理置信度归一化。`prompt_safety.py` 做输入安全检查。
+- **`infra/`（5 模块）**：`model_clients.py` 中的 `ModelClients` 统一封装 Chat（当前 `deepseek-v4-flash`，走 DeepSeek 官方 OpenAI 兼容接口）和 VLM（`gpt-4.1-mini`，独立走 Qihai 网关）；Embedding（`text-embedding-3-large`，独立走 Qihai 网关）由 `retrieval/vector_index.py` 中的 `CollectionVectorIndex` 封装。`redis_cache.py` 负责 query embedding 和 dense retrieval 结果缓存。`upstream_errors.py` 把上游 403/网关异常转成用户可理解的提示。`confidence.py` 处理置信度归一化。`prompt_safety.py` 做输入安全检查。
 
-- **`eval/`（1 模块）**：`judge.py` 提供 LLM-as-judge 评估能力。
+当前项目和 LangChain 的关系要分清楚：**Agent Loop、工具调度、`SessionStore`、多轮上下文管理都是自建的，不使用 LangChain AgentExecutor 或 LangGraph StateGraph / Checkpointer**；但底层仍使用了 LangChain 生态的一些基础封装，例如 `langchain_core.documents.Document`、`langchain_openai.ChatOpenAI` / `OpenAIEmbeddings`、`langchain_milvus.Milvus`、`BM25Retriever` 和 `RecursiveCharacterTextSplitter`。所以更准确的说法不是“完全不用 LangChain”，而是“不用 LangChain/LangGraph 做 Agent 编排层”。
+
+- **`eval/`（1 模块）**：`judge.py` 提供 LLM-as-judge 评估能力封装，可根据 query、answer、expectations 和 trace diff 输出 `pass` / `fail` / `needs_review`；但当前默认 `scripts/run_v4_eval.py` 仍是规则评估（关键词、match_groups、引用数量、是否证据不足等），尚未把 `judge_eval_case()` 接入默认跑批。
 
 - **`tools/`（3 模块）**：`proposals.py` 管理动态工具提案的生命周期；`registry_helpers.py` 提供工具注册的辅助函数；`dynamic_context.py` 管理动态工具上下文。
 
@@ -137,7 +200,7 @@ Agent 执行一条请求的完整流程在 `chat_runtime.py` → `loop.py` 中�
 
 ### 4.1 app/main.py
 
-`app/main.py` 是整个 FastAPI 后端的装配入口。它本身不负责论文问答、检索或 Agent 推理，而是负责把应用运行所需的几类东西串起来：读取配置、初始化日志、定义生命周期、创建 FastAPI 应用、注册 API 路由、提供前端页面（`/` 返回 index.html，`/v4` `/v5` 301 重定向到 `/`），并在依赖存在时暴露 `/metrics` 监控指标。
+`app/main.py` 是整个 FastAPI 后端的装配入口。它本身不负责论文问答、检索或 Agent 推理，而是负责把应用运行所需的几类东西串起来：读取配置、初始化日志、定义生命周期、创建 FastAPI 应用、注册 API 路由、提供前端页面（`/` 返回 `index.html`），并在依赖存在时暴露 `/metrics` 监控指标。
 
 ```python
 from __future__ import annotations
@@ -151,10 +214,10 @@ from typing import AsyncIterator
 ```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse
 ```
 
-这里导入的是 FastAPI 应用装配相关能力。`FastAPI` 用于创建后端应用，`CORSMiddleware` 用于跨域配置，`FileResponse` 用于返回静态 HTML 或 PDF 文件，`RedirectResponse` 用于做路径跳转。
+这里导入的是 FastAPI 应用装配相关能力。`FastAPI` 用于创建后端应用，`CORSMiddleware` 用于跨域配置，`FileResponse` 用于返回静态 HTML 或 PDF 文件。
 
 ```python
 try:
@@ -182,7 +245,7 @@ settings = get_settings()
 setup_logging(settings.log_level)
 ```
 
-这里完成了入口文件的基础准备工作。`APP_DIR` 指向 `app` 目录，`STATIC_DIR` 指向 `app/static` 目录，后面 `/v4` 会从这里返回 `index.html`。`settings = get_settings()` 会读取环境变量和项目 `.env`，并确保运行时目录存在；`setup_logging(settings.log_level)` 则根据配置初始化日志。
+这里完成了入口文件的基础准备工作。`APP_DIR` 指向 `app` 目录，`STATIC_DIR` 指向 `app/static` 目录，后面 `/` 会从这里返回 `index.html`。`settings = get_settings()` 会读取环境变量和项目 `.env`，并确保运行时目录存在；`setup_logging(settings.log_level)` 则根据配置初始化日志。
 
 ### 4.2 FastAPI 应用创建
 
@@ -216,31 +279,11 @@ if settings.cors_allow_origins:
 app.include_router(router, prefix="/api/v1")
 ```
 
-这句把 `app/api/routes.py` 中定义的 API 路由统一挂载到 `/api/v1` 前缀下面。也就是说，路由文件里定义的 `/v4/chat`、`/v4/health` 等接口，最终会变成 `/api/v1/chat`、`/api/v1/health`。其中 `/api/v1` 是 接口协议版本，`/api/v1` 为协议版本前缀。
+这句把 `app/api/routes.py` 中定义的 API 路由统一挂载到 `/api/v1` 前缀下面。也就是说，路由文件里定义的 `/chat`、`/health` 等接口，最终会变成 `/api/v1/chat`、`/api/v1/health`。其中 `/api/v1` 是接口协议版本前缀。
 
 ```python
 @app.get("/", include_in_schema=False)
-def root() -> RedirectResponse:
-    return RedirectResponse(url="/", status_code=307)
-```
-
-根路径 `/` 提供一个兜底跳转，用于本地直连或反向代理未单独配置首页时，直接返回前端页面（当前运行时版本）。在线上部署中，真实入口通常由域名和 Nginx 配置决定，例如 `owen571.top` 可以直接作为用户访问入口，所以这里不应该理解成项目唯一入口，而只是 FastAPI 内部的默认访问兜底。
-
-```python
-@app.get("/legacy", include_in_schema=False)
-def ui_legacy() -> FileResponse:
-    return FileResponse(
-        STATIC_DIR / "index.html",
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
-    )
-
-
-@app.get("/v5", include_in_schema=False)
-def ui_index() -> FileResponse:
+def root() -> FileResponse:
     return FileResponse(
         STATIC_DIR / "index.html",
         headers={
@@ -251,7 +294,7 @@ def ui_index() -> FileResponse:
     )
 ```
 
-`/v4` 和 `/v5` 返回的是同一个静态 HTML 页面，也就是 `app/static/index.html`。浏览器拿到这个页面后，会执行其中的 JavaScript，再去请求 `/api/v1/chat/stream`、`/api/v1/library` 等后端接口。这里设置 `Cache-Control: no-store` 是为了避免浏览器缓存旧版前端页面，方便前端持续迭代和线上刷新。两个路径并存是为了兼容不同版本的前端入口（`/v4` 和 `/v5` 指向同一个最新前端页面，当前运行时版本为 V5）。
+根路径 `/` 直接返回同一个静态 HTML 页面，也就是 `app/static/index.html`。浏览器拿到这个页面后，会执行其中的 JavaScript，再去请求 `/api/v1/chat/stream`、`/api/v1/library` 等后端接口。这里设置 `Cache-Control: no-store` 是为了避免浏览器缓存旧版前端页面，方便前端持续迭代和线上刷新。旧版 `/v4`、`/v5` 页面入口已经去掉，当前页面入口收敛为 `/`。
 
 ### 4.4 lifespan 资源释放
 
@@ -290,6 +333,52 @@ if Instrumentator is not None:
 
 如果 `prometheus_fastapi_instrumentator` 成功导入，应用就会暴露 `/metrics` 运维观测入口。Prometheus 会定时抓取这个接口并存储指标，Grafana 再读取 Prometheus 数据并画图。当前项目的基础 metrics 包括 HTTP 请求数、响应状态码、接口耗时、Python GC、进程内存、CPU 和文件描述符等。
 
+`/metrics` 不是普通业务接口，而是 Prometheus 的 **text exposition format** 输出页。浏览器或 `curl` 访问时会看到一堆纯文本，每个指标通常由三部分组成：
+
+```text
+# HELP http_requests_total Total number of requests by method, status and handler.
+# TYPE http_requests_total counter
+http_requests_total{handler="/api/v1/chat/stream",method="POST",status="2xx"} 3.0
+```
+
+- `# HELP`：指标说明。
+- `# TYPE`：指标类型，例如 `counter`、`gauge`、`histogram`、`summary`。
+- 指标行：真正的数据，花括号里是 label，后面的数字是当前值。
+
+这些数据主要来自三类地方：
+
+1. **FastAPI HTTP 中间件采集**：`Instrumentator(...).instrument(app)` 会包住 FastAPI 请求生命周期，记录每个 handler 的请求数、状态码、请求体大小、响应体大小和耗时。代码里设置了 `should_group_status_codes=True`，所以状态码会聚合成 `2xx`、`4xx`、`5xx`；`should_ignore_untemplated=True` 则避免把未匹配到路由模板的路径也打成高基数 label。
+2. **prometheus_client 默认进程指标**：Python 进程启动后，默认 registry 会暴露 GC、CPU、内存、文件描述符等运行时指标。这些不是项目手写的，而是 `prometheus_client` 提供的默认 collector。
+3. **项目自定义 Agent 工具指标**：`app/services/agent/metrics.py` 里注册了 `tool_calls_total` 和 `tool_latency_seconds`。`AgentToolExecutor` 执行工具时会记录工具名、是否成功和耗时，因此可以看到 `search_corpus`、`compose`、`read_memory`、`query_library_metadata` 这类工具调用情况。
+
+常见指标可以这样读：
+
+| 指标 | 类型 | 含义 |
+| --- | --- | --- |
+| `http_requests_total{handler,method,status}` | counter | HTTP 请求累计次数，按接口、方法、状态码分组 |
+| `http_request_duration_seconds_bucket/count/sum` | histogram | HTTP 请求耗时分布，可用于计算 p95/p99 |
+| `http_request_duration_highr_seconds_bucket/count/sum` | histogram | 更细粒度的全局 HTTP 耗时分布，不带具体 handler label |
+| `http_request_size_bytes` | summary | 请求体大小统计 |
+| `http_response_size_bytes` | summary | 响应体大小统计 |
+| `tool_calls_total{name,ok}` | counter | Agent 工具调用次数，按工具名和成功/失败分组 |
+| `tool_latency_seconds_bucket/count/sum{name}` | histogram | Agent 工具执行耗时分布 |
+| `process_resident_memory_bytes` | gauge | 进程常驻内存，也就是实际占用物理内存的大致值 |
+| `process_cpu_seconds_total` | counter | 进程累计 CPU 时间 |
+| `process_open_fds` / `process_max_fds` | gauge | 当前打开文件描述符数量和上限 |
+| `python_gc_*` | counter | Python 垃圾回收相关统计 |
+
+例如：
+
+```text
+tool_calls_total{name="search_corpus",ok="true"} 2.0
+tool_latency_seconds_count{name="search_corpus"} 2.0
+tool_latency_seconds_sum{name="search_corpus"} 3.89
+```
+
+这表示 `search_corpus` 工具成功执行过 2 次，累计耗时约 3.89 秒，平均每次约 1.945 秒。`tool_latency_seconds_bucket` 则记录这些耗时落在哪些桶里，Grafana 可以用它计算 p95。
+
+需要注意的是，当前 `/metrics` 主要覆盖 **HTTP 层、Python 进程层和 Agent 工具层**。它还没有直接暴露 LLM token 用量、Embedding API 成本、Redis 命中率、Milvus 查询耗时分段、首 token 延迟等更细的业务指标；这些如果以后要做更完整的线上观测，需要继续在 `ModelClients`、`RedisCacheManager`、`CollectionVectorIndex` 和 SSE streaming 链路里补自定义 metrics。
+
 ![Prometheus 监控面板](image.png)
 
 从监控面板上可以看出几类信息。流量方面，`Chat Stream Request Rate = 0.00702 req/s`，表示最近五分钟平均每秒请求数；`HTTP Request Rate by Handler` 中 `/metrics` 最高，这是因为 Prometheus 每 15 秒抓一次，`1 / 15 = 0.0667 req/s`。延迟方面，`Chat Stream p95 Latency = 1s`，表明 95% 的 `/chat/stream` 请求耗时不超过约 1 秒；不过这个指标来自 FastAPI HTTP 层，对于 SSE 流式接口来说，它不完全等价于用户感知的首 token 延迟。错误方面，`5xx Error Rate = No data` 通常表示最近没有出现 5xx 错误。资源方面，内存如果长期持续上涨不下降就要怀疑泄漏；CPU 当前很低，说明服务基本空闲；Open File Descriptors 也很低，说明没有明显连接泄漏或文件句柄泄漏。
@@ -298,7 +387,7 @@ if Instrumentator is not None:
 
 ## 5. API 路由
 
-API 路由层主要集中在 app/api/routes.py，负责把 FastAPI 的 HTTP 请求转换为对后端服务层和 Agent 层的调用。它通过 APIRouter 定义 /v4/* 系列接口，并在 main.py 中统一挂载到 /api/v1 前缀下。该层不直接实现复杂业务逻辑，而是负责参数接收、依赖注入、权限校验、异常转换、响应模型封装和 SSE 流式事件输出，是前端与后端核心能力之间的边界层。
+API 路由层主要集中在 `app/api/routes.py`，负责把 FastAPI 的 HTTP 请求转换为对后端服务层和 Agent 层的调用。它通过 `APIRouter` 定义 `/health`、`/library`、`/chat`、`/chat/stream`、`/ingest/rebuild` 等接口，并在 `main.py` 中统一挂载到 `/api/v1` 前缀下。该层不直接实现复杂业务逻辑，而是负责参数接收、依赖注入、权限校验、异常转换、响应模型封装和 SSE 流式事件输出，是前端与后端核心能力之间的边界层。
 
 这里，我们先用 `app.schemas.api` 中定义的一系列Schema，来规范返回的格式。
 
@@ -321,7 +410,7 @@ from app.schemas.api import (
 `health` 是最简单的状态检查接口，用来判断后端服务是否已经正常启动，并让前端确认当前加载的是 V4 的新版运行时。
 
 ```python
-@router.get("/v4/health", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse()
 ```
@@ -343,7 +432,7 @@ class HealthResponse(BaseModel):
 `library` 接口用于返回当前论文库的整体列表，是前端左侧 Zotero Corpus 侧栏的数据来源。
 
 ```python
-@router.get("/v4/library", response_model=LibraryResponse)
+@router.get("/library", response_model=LibraryResponse)
 def library(
     library_service: LibraryBrowserService = Depends(get_library_service),
 ) -> LibraryResponse:
@@ -359,7 +448,7 @@ def library(
 这一节对应两个论文预览相关接口：一个返回论文的结构化预览信息，另一个返回真实 PDF 文件。
 
 ```python
-@router.get("/v4/library/papers/{paper_id}/preview", response_model=PaperPreviewResponse)
+@router.get("/library/papers/{paper_id}/preview", response_model=PaperPreviewResponse)
 def paper_preview(
     paper_id: str,
     library_service: LibraryBrowserService = Depends(get_library_service),
@@ -373,7 +462,7 @@ def paper_preview(
 `paper_preview` 用于根据 `paper_id` 返回某篇论文的预览信息。这里的 `paper_id` 来自 URL 路径，例如 `/api/v1/library/papers/xxx/preview`。路由层会调用 `library_service.paper_preview(paper_id)`，如果找不到对应论文，就抛出 `404 paper not found`；如果找到，就包装成 `PaperPreviewResponse` 返回。这个响应里包含论文基础信息和若干证据片段，供前端右侧 Preview 面板展示。
 
 ```python
-@router.get("/v4/library/papers/{paper_id}/pdf")
+@router.get("/library/papers/{paper_id}/pdf")
 def paper_pdf(
     paper_id: str,
     _: None = Depends(require_pdf_access),
@@ -392,7 +481,7 @@ def paper_pdf(
 `citation preview` 用于根据回答中的引用信息，反查对应的证据片段，给前端的引用预览面板使用。
 
 ```python
-@router.get("/v4/citations/preview", response_model=CitationPreviewResponse)
+@router.get("/citations/preview", response_model=CitationPreviewResponse)
 def citation_preview(
     doc_id: str = Query(default=""),
     paper_id: str = Query(default=""),
@@ -427,7 +516,7 @@ class CitationPreviewResponse(BaseModel):
 `ingest rebuild` 是索引重建接口，用来把 Zotero 论文库重新抽取、切块、入库，并更新本地检索索引。
 
 ```python
-@router.post("/v4/ingest/rebuild", response_model=IngestResponse)
+@router.post("/ingest/rebuild", response_model=IngestResponse)
 def ingest_rebuild(
     payload: IngestRequest,
     _: None = Depends(require_admin_access),
@@ -462,7 +551,7 @@ class IngestResponse(BaseModel):
 
 `max_papers` 用于限制本次最多处理多少篇论文，适合调试或小规模验证；`force_rebuild` 会传给向量索引层，如果为 true，会重建 Milvus collection 后再写入向量。返回值里的 `paper_records` 表示从 Zotero 读取到的记录数，`papers_indexed` 表示成功完成 PDF 抽取并入库的论文数，`papers_missing_pdf` 表示 Zotero 里有记录但本地 PDF 缺失的数量，`paper_docs` 是论文级索引文档数，`block_docs` 是 PDF 页面、段落、表格、图注等证据块文档数，`vectors_upserted` 是写入 Milvus 的向量数量。
 
-它的完整链路是：路由层接收请求并校验管理员权限，`IngestionService.rebuild()` 读取 Zotero 记录，调用 PDF 抽取器解析页面内容，生成 paper card 和 block documents，写入 `papers.jsonl`、`blocks.jsonl` 和 ingestion state；如果配置了 embedding 所需的 API key，还会把论文级文档和证据块文档写入 Milvus。最后，路由层调用 `get_retriever().refresh()`，让正在运行的服务重新加载本地 JSONL 和 BM25 索引，这样重建完成后前端查询可以立即使用新论文库。
+它的完整链路是：路由层接收请求并校验管理员权限，`IngestionService.rebuild()` 读取 Zotero 记录，调用 PDF 抽取器解析页面内容，生成 paper card 和 block documents，写入 `v4_papers.jsonl`、`v4_blocks.jsonl` 和 ingestion state；如果配置了 embedding 所需的 API key，还会把论文级文档和证据块文档写入 Milvus。最后，路由层调用 `get_retriever().refresh()`，让正在运行的服务重新加载本地 JSONL 和 BM25 索引，这样重建完成后前端查询可以立即使用新论文库。
 
 ### 5.6 chat / stream chat
 
@@ -472,25 +561,23 @@ class IngestResponse(BaseModel):
 class AgentChatRequest(BaseModel):
     query: str = Field(min_length=1)
     session_id: str | None = None
-    mode: str = "auto"
     use_web_search: bool = False
     max_web_results: int = Field(default=3, ge=1, le=10)
     clarification_choice: dict[str, Any] | None = None
 ```
 
-这里的 `query` 是用户输入的问题，`session_id` 用于延续多轮对话，`mode` 默认为 `auto`，让 Agent 自己判断是普通对话还是研究任务。`use_web_search` 控制是否允许补充 Web Search，`max_web_results` 限制网页搜索数量，`clarification_choice` 用于处理上一轮 Agent 反问用户后的选择结果。
+这里的 `query` 是用户输入的问题，`session_id` 用于延续多轮对话。Agent 会根据意图识别结果自己判断是普通对话还是研究任务。`use_web_search` 控制是否允许补充 Web Search，`max_web_results` 限制网页搜索数量，`clarification_choice` 用于处理上一轮 Agent 反问用户后的选择结果。
 
 ```python
-@router.post("/v4/chat", response_model=AgentChatResponse)
+@router.post("/chat", response_model=AgentChatResponse)
 async def agent_chat_v4(
     payload: AgentChatRequest,
-    agent: ResearchAssistantAgent = Depends(get_agent),
+    agent: ResearchAssistantAgentV4 = Depends(get_agent),
 ) -> AgentChatResponse:
     try:
         result = await agent.achat(
             query=payload.query,
             session_id=payload.session_id,
-            mode=payload.mode,
             use_web_search=payload.use_web_search,
             max_web_results=payload.max_web_results,
             clarification_choice=payload.clarification_choice,
@@ -500,7 +587,7 @@ async def agent_chat_v4(
         raise HTTPException(status_code=500, detail="chat failed") from exc
 ```
 
-普通 `chat` 接口通过 `Depends(get_agent)` 拿到全局缓存的 `ResearchAssistantAgent`，然后调用 `agent.achat()`。虽然路由函数是 async，但 Agent 内部主要是同步的检索、规划和模型调用，所以 `achat()` 实际上会用 `asyncio.to_thread()` 把同步 `chat()` 放到线程里执行，避免长时间阻塞 FastAPI 的事件循环。接口如果执行失败，会记录异常日志，并统一返回 `500 chat failed`。
+普通 `chat` 接口通过 `Depends(get_agent)` 拿到全局缓存的 `ResearchAssistantAgentV4`，然后调用 `agent.achat()`。虽然路由函数是 async，但 Agent 内部主要是同步的检索、规划和模型调用，所以 `achat()` 实际上会用 `asyncio.to_thread()` 把同步 `chat()` 放到线程里执行，避免长时间阻塞 FastAPI 的事件循环。接口如果执行失败，会记录异常日志，并统一返回 `500 chat failed`。
 
 ```python
 citation_models = [AgentCitation(**item) for item in result.get("citations", [])]
@@ -523,17 +610,16 @@ return AgentChatResponse(
 这里可以看到，`chat` 的返回不只是最终答案，还包括引用、结构化意图、研究计划摘要、运行时摘要、执行步骤、验证报告和澄清信息。因此它更像是一次完整 Agent 运行结果的快照，适合调试、测试或不需要实时流式展示的调用场景。
 
 ```python
-@router.post("/v4/chat/stream")
+@router.post("/chat/stream")
 async def agent_chat_v4_stream(
     payload: AgentChatRequest,
-    agent: ResearchAssistantAgent = Depends(get_agent),
+    agent: ResearchAssistantAgentV4 = Depends(get_agent),
 ) -> StreamingResponse:
     async def event_stream() -> object:
         try:
             async for item in agent.astream_chat_events(
                 query=payload.query,
                 session_id=payload.session_id,
-                mode=payload.mode,
                 use_web_search=payload.use_web_search,
                 max_web_results=payload.max_web_results,
                 clarification_choice=payload.clarification_choice,
@@ -586,7 +672,7 @@ return StreamingResponse(
 这是一组管理员接口，用于管理动态注册的 Agent 工具提案，支持从提案创建、沙盒测试到正式启用的完整生命周期。
 
 ```python
-@router.get("/v4/admin/tools/proposals")
+@router.get("/admin/tools/proposals")
 def admin_list_tool_proposals(
     include_code: bool = Query(default=False),
     _: None = Depends(require_admin_access),
@@ -598,7 +684,7 @@ def admin_list_tool_proposals(
 `GET /api/v1/admin/tools/proposals` 列出所有工具提案，可选参数 `include_code` 控制是否返回提案中的 Python 代码。
 
 ```python
-@router.get("/v4/admin/tools/proposals/{proposal_id}")
+@router.get("/admin/tools/proposals/{proposal_id}")
 def admin_get_tool_proposal(proposal_id: str, ...) -> dict[str, object]:
     return load_tool_proposal(data_dir=settings.data_dir, proposal_id=proposal_id, include_code=include_code)
 ```
@@ -606,7 +692,7 @@ def admin_get_tool_proposal(proposal_id: str, ...) -> dict[str, object]:
 `GET /api/v1/admin/tools/proposals/{proposal_id}` 获取单个工具提案的完整内容，包括代码和元信息。
 
 ```python
-@router.post("/v4/admin/tools/proposals/{proposal_id}/sandbox")
+@router.post("/admin/tools/proposals/{proposal_id}/sandbox")
 def admin_run_tool_proposal_sandbox(proposal_id: str, payload: ToolProposalSandboxRequest, ...):
     return run_tool_proposal_sandbox(
         proposal_path=proposal_path,
@@ -619,7 +705,7 @@ def admin_run_tool_proposal_sandbox(proposal_id: str, payload: ToolProposalSandb
 `POST /api/v1/admin/tools/proposals/{proposal_id}/sandbox` 在沙盒环境中执行工具提案代码，验证其功能是否正常。`ToolProposalSandboxRequest` 包含 `args`（工具参数）、`timeout_seconds`（超时限制，最大 30s）和 `memory_limit_mb`（内存限制，64-2048 MB）。
 
 ```python
-@router.post("/v4/admin/tools/proposals/{proposal_id}/status")
+@router.post("/admin/tools/proposals/{proposal_id}/status")
 def admin_transition_tool_proposal_status(proposal_id: str, payload: ToolProposalTransitionRequest, ...):
     return transition_tool_proposal_status(
         proposal_path=proposal_path,
@@ -694,9 +780,11 @@ def admin_transition_tool_proposal_status(proposal_id: str, payload: ToolProposa
 
 ### 6.4 SessionContext
 
-`SessionContext` 负责保存多轮对话状态。它包含当前会话的 `session_id`、最近研究主题、active research、历史 turn、工作记忆和 pending clarification 等信息。比如用户上一轮刚问过 DPO，下一轮追问“那这个公式里的 beta 是什么”，系统就需要通过 `SessionContext` 知道“这个公式”指的是 DPO 论文中的公式，而不是重新把问题当成一个全新任务。
+`SessionContext` 负责保存多轮对话状态。它包含当前会话的 `session_id`、最近研究主题、active research、历史 turn、工作记忆、pending clarification 和单调递增的 `turn_index` 等信息。比如用户上一轮刚问过 DPO，下一轮追问“那这个公式里的 beta 是什么”，系统就需要通过 `SessionContext` 知道“这个公式”指的是 DPO 论文中的公式，而不是重新把问题当成一个全新任务。
 
 这个模型里有一些 legacy 字段，例如 `active_targets`、`active_titles`、`active_research_relation` 等，同时也有新的 `active_research` 对象。`sync_active_research_compatibility()` 的作用就是在旧字段和新结构之间做兼容同步，这是项目多次重构后留下的真实工程痕迹。
+
+`turn_index` 不是前端展示用字段，而是会话内部的绝对轮次计数。`SessionStore.commit_turn()` 每写入一轮就把它加 1；`remember_research_outcome()` 写入 `working_memory.target_bindings` 时，会把本轮编号记录为 `created_turn_index`。后续 `_expire_old_bindings()` 判断 `turn_index - created_turn_index > 20` 时清理旧绑定。这样即使较早的 `turns` 被压缩进 `summary` 或被裁剪，target binding 的 TTL 仍然按真实会话轮次生效。
 
 在旧机制里，DPO 歧义会写入 `pending_clarification_options`，然后等待用户下一轮选择。现在加入 LLM-judge 后，如果 judge 给出高置信度自动绑定，系统就不会进入 `needs_human=true`；如果 judge 不够确定，仍然会保留人工澄清路径，并把推荐候选标记为 `judge_recommended`。
 
@@ -838,6 +926,16 @@ class DisambiguationJudgeDecision(BaseModel):
 }
 ```
 
+这里的 `confidence=0.95` 是 **候选消歧 judge 的置信度**，不是最终答案置信度，也不是 `verify_claim` 的 grounding 置信度。它来自 `DisambiguationJudgeDecision.confidence`：`compose` 阶段发现同一个目标可能对应多个候选论文/实体时，会把用户 query、`QueryContract`、候选标题、snippet、paper summary 和 ranking signals 交给 `judge_disambiguation_options()`。LLM 按固定 JSON schema 返回 `decision`、`selected_option_id`、`selected_paper_id`、`confidence` 和 `reason`。随后 `resolve_disambiguation_judge_decision()` 判断：只有 `decision=auto_resolve` 且 `confidence >= disambiguation_auto_resolve_threshold`（当前默认 0.85）时，才会自动绑定候选；如果在推荐阈值以上但低于自动绑定阈值，只会标记 `judge_recommended`，仍交给用户确认。
+
+为什么会出现多个候选论文？因为检索阶段不是直接返回“最终答案论文”，而是先做 top-k 召回。比如 `DPO 的公式是什么？` 这种问题，库里可能有 DPO 原论文，也可能有很多后续论文在摘要、正文或实验设置里提到 DPO。Milvus Dense / BM25 / paper card 检索会先返回一组 `candidate_papers`，表示“这些论文都可能相关”；随后 `screen_papers()` 根据 `QueryContract` 的 targets、relation、requested_fields 和论文 metadata 给候选重新打分，得到较小范围的 `screened_papers`。如果系统发现目标缩写或实体仍可能对应多篇论文，就会进一步生成 ambiguity options，让 LLM-judge 判断用户真正指的是哪一个。
+
+“证据拓展”指的是：在已经有候选论文或已经自动绑定到某篇论文之后，系统继续从这些论文的 block docs 中补充更贴近问题的证据块。它不是重新找更多论文，而是在限定 paper_id 的范围内，用 `evidence_query_text(contract)`、`required_modalities`、公式/表格/图注等目标信号，从页面文本、表格、caption、figure 等 block 里找更多可验证片段。比如自动绑定 DPO 原论文后，如果当前 evidence 里还没有足够支持公式的块，`refresh_selected_ambiguity_materials()` 会只围绕选中的 `S6H9FE28` 调用 `expand_evidence()`，补出更适合公式 solver 和 grounding verification 的证据。
+
+用自然语言串起来，一条正式链路是这样的：
+
+> 用户提交问题后，API 层先把请求交给 Agent。Agent 首先通过 intent router 和规则辅助逻辑把自然语言问题转换成 `QueryContract`，明确这是一个 research 请求、目标对象是什么、问题属于哪种 relation、答案需要哪些字段和证据类型。随后内置 planning 逻辑根据 `QueryContract` 生成 `ResearchPlan`，决定候选论文数量、证据数量和 solver 顺序。进入 tool loop 后，planner 安排 `search_corpus`：系统先用论文级索引召回多个 `candidate_papers`，再按目标和任务类型筛选成 `screened_papers`，接着在这些论文内部检索第一轮 evidence blocks。之后 `read_memory` 检查当前 session 是否已有可继承的研究上下文。进入 `compose` 阶段时，系统会先判断 evidence 是否暴露出实体/缩写歧义；如果存在多个候选解释，就调用 LLM-judge 做消歧，高置信度时自动绑定到最匹配论文，并在必要时对该论文做证据拓展。证据准备完成后，solver 根据 relation 和 answer_slots 生成 claim，例如公式 claim、起源 claim、总结 claim。`verify_claim` 再用 evidence 对 claim 做 grounding 校验；如果通过，answer composer 将 claim、证据和引用组织成最终 Markdown 回答；如果不足，则可能触发 retry、clarify 或给出证据不足说明。最后，Agent 将 final answer、citations、verification report 和 runtime trace 返回给前端展示。
+
 [event #60] `final` — 最终答案：
 - `interaction_mode`: research
 - `answer`: 574 字符，含 LaTeX 公式 $$\mathcal{L}_{\mathrm{DPO}} = -\log \sigma\left( \beta \log \frac{\pi_{\theta}(y_w|x)}{\pi_{\mathrm{ref}}(y_w|x)} - \beta \log \frac{\pi_{\theta}(y_l|x)}{\pi_{\mathrm{ref}}(y_l|x)} \right)$$ 及变量解释
@@ -852,7 +950,7 @@ class DisambiguationJudgeDecision(BaseModel):
 
 服务层是整个项目最容易被深入追问的部分，因为它决定了这个系统是不是只是在“套一个聊天壳”，还是确实把论文库读取、PDF 抽取、索引构建、向量嵌入、混合检索、会话记忆和模型调用这些底层能力设计清楚了。API 层只是入口，Agent 层负责调度，真正支撑论文问答质量和效率的是服务层。
 
-从职责上看，服务层可以分成三条主线。第一条是离线入库链路：`ZoteroSQLiteReader` 读取 Zotero 元信息，`PDFExtractor` 抽取 PDF 页面文本、表格、图像和图注，`IngestionService` 生成 paper docs 和 block docs，并写入 JSONL 与 Milvus。第二条是在线检索链路：`DualIndexRetriever` 加载本地 paper/block 文档，使用 Milvus Dense 检索为主（BM25/Title Anchor 可选），先找候选论文，再找证据块。第三条是运行支撑链路：`SessionStore` 负责多轮会话持久化，`ModelClients` 统一封装 LLM/VLM/Embedding 调用，`WebSearch` 在本地语料不足时提供外部补充。
+从职责上看，服务层可以分成三条主线。第一条是离线入库链路：`ZoteroSQLiteReader` 读取 Zotero 元信息，`PDFExtractor` 抽取 PDF 页面文本、表格、图像和图注，`IngestionService` 生成 paper docs 和 block docs，并写入 JSONL 与 Milvus。第二条是在线检索链路：`DualIndexRetriever` 加载本地 paper/block 文档，使用 Milvus Dense 检索为主（BM25/Title Anchor 可选），先找候选论文，再找证据块。第三条是运行支撑链路：`SessionStore` 负责多轮会话持久化，`RedisCacheManager` 缓存 query embedding 和 dense retrieval 结果，`ModelClients` 统一封装 LLM/VLM/Embedding 调用，`WebSearch` 在本地语料不足时提供外部补充。
 
 ### 7.0 服务层设计总览
 
@@ -864,7 +962,7 @@ class DisambiguationJudgeDecision(BaseModel):
 
 其中 relation anchor 是最近从 stub 补完为完整实现的四路之一。它的设计思路是：如果用户明确提到了某个概念/方法名，那与已匹配论文共享标签、缩写词、作者或 Zotero 分类的其他论文也很可能相关——即使这些论文的标题里不含 query term。实现上，先由 title_anchor 确定锚点论文并提取其"关系指纹"（tags、aliases、body_acronyms、authors、collection paths），再遍历全库论文按共享信号数量打分排序。Zotero 分类路径从 SQLite 的 collections/collectionItems 表实时加载，缓存为内存字典；若 DB 不可用则自动降级，跳过 collection 信号。
 
-检索效率上，系统把重活尽量放在离线入库阶段。PDF 抽取、文本切块、summary 生成、embedding upsert 都在 `ingest rebuild` 时完成；在线请求只加载已经持久化的 `papers.jsonl`、`blocks.jsonl` 和 Milvus collection。`DualIndexRetriever` 被依赖注入缓存成长期对象，启动后构建 BM25，后续请求复用；重建索引后再调用 `refresh()` 重新加载本地 JSONL 和 BM25。向量入库使用 batch upsert、retry 和 fallback embedding model，避免一次失败导致整个入库不可用。
+检索效率上，系统把重活尽量放在离线入库阶段。PDF 抽取、文本切块、summary 生成、embedding upsert 都在 `ingest rebuild` 时完成；在线请求只加载已经持久化的 `v4_papers.jsonl`、`v4_blocks.jsonl` 和 Milvus collection。`DualIndexRetriever` 被依赖注入缓存成长期对象，启动后构建 BM25，后续请求复用；重建索引后再调用 `refresh()` 重新加载本地 JSONL 和 BM25。向量入库使用 batch upsert、retry 和 fallback embedding model，避免一次失败导致整个入库不可用。Redis 只缓存可重新计算的中间结果，不缓存最终回答，避免多轮上下文、检索版本或 active research 变化后返回旧答案。
 
 ### 7.1 Zotero 读取
 
@@ -1189,23 +1287,82 @@ Zotero 分类数据通过 `_load_collections()` 在 `DualIndexRetriever.__init__
 
 ### 7.5 Milvus 向量索引
 
-向量索引由 `CollectionVectorIndex`（`app/services/retrieval/vector_index.py`）封装，底层对接 Milvus（本地部署 `http://localhost:19530`）。系统维护两个 collection：`zprag_papers` 和 `zprag_blocks`。Embedding 使用独立的 `embedding_api_key` + `embedding_base_url`（fallback 到 `openai_api_key`），当前部署通过 Qihai 网关调用 `text-embedding-3-large`（3072 维），失败自动降级到 `text-embedding-3-small`（1536 维）。
+向量索引由 `CollectionVectorIndex`（`app/services/retrieval/vector_index.py`）封装，底层对接 Milvus（本地部署 `http://localhost:19530`）。系统维护两个 collection：`zprag_v4_papers` 和 `zprag_v4_blocks`。Embedding 使用独立的 `embedding_api_key` + `embedding_base_url`（fallback 到 `openai_api_key`），当前部署通过 Qihai 网关调用 `text-embedding-3-large`（3072 维），失败自动降级到 `text-embedding-3-small`（1536 维）。
 
 配置项（`app/core/config.py`）：
 
 ```python
 milvus_uri: str = "http://localhost:19530"
-milvus_paper_collection: str = "zprag_papers"
-milvus_block_collection: str = "zprag_blocks"
+milvus_paper_collection: str = "zprag_v4_papers"
+milvus_block_collection: str = "zprag_v4_blocks"
 embedding_model: str = "text-embedding-3-large"        # 3072 维
 embedding_fallback_model: str = "text-embedding-3-small"  # 1536 维
 embedding_request_timeout_seconds: float = 120.0
 embedding_batch_retry_attempts: int = 3
 ```
 
-向量生成通过 `ModelClients` 提供的 HTTP client 直接调用 embedding API，不走 LangChain 包装——以便精细控制 batch size、超时和重试。`CollectionVectorIndex.upsert_documents()` 分批写入（默认 batch_size=128），遇网络错误自动重试；`search()` 返回 top_k 结果含 id/score/metadata。
+`CollectionVectorIndex` 内部使用 `OpenAIEmbeddings` 连接 OpenAI 兼容 embedding 服务，并显式传入自定义 `httpx.Client` 控制超时、连接池和代理环境。`upsert_documents()` 分批写入（默认 batch_size=128），遇网络错误会重建 embedding client 并重试；`search_documents()` 先查询 Redis 缓存，未命中时再生成 query embedding、调用 Milvus `client.search()`，最后返回 top_k 文档及 `dense_score`、paper/block metadata。
 
-### 7.6 SessionStore
+### 7.6 Redis 中间层缓存
+
+Redis 在当前版本里不是“问答结果缓存”，而是一个轻量中间层缓存。最早的设计曾经尝试用原始 query 做 key、把 LLM 最终回答作为 value，但这对论文 Agent 不够稳：同一句问题在不同 session、不同 active research、不同检索版本、不同澄清选择下，合理答案可能完全不同。如果直接复用旧回答，就会绕过检索、证据校验和多轮上下文，反而容易让前端拿到过期结论。
+
+现在 Redis 只缓存两类可重新计算的中间结果，由 `RedisCacheManager`（`app/services/infra/redis_cache.py`）统一管理：
+
+| Redis key 类型 | 示例结构 | TTL | 缓存内容 | 为什么适合缓存 |
+|---|---|---:|---|---|
+| Query Embedding | `zprag:v4:emb:query:{model}:{query_hash}` | 30 天 | 单条 query 的 embedding 向量 | embedding 调用昂贵，同一句查询的向量在模型不变时稳定 |
+| Dense Retrieval | `zprag:v4:retr:dense:{index_version}:{request_hash}` | 6 小时 | Milvus dense search 返回的 `Document` 列表 | 检索结果可复算，短期复用能减少 embedding 和 Milvus 查询开销 |
+
+这里的 `query_hash` 不是直接使用原文，而是对规整空白后的 query 做 SHA256，避免 Redis key 过长，也避免明文问题直接暴露在 key 列表里。`dense retrieval` 的 key 还包含 `collection_name`、`embedding_model`、query、limit、filter 等请求参数，因此不同 top_k 或不同过滤条件不会互相污染。
+
+需要注意的是，`dense retrieval` 里的 query 不是简单等同于用户输入的原始问题，而是实际送进 Milvus dense search 的检索 query。论文召回阶段通常来自 `paper_query_text(contract)`，证据召回阶段通常来自 `evidence_query_text(contract)`；它可能已经经过 target 提取、query shaping 或 query enhancement。因此两个原始问题即使措辞不同，只要最终形成的检索 query、collection、embedding model、limit、filter 和 `index_version` 完全一致，就可以命中同一个 dense retrieval 缓存；反过来，只要增强后的检索 query 不同，就会生成不同的 `request_hash`。
+
+更关键的是 `index_version`。它由 embedding model、paper/block collection 名、`v4_papers.jsonl` 和 `v4_blocks.jsonl` 的路径、大小、mtime 共同计算。只要本地 JSONL 重建过，或者 collection 名、embedding model 发生变化，dense retrieval key 就会自然切到新版本，旧检索缓存不会继续命中。
+
+实际 Redis payload 大致如下：
+
+```json
+{
+  "model": "text-embedding-3-large",
+  "dim": 3072,
+  "vector": [-0.01655, 0.00957, "..."]
+}
+```
+
+```json
+{
+  "index_version": "18f5cca6afbd413b",
+  "documents": [
+    {
+      "page_content": "title: Attention Is All You Need aliases: ...",
+      "metadata": {
+        "paper_id": "I9L474BP",
+        "title": "Attention Is All You Need",
+        "year": "2017",
+        "dense_score": 0.78
+      }
+    }
+  ]
+}
+```
+
+2026-05-18 的一次调试快照中，Redis 共有 26 个 `zprag:v4:*` key，其中 `emb:query` 13 个、`retr:dense` 13 个。快照文件保存在项目临时目录 `tmp/redis-cache-snapshot-*.md`，用于人工查看 TTL、key 类型、embedding 维度、dense retrieval 返回的文档 metadata 和内容预览。
+
+配置项（`app/core/config.py`）：
+
+```python
+redis_url: str = "redis://localhost:6380/0"  # .env 可覆盖为带密码 URL
+redis_cache_enabled: bool = True
+redis_cache_namespace: str = "zprag:v4"
+redis_query_embedding_cache_ttl_seconds: int = 2_592_000  # 30d
+redis_dense_retrieval_cache_ttl_seconds: int = 21_600  # 6h
+redis_final_answer_cache_enabled: bool = False
+```
+
+一句话总结：SQLite 管长期会话状态，Milvus 管向量索引，Redis 只管便宜复用的中间结果。最终回答、澄清问题、错误结果和多轮对话状态都不进入 Redis，这样性能收益和语义正确性之间比较平衡。
+
+### 7.7 SessionStore
 
 两个实现：`InMemorySessionStore`（测试/开发用 dict 存储）和 `SQLiteSessionStore`（生产用）。`data/v4_sessions.sqlite3` 存储 session 数据：
 
@@ -1238,9 +1395,9 @@ class SQLiteSessionStore:
         )
 ```
 
-核心操作：`get(session_id)` → 获取/创建上下文；`upsert(context)` → 保存并裁剪历史；`append_turn(session_id, turn)` → 追加一轮对话。每次 upsert 时 `_trim_context_history()` 裁剪超过 `max_turns` 的旧轮次（构造函数默认 8，生产环境通过 `deps.py` 传入 `agent_history_max_turns=24`），压缩为摘要存入 `summary` 字段。序列化通过 Pydantic `model_dump_json()` / `model_validate_json()`。`sync_active_research_compatibility()` 负责 legacy 字段与新版 `active_research` 之间的兼容同步。
+核心操作：`get(session_id)` → 获取/创建上下文；`upsert(context)` → 保存并裁剪历史；`append_turn(session_id, turn)` / `commit_turn(context, turn)` → 追加一轮对话。`commit_turn()` 会先递增 `SessionContext.turn_index`，再把本轮 `SessionTurn` 加入 `turns`。每次 upsert 时 `_trim_context_history()` 裁剪超过 `max_turns` 的旧轮次（构造函数默认 8，生产环境通过 `deps.py` 传入 `agent_history_max_turns=24`），压缩为摘要存入 `summary` 字段，同时清理超过 20 轮的 `working_memory.target_bindings`。序列化通过 Pydantic `model_dump_json()` / `model_validate_json()`。`sync_active_research_compatibility()` 负责 legacy 字段与新版 `active_research` 之间的兼容同步。
 
-### 7.7 ModelClients
+### 7.8 ModelClients
 
 `ModelClients`（`app/services/infra/model_clients.py`）是项目中所有大模型调用的统一封装层。惰性初始化，只在首次访问时创建连接：
 
@@ -1269,11 +1426,15 @@ class ModelClients:
 
     @property
     def vlm(self) -> ChatOpenAI | None:
-        if not self.settings.openai_api_key or not self.settings.enable_figure_vlm:
+        vlm_api_key = self.settings.vlm_api_key or self.settings.openai_api_key
+        vlm_base_url = self.settings.vlm_base_url or self.settings.openai_base_url
+        if not vlm_api_key or not self.settings.enable_figure_vlm:
             return None
         if self._vlm is None:
             self._vlm = ChatOpenAI(
                 model=self.settings.vlm_model,           # gpt-4.1-mini
+                api_key=vlm_api_key,
+                base_url=vlm_base_url,
                 temperature=0.0,
                 max_tokens=self.settings.chat_max_tokens,
                 ...
@@ -1282,13 +1443,13 @@ class ModelClients:
 ```
 
 三个模型能力（均通过 OpenAI 兼容 API 调用，当前部署使用不同 provider）：
-- **chat**：意图识别、工具规划、claim 提取、验证、答案生成。当前部署 `deepseek-v4-flash`（配置项 `chat_model`，默认 `gpt-4o-mini`），temperature=0.1，max_tokens=1800
-- **vlm**：仅 `enable_figure_vlm=True` 时初始化，用于图表理解。当前部署 `gpt-4.1-mini`（配置项 `vlm_model`），temperature=0.0
-- **embedding**：通过 `http_client` / `async_http_client` 调用独立的 embedding API（`embedding_api_key` + `embedding_base_url`，fallback 到 `openai_api_key`）。当前部署 `text-embedding-3-large`（3072 维），通过 Qihai 网关
+- **chat**：意图识别、工具规划、claim 提取、验证、答案生成。当前部署 `deepseek-v4-flash`，使用 `OPENAI_API_KEY` + `OPENAI_BASE_URL=https://api.deepseek.com/v1`，temperature=0.1，max_tokens=1800
+- **vlm**：仅 `enable_figure_vlm=True` 时初始化，用于图表理解。当前部署 `gpt-4.1-mini`，优先使用 `VLM_API_KEY` + `VLM_BASE_URL`；未配置时才 fallback 到 Chat 的 `OPENAI_API_KEY` + `OPENAI_BASE_URL`
+- **embedding**：通过 `http_client` / `async_http_client` 调用独立的 embedding API（`EMBEDDING_API_KEY` + `EMBEDDING_BASE_URL`，fallback 到 `OPENAI_API_KEY`）。当前部署 `text-embedding-3-large`（3072 维），通过 Qihai 网关
 
 `close()` / `aclose()` 在 lifespan 关闭阶段释放连接池。`invoke_json_messages()` 和 `invoke_tool_plan_messages()` 封装了"发送 → 解析 JSON → fallback"流程，遇解析失败返回 fallback 而非抛异常。
 
-### 7.8 WebSearch
+### 7.9 WebSearch
 
 Web Search 由 `TavilyWebSearchClient`（`app/services/retrieval/web_search.py`）提供，对接 Tavily Search API。它的 `search()` 方法接受 query、max_results、search_depth 等参数，返回带标题、URL、摘要和原始内容的搜索结果列表。
 
@@ -1296,7 +1457,7 @@ Web Search 由 `TavilyWebSearchClient`（`app/services/retrieval/web_search.py`�
 
 `collect_web_evidence()` 函数负责完整的 Web 证据收集流程：搜索 → 获取页面内容 → 提取相关片段 → 生成带引用的 claim。Web 证据的引用格式与本地 PDF 证据统一，但在 citation 中会标记 `source_type=web`，前端展示时能区分来源是本论文库还是外部网页。
 
-### 7.9 意图识别（intents/）
+### 7.10 意图识别（intents/）
 
 `intents/` 子包（10 模块）负责将用户自然语言问题转化为结构化意图，是整个 Agent 链路的入口认知层。
 
@@ -1321,13 +1482,13 @@ RouterAction = Literal["answer_directly", "need_conversation_tool",
 
 配置文件 `intent_marker_profiles.json` 定义了各类问题的标记词（如 DPO、PPO、PBA 等缩写属于 `acronym` 类 marker）。
 
-### 7.10 规划与合约（planning/ + contracts/）
+### 7.11 规划与合约（planning/ + contracts/）
 
 **planning/（7 模块）** 负责将意图转化为可执行的研究计划：
 
 - `research.py` — `build_research_plan()`：从 `QueryContract` 生成 `ResearchPlan`（召回模式、evidence 数量、solver 顺序）
 - `query_shaping.py` — `query_target_candidates()`：从用户问题中提取目标实体和论文缩写
-- `query_rewrite.py` — `rewrite_query()`：多查询改写（multi_query / hyde / step_back），为检索生成多个角度的查询
+- `query_rewrite.py` — `rewrite_query()`：轻量 MQE 工具，用规则生成 `multi_query` / `hyde` / `step_back` 风格的候选检索 query。它不是默认强制执行的 LLM 改写链路，而是 planner 可调用的 research tool；调用后会把候选 query 写入 `state["rewritten_queries"]`，供后续 BM25、vector、hybrid search 或 grep 使用。
 - `solver_dispatch.py` / `solver_goals.py` — 决定哪些 solver 需要执行，以及各自的目标
 - `compound_tasks.py` — 复合查询分解与合并
 - `schema_claims.py` — 判断是否应该使用 schema-based claim solver
@@ -1343,7 +1504,7 @@ RouterAction = Literal["answer_directly", "need_conversation_tool",
 - `followup_relationship.py` — 追问关系继承和纠正检测
 - `context.py` — `contract_has_note()`、`contract_notes()` 等辅助
 
-### 7.11 Claim 求解与验证（claims/）
+### 7.12 Claim 求解与验证（claims/）
 
 `claims/` 是最大的领域子包（23 模块），负责三类核心工作：**求解**（从 evidence 生成 claim）、**验证**（grounding 校验）、**辅助**（文本/公式/图表处理）。
 
@@ -1363,7 +1524,7 @@ def run_claim_solver_pipeline(*, schema_allowed, generic_enabled, shadow_enabled
 
 辅助模块：`formula_text.py`（公式 token 提取与加权）、`metric_text.py`（指标数值提取）、`visual_helpers.py`（图像/图表信号）、`paper_helpers.py` / `paper_summary.py`（论文元信息）、`origin_selection.py`（起源论文选择）、`followup_helpers.py`（追问处理）、`generic_solver.py`（通用 schema solver）。
 
-### 7.12 答案组合与实体（answers/ + entities/ + followup/ + clarification/）
+### 7.13 答案组合与实体（answers/ + entities/ + followup/ + clarification/）
 
 这四个子包负责将 claim 转化为最终回答：
 
@@ -1375,9 +1536,9 @@ def run_claim_solver_pipeline(*, schema_allowed, generic_enabled, shadow_enabled
 
 - **clarification/（3 模块）**：`intents.py` 处理澄清意图（`contract_from_selected_clarification_option()`、`clarification_options_from_contract_notes()`）；`questions.py` 构建澄清问题（`build_agent_clarification_question()`）；`limit_runtime.py` 限制澄清次数（`force_best_effort_after_clarification_limit()`）。
 
-### 7.13 Agent Mixin 架构（agent_mixins/）
+### 7.14 Agent Mixin 架构（agent_mixins/）
 
-`agent_mixins/`（6 模块）是 Agent 架构的核心创新——将正交能力通过 Mixin 模式注入 `ResearchAssistantAgent`：
+`agent_mixins/`（6 模块）是 Agent 架构的核心创新——将正交能力通过 Mixin 模式注入 `ResearchAssistantAgentV4`：
 
 ```python
 class ResearchAssistantAgentV4(
@@ -1391,7 +1552,7 @@ class ResearchAssistantAgentV4(
 
 这种设计让每个 Mixin 只关注自己的领域，不互相污染。`concept_reasoning.py` 是预留的概念推理 Mixin（未注入类继承）。
 
-### 7.14 动态工具系统（tools/）
+### 7.15 动态工具系统（tools/）
 
 `tools/`（3 模块）支持在不修改核心代码的情况下扩展 Agent 能力：
 
@@ -1823,7 +1984,7 @@ DPO 公式查询的实际 QueryContract（来自真实 trace）：
 
 ### 10.3 多轮上下文记忆
 
-系统通过 `SessionContext` 维护多轮对话状态，包括当前研究主题（active_research）、历史轮次（turns）、工作记忆（working_memory）和持续学习（persistent_learnings）。追问时自动识别与上一轮的关系（延续/纠正/切换），复用或更新研究上下文。
+系统通过 `SessionContext` 维护多轮对话状态，包括当前研究主题（active_research）、历史轮次（turns）、压缩摘要（summary）、工作记忆（working_memory）和绝对轮次计数（turn_index）。追问时自动识别与上一轮的关系（延续/纠正/切换），复用或更新研究上下文。`working_memory.target_bindings` 保存 target 到具体论文的消歧结果，并通过 `created_turn_index` 做 20 轮 TTL；持续学习内容则来自 `data/learnings/*.md`，作为额外上下文注入。
 
 ### 10.4 引用溯源与 PDF 预览
 
@@ -1850,7 +2011,7 @@ SSE 流式接口实时推送 Agent 执行全过程：Intent → Contract → Pla
 
 ### 11.1 单元测试
 
-测试目录 `tests/` 包含 80+ 个测试文件，覆盖了几乎所有服务模块。测试使用 pytest 框架，部分测试直接实例化模块进行单元测试，部分使用 `StubModelClients` 替代真实模型调用以加速执行。
+测试目录 `tests/` 包含 100+ 个测试文件，覆盖了几乎所有服务模块。测试使用 pytest 框架，部分测试直接实例化模块进行单元测试，部分使用 `StubModelClients` 替代真实模型调用以加速执行。
 
 关键测试覆盖范围：
 - Agent 核心流程：`test_agent_v4.py` 测试完整的 Agent turn、contract extraction、planner、runtime、loop 和事件流
@@ -1997,7 +2158,7 @@ paper_card 的内容组成：
 |------|------------|------------|-----|
 | Pure Dense | 0.577 | 0.500 | **-13.3%** |
 | BM25(jieba)+Dense RRF | 0.500 | 0.385 | **-23.1%** |
-| Enhaced (4-path) | 0.308 | **0.538** | **+75.0%** |
+| Enhanced (4-path) | 0.308 | **0.538** | **+75.0%** |
 
 **结论**：
 
@@ -2058,11 +2219,21 @@ EMBEDDING_MODEL=text-embedding-3-large
 EMBEDDING_BASE_URL=https://api.qhaigc.net/v1
 EMBEDDING_API_KEY=sk-xxx
 
-# ── VLM ──
+# ── VLM（DeepSeek 不支持图像理解，独立走 Qihai 网关）──
 VLM_MODEL=gpt-4.1-mini
+VLM_API_KEY=sk-xxx
+VLM_BASE_URL=https://api.qhaigc.net/v1
 
 # ── Web Search ──
 TAVILY_API_KEY=tvly-xxx
+
+# ── Redis Cache（只缓存中间结果，不缓存最终回答）──
+REDIS_URL=redis://:xxx@localhost:6380/0
+REDIS_CACHE_ENABLED=true
+REDIS_CACHE_NAMESPACE=zprag:v4
+REDIS_QUERY_EMBEDDING_CACHE_TTL_SECONDS=2592000
+REDIS_DENSE_RETRIEVAL_CACHE_TTL_SECONDS=21600
+REDIS_FINAL_ANSWER_CACHE_ENABLED=false
 ```
 
 关键配置项说明：
@@ -2070,38 +2241,48 @@ TAVILY_API_KEY=tvly-xxx
 | 环境变量 | Settings 字段 | 当前值 | 默认值 | 说明 |
 |----------|-------------|--------|--------|------|
 | `CHAT_MODEL` | `chat_model` | `deepseek-v4-flash` | `gpt-4o-mini` | Chat 模型名 |
-| `OPENAI_API_KEY` | `openai_api_key` | `sk-xxx` | `""` | Chat + VLM 的 API key（也支持 `QIHANG_API` alias） |
-| `OPENAI_BASE_URL` | `openai_base_url` | `api.deepseek.com/v1` | `api.openai.com/v1` | Chat + VLM 的 Base URL（也支持 `QIHANG_BASE_URL` alias） |
+| `OPENAI_API_KEY` | `openai_api_key` | `sk-xxx` | `""` | Chat API key（也支持 `QIHANG_API` alias） |
+| `OPENAI_BASE_URL` | `openai_base_url` | `api.deepseek.com/v1` | `api.openai.com/v1` | Chat Base URL（也支持 `QIHANG_BASE_URL` alias） |
 | `EMBEDDING_API_KEY` | `embedding_api_key` | `sk-xxx` | `""` | Embedding API key（独立字段，fallback 到 `openai_api_key`） |
 | `EMBEDDING_BASE_URL` | `embedding_base_url` | `api.qhaigc.net/v1` | `api.openai.com/v1` | Embedding Base URL（也支持 `EMBEDDING_BASE` alias） |
 | `EMBEDDING_MODEL` | `embedding_model` | `text-embedding-3-large` | 同 | Embedding 模型名 |
 | `VLM_MODEL` | `vlm_model` | `gpt-4.1-mini` | 同 | Vision 模型名 |
-| `embedding_fallback_model` | 同上 | `text-embedding-3-small` | 同 | Embedding 降级模型（1536 维） |
+| `VLM_API_KEY` | `vlm_api_key` | `sk-xxx` | `""` | Vision API key，未配置时 fallback 到 `openai_api_key` |
+| `VLM_BASE_URL` | `vlm_base_url` | `api.qhaigc.net/v1` | `""` | Vision Base URL，未配置时 fallback 到 `openai_base_url` |
+| `EMBEDDING_FALLBACK_MODEL` | `embedding_fallback_model` | `text-embedding-3-small` | 同 | Embedding 降级模型（1536 维） |
 | `MILVUS_URI` | `milvus_uri` | `localhost:19530` | 同 | Milvus 连接地址 |
+| `MILVUS_PAPER_COLLECTION` | `milvus_paper_collection` | `zprag_v4_papers` | 同 | 论文级 Milvus collection |
+| `MILVUS_BLOCK_COLLECTION` | `milvus_block_collection` | `zprag_v4_blocks` | 同 | 证据块 Milvus collection |
+| `REDIS_URL` | `redis_url` | `redis://:xxx@localhost:6380/0` | 同 | Redis 连接地址 |
+| `REDIS_CACHE_ENABLED` | `redis_cache_enabled` | `true` | `true` | 是否启用 Redis 中间层缓存 |
+| `REDIS_CACHE_NAMESPACE` | `redis_cache_namespace` | `zprag:v4` | `zprag:v4` | Redis key 命名空间 |
+| `REDIS_QUERY_EMBEDDING_CACHE_TTL_SECONDS` | `redis_query_embedding_cache_ttl_seconds` | `2592000` | 同 | query embedding 缓存 TTL，默认 30 天 |
+| `REDIS_DENSE_RETRIEVAL_CACHE_TTL_SECONDS` | `redis_dense_retrieval_cache_ttl_seconds` | `21600` | 同 | dense retrieval 缓存 TTL，默认 6 小时 |
+| `REDIS_FINAL_ANSWER_CACHE_ENABLED` | `redis_final_answer_cache_enabled` | `false` | `false` | 是否缓存最终回答，当前默认关闭 |
 | `TAVILY_API_KEY` | `tavily_api_key` | `tvly-xxx` | `""` | Web Search API key |
 | `ADMIN_API_KEY` | `admin_api_key` | 空 | `""` | 管理员 key（空=禁用敏感接口） |
+| `LIBRARY_API_KEY` | `library_api_key` | 空 | `""` | PDF 访问 key，未配置时可按本地/同源访问策略放行 |
 
-注意：Chat 和 VLM 共用同一个 `openai_api_key` + `openai_base_url`，而 Embedding 使用独立的 `embedding_api_key` + `embedding_base_url`（因为 DeepSeek 不支持 embedding，需要走 Qihai 网关）。
+注意：当前三类模型走的是分离配置。Chat 使用 DeepSeek 官方 OpenAI 兼容接口；Embedding 继续走 Qihai 网关，因为 DeepSeek 不提供 embedding；VLM 也继续走 Qihai 网关，因为 DeepSeek 当前不处理图像输入。这样切换聊天模型时不会误伤图表理解和向量检索。
 
 ### 12.3 服务端口与路由
 
 FastAPI 服务监听 8001 端口，主要路由：
 - `/` → 直接返回 index.html
-- `/v4` / `/v5` → 前端页面 `index.html`
 - `/api/v1/health` → 健康检查
 - `/api/v1/library` → 论文库列表
 - `/api/v1/chat` → 普通问答（一次性返回）
 - `/api/v1/chat/stream` → SSE 流式问答
 - `/api/v1/ingest/rebuild` → 索引重建（需 admin key）
 - `/api/v1/citations/preview` → 引用预览
-- `/api/v1/tools/proposals` → 动态工具提案管理
+- `/api/v1/admin/tools/proposals` → 动态工具提案管理（需 admin key）
 - `/metrics` → Prometheus metrics（可选）
 
 ### 12.4 安全控制
 
 安全控制通过 `app/core/security.py` 实现：
 - `require_admin_access()`：检查 `ADMIN_API_KEY` 是否已配置，并根据请求头中的 `X-API-Key` 或 `Authorization: Bearer` 校验管理员身份。如果未配置 admin key，返回 503 禁用敏感接口。
-- `require_pdf_access()`：检查 `PDF_ACCESS_KEY` 是否已配置并校验，防止未授权访问本地 PDF 文件。
+- `require_pdf_access()`：优先使用 `LIBRARY_API_KEY`，未配置时 fallback 到 `ADMIN_API_KEY`；请求可以通过 query 参数 `api_key`、`X-API-Key` 或 `Authorization: Bearer` 提供 key。若两者都未配置，系统默认允许本机请求和同源浏览器请求访问 PDF，同时仍会走 PDF 访问频率限制。
 - CORS 限制：通过 `settings.cors_allow_origins` 配置允许跨域的前端来源，未配置时默认不启用 CORS。
 - 输入安全：`prompt_safety.py` 对用户输入做基本的注入检测和长度限制。
 
@@ -2148,7 +2329,7 @@ Prometheus metrics（可选）通过 `prometheus_fastapi_instrumentator` 暴露�
 项目最早的 `agent.py` 是一个超过 2000 行的单文件。随着功能增加，单文件变得难以维护：修改一个 solver 可能影响 planner，调试一个 bug 需要在同一文件中跳转数百行。重构过程经历了多次迭代：
 - 第一轮：把 retrieval、library、session_store 拆成独立服务模块
 - 第二轮：把 Agent 核心逻辑拆分为 planner、runtime、tools、events、loop 等模块
-- 第三轮：引入 Mixin 模式，把 answer_composer、claim_verifier、entity_definition、followup_routing、solver_pipeline 五大能力正交拆分。`ResearchAssistantAgent` 通过多重继承组合这些 Mixin，每个 Mixin 只关心自己的领域
+- 第三轮：引入 Mixin 模式，把 answer_composer、claim_verifier、entity_definition、followup_routing、solver_pipeline 五大能力正交拆分。`ResearchAssistantAgentV4` 通过多重继承组合这些 Mixin，每个 Mixin 只关心自己的领域
 - 第四轮：把 claims、answers、intents、contracts、planning 按领域拆成独立子包，每个 `app/services/<domain>/` 子包有明确的职责边界
 
 现在的目录结构清晰反映了领域边界：`__init__.py` 中只做 re-export，模块间的依赖通过构造函数注入而非硬编码 import。
@@ -2166,13 +2347,13 @@ Prometheus metrics（可选）通过 `prometheus_fastapi_instrumentator` 暴露�
 
 ### 14.1 项目总结
 
-PDF-RAG-Agent V5是一个从真实论文研究需求出发构建的智能助手系统。它的核心价值体现在几个方面：
+PDF-RAG-Agent 当前版本是一个从真实论文研究需求出发构建的智能助手系统。它的核心价值体现在几个方面：
 
 - **分层架构清晰**：API 层、Agent 层、服务层、数据层各司其职，通过 domain models 传递状态，避免了"到处传 dict"的混乱
 - **检索设计务实**：两级索引（论文级 + 证据级）+ Dense-only 默认检索（可选 BM25/Title Anchor）+ 场景化加权，解决了通用 RAG 在论文场景下的召回精度问题
 - **Agent 链路完整**：Intents → Contract → Plan → Tool Loop → Solver → Verifier → Composer 的七阶段链路，每一阶段都有明确的输入输出和失败处理
 - **可观察性强**：SSE 流式事件 + Runtime 面板 + trace 持久化，让 Agent 的每一步推理都可追踪、可调试
-- **测试覆盖广**：80+ 个测试文件覆盖几乎所有模块，StubModelClients 让测试不依赖外部 API
+- **测试覆盖广**：100+ 个测试文件覆盖几乎所有模块，StubModelClients 让测试不依赖外部 API
 - **持续演进**：从单文件到分层架构、从固定流水线到 tool loop、从人工澄清到 LLM-judge 自动消歧、从纯 RAG 到可以处理公式/图表/指标的论文 Agent，项目在整个开发过程中不断根据实际使用反馈迭代
 
 ### 14.2 后续优化方向

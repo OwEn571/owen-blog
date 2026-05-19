@@ -622,7 +622,7 @@ Redis 3.2 是一个分水岭：
 
 ### QuickList 的配置回顾
 
-```conf
+```txt
 list-max-listpack-size -2   # 每个内部节点最大 8KB（负数按 4K/8K/16K/32K/64K 分级）
 list-compress-depth 0       # 中间节点 LZF 压缩深度，0=不压缩
 ```
@@ -1420,11 +1420,313 @@ server.repl_backlog->histlen = 0;  // 当前 backlog 存储的数据长度
 
 Slave 也可以有自己的 Slave，形成级联复制，减轻 Master 的复制压力。
 
+# 十一、项目实际应用：PDF-RAG-Agent 中的 Redis 缓存设计
+
+学完 Redis 的底层原理之后，再回头看自己的项目，会更容易理解它到底该放在系统的哪个位置。
+
+我在 `PDF-RAG-Agent` 项目中接入 Redis，并不是为了把它当成一个万能数据库，而是把它放在一个很克制的位置：**只缓存可以便宜复用、可以重新计算、不会改变业务语义的中间结果**。
+
+这个项目是一个面向 Zotero 论文库的 RAG / Agent 系统。用户在前端提问后，后端会经历：
+
+```
+用户问题
+  ↓
+意图识别 / QueryContract
+  ↓
+生成检索 query
+  ↓
+query embedding
+  ↓
+Milvus Dense 检索候选论文 / 证据块
+  ↓
+claim 生成与 grounding 校验
+  ↓
+LLM 组织最终回答
+```
+
+在这条链路中，真正适合 Redis 的不是最终答案，而是中间两类东西：
+
+1. **query embedding**：同一句查询文本，用同一个 embedding 模型，得到的向量是稳定的。
+2. **dense retrieval 结果**：同一个检索请求，在索引版本不变时，Milvus 返回的候选文档列表短期内是可以复用的。
+
+所以项目中的 Redis 设计非常明确：
+
+| 缓存对象 | Redis key 结构 | value 内容 | TTL | 作用 |
+|---|---|---|---:|---|
+| query embedding | `zprag:v4:emb:query:{model}:{query_hash}` | `{model, dim, vector}` | 30 天 | 跳过重复 embedding API 调用 |
+| dense retrieval | `zprag:v4:retr:dense:{index_version}:{request_hash}` | `{index_version, documents}` | 6 小时 | 跳过重复 Milvus dense search |
+
+这里用到的 Redis 数据类型其实就是最基础的 **String**。虽然 value 看起来是一个结构化对象，但实际写入 Redis 前会先序列化成 JSON 字符串：
+
+```json
+{
+  "model": "text-embedding-3-large",
+  "dim": 3072,
+  "vector": [-0.01655, 0.00957, "..."]
+}
+```
+
+或者：
+
+```json
+{
+  "index_version": "18f5cca6afbd413b",
+  "documents": [
+    {
+      "page_content": "title: Attention Is All You Need aliases: ...",
+      "metadata": {
+        "paper_id": "I9L474BP",
+        "title": "Attention Is All You Need",
+        "year": "2017",
+        "dense_score": 1.0604
+      }
+    }
+  ]
+}
+```
+
+这正好能和前面学过的 Redis String 串起来：Redis String 底层是 SDS，SDS 是二进制安全的，所以它不仅可以存普通字符串，也可以存 JSON、序列化对象、甚至二进制数据。我的项目这里存的是 JSON 文本，因此读写逻辑很简单：`GET` 后 `json.loads()`，`SETEX` 前 `json.dumps()`。
+
+## 1. 为什么不缓存最终回答
+
+一开始很容易想到一种简单方案：
+
+```
+key = 原始问题
+value = LLM 最终回答
+```
+
+但这个方案在论文 Agent 里其实不稳。
+
+同一句话在不同上下文中，答案可能不同。例如用户问“继续讲一下它的公式”，这里的“它”依赖上一轮 active research；又比如同样问“Transformer 架构最先由哪篇论文提出”，如果索引刚刚重建过，或者用户换了语料范围，最终引用也可能不同。
+
+最终回答还依赖：
+
+- 当前 session 的历史上下文
+- active research 中绑定的论文和目标实体
+- 检索索引版本
+- 是否启用 Web Search
+- 澄清问题的选择
+- claim verification 的结果
+
+如果直接缓存最终回答，就可能绕过最新检索和 grounding 校验，导致前端拿到一个“看起来很快但语义过期”的答案。
+
+因此项目里明确关闭最终回答缓存：
+
+```python
+redis_final_answer_cache_enabled: bool = False
+```
+
+这也是缓存设计里很重要的一条原则：**不是所有慢的东西都应该缓存，只有输入边界清晰、结果稳定、失效条件可控的东西才适合缓存。**
+
+## 2. query embedding 缓存
+
+query embedding 的 key 生成逻辑大概是：
+
+```python
+def query_embedding_key(model: str, text: str) -> str:
+    clean_text = " ".join(text.split())
+    query_hash = sha256(clean_text)
+    return f"zprag:v4:emb:query:{model}:{query_hash}"
+```
+
+这里没有直接把原始 query 放进 Redis key，而是先规整空白，再做 SHA256。
+
+这样做有几个好处：
+
+- **key 不会过长**：用户问题可能很长，哈希后长度固定。
+- **不暴露明文问题**：`KEYS` 或 `SCAN` 时看不到用户原始提问。
+- **相同问题可复用**：空格差异不会导致缓存完全失效。
+
+value 中保存：
+
+```json
+{
+  "model": "text-embedding-3-large",
+  "dim": 3072,
+  "vector": [...]
+}
+```
+
+读取时还会检查 `model` 是否一致。如果模型变了，即使 key 理论上不同，也不会误用旧向量。
+
+这对应 Redis 的几个知识点：
+
+- 用 **String** 存 JSON。
+- 用 **TTL** 控制生命周期。
+- 用 **namespace** 隔离业务域。
+- 用 **哈希摘要**控制 key 长度和隐私暴露。
+
+当前 TTL 设置为 30 天：
+
+```python
+redis_query_embedding_cache_ttl_seconds = 2_592_000
+```
+
+为什么可以这么长？因为 query embedding 本身只由“文本 + embedding 模型”决定，只要 embedding 模型不变，它就是一个稳定中间结果。
+
+## 3. dense retrieval 缓存
+
+dense retrieval 的缓存更复杂，因为它不只取决于 query，还取决于检索索引。
+
+key 大概是：
+
+```python
+def dense_retrieval_key(collection_name, embedding_model, query, limit, filter_expr):
+    request = {
+        "collection": collection_name,
+        "embedding_model": embedding_model,
+        "query": normalized_query,
+        "limit": limit,
+        "filter": filter_expr,
+    }
+    request_hash = sha256(canonical_json(request))
+    return f"zprag:v4:retr:dense:{index_version}:{request_hash}"
+```
+
+这里最关键的是 `index_version`。
+
+`index_version` 不是手写的版本号，而是根据这些信息算出来的：
+
+- embedding model
+- paper collection 名
+- block collection 名
+- `v4_papers.jsonl` 的路径、大小、mtime
+- `v4_blocks.jsonl` 的路径、大小、mtime
+
+也就是说，只要重新入库、JSONL 文件变化、collection 名变化、embedding model 变化，`index_version` 就会变化。新的检索请求自然会生成新的 Redis key，旧缓存不会继续命中。
+
+这个设计本质上就是**缓存失效策略**。
+
+如果不带 `index_version`，就可能出现一个很隐蔽的问题：Milvus 里明明已经重建了新索引，但 Redis 还在返回旧索引时代的候选文档。这样 bug 很难看出来，因为系统仍然能回答，只是证据来源可能悄悄变旧。
+
+dense retrieval 的 TTL 设置为 6 小时：
+
+```python
+redis_dense_retrieval_cache_ttl_seconds = 21_600
+```
+
+它比 query embedding 短，是因为检索结果和语料状态关系更强。即使有 `index_version` 做硬隔离，也没有必要长期保存所有检索结果，避免 Redis 内存被大 JSON 占满。
+
+## 4. 写入方式：SETEX
+
+项目中的写入方法是：
+
+```python
+def set_json(key: str, value: Any, ttl_seconds: int) -> None:
+    redis.setex(key, ttl_seconds, canonical_json(value))
+```
+
+这里用的是 `SETEX`，等价于“写入 key 的同时设置过期时间”。这比先 `SET` 再 `EXPIRE` 更稳，因为两步操作之间如果进程崩掉，就可能留下一个没有 TTL 的缓存 key。
+
+从 Redis 原理角度看，这也会触发前面学过的过期删除机制：
+
+- Redis 不一定在 TTL 到期那一刻立刻删除 key。
+- key 被访问时会触发惰性删除。
+- Redis 后台也会做周期性主动删除。
+
+因此 TTL 的语义不是“到点马上物理删除”，而是“到点以后不可再被正常使用，Redis 会在访问或后台扫描中清理它”。
+
+## 5. 为什么不用 Hash / List / Set
+
+这个案例里用 String 存 JSON，而不是 Redis Hash，原因是访问模式很简单：
+
+- 每次都是按完整 key 读整个对象。
+- 不需要单独更新 JSON 里的某个字段。
+- 不需要按字段做聚合查询。
+- 不需要在 Redis 内部维护复杂关系。
+
+如果未来要做“每个 session 的短期状态”“某篇论文的热度计数”“任务队列”，那可能会用到其他数据结构：
+
+- Hash：适合存对象的多个字段，例如 `session:{id}`。
+- List / Stream：适合做任务队列或事件流。
+- Set：适合做去重集合。
+- ZSet：适合排行榜、热度排序。
+
+但当前 Redis 只做中间结果缓存，用 String 反而最直接。
+
+## 6. 和缓存三大问题的关系
+
+### 缓存穿透
+
+缓存穿透指的是请求一直查不存在的数据，缓存里没有，后端也没有，导致每次都打到后端。
+
+在这个项目里，embedding 和 dense retrieval 都是“可计算结果”，不是查数据库中的某个不存在实体。因此典型缓存穿透风险不高。即使缓存未命中，也只是重新算 embedding、查 Milvus。
+
+### 缓存击穿
+
+缓存击穿指的是某个热点 key 过期瞬间，大量请求同时打到后端。
+
+当前项目是个人论文助手，请求量不大，不需要复杂的互斥锁。如果未来多人使用、某些热点 query 很频繁，可以考虑：
+
+- 对热点 key 加随机 TTL 抖动。
+- 用分布式锁限制同一 key 的并发重算。
+- 在本地进程再加一层短期内存缓存。
+
+### 缓存雪崩
+
+缓存雪崩指大量 key 同时过期，后端压力突然暴涨。
+
+当前 query embedding TTL 是 30 天，dense retrieval TTL 是 6 小时，二者分属不同 key 空间，不太会同时大规模失效。但如果后续部署到多人环境，可以给 TTL 加一点随机扰动：
+
+```python
+ttl = base_ttl + random.randint(-300, 300)
+```
+
+这能避免大量 key 在同一秒集中过期。
+
+## 7. 实际观察到的缓存数据
+
+我曾经导出过一次 Redis 快照，发现当前项目里有：
+
+```
+total keys scanned: 26
+emb:query: 13
+retr:dense: 13
+```
+
+其中一个 embedding key 类似：
+
+```
+zprag:v4:emb:query:text-embedding-3-large:123b3ceb...
+```
+
+一个 dense retrieval key 类似：
+
+```
+zprag:v4:retr:dense:18f5cca6afbd413b:0321ca8f...
+```
+
+这说明 Redis 现在确实只在缓存两类中间结果，没有缓存最终回答。
+
+如果把这件事和 Redis 原理串起来，可以这样理解：
+
+```
+Redis Dict      —— 存 key 到 value 的映射
+SDS             —— 存 key 字符串和 JSON value
+TTL             —— 控制缓存生命周期
+惰性删除/主动删除 —— 清理过期缓存
+内存淘汰策略       —— Redis 内存不足时的兜底
+主从复制/持久化    —— 如果部署成生产 Redis，可用于提高可靠性
+```
+
+## 8. 这一版设计的取舍
+
+这套设计不是为了“让所有东西都快”，而是为了在正确性和性能之间取一个稳妥平衡：
+
+- 缓存 query embedding：收益高，语义稳定。
+- 缓存 dense retrieval：收益中等，但要用 `index_version` 防止旧索引污染。
+- 不缓存最终回答：避免多轮上下文、澄清状态和证据校验被绕过。
+- 使用 TTL：让 Redis 自动清理旧中间结果。
+- 使用 namespace：避免和其他项目的 Redis key 混在一起。
+
+这也是我现在对 Redis 的一个更具体的理解：Redis 不只是“快的内存数据库”，更像是系统里一个**高性能的临时状态层**。它的价值不在于替代主数据库，而在于把那些重复、稳定、可失效的计算结果暂时放在离应用最近的地方。
+
 ---
 
 ## 全文总结
 
-十个章节串起 Redis 从数据到网络、从存储到容灾的完整知识体系：
+十一个章节串起 Redis 从数据到网络、从存储到容灾、再到真实项目落地的完整知识体系：
 
 ```
 一、背景        —— Redis 是什么、为什么快
@@ -1438,5 +1740,5 @@ Slave 也可以有自己的 Slave，形成级联复制，减轻 Master 的复制
 八、持久化       —— RDB 快照 + AOF 日志，解决「数据丢了怎么办」
 九、事务         —— MULTI/EXEC/WATCH，一组命令原子执行，不被打断
 十、主从复制     —— 全量同步 + 部分同步 + 命令传播，解决「单机不够怎么办」
+十一、项目应用   —— 在 PDF-RAG-Agent 中缓存 query embedding 和 dense retrieval 中间结果
 ```
-

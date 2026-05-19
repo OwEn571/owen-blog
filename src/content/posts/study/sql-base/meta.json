@@ -1,0 +1,9 @@
+{
+  "title": "SQL",
+  "eyebrow": "Database",
+  "description": "面向后端、RAG、Text2SQL 与 Agent 开发，把 SQL 的查询、聚合、JOIN、事务、索引和结构化数据思维串成一条基础路线。",
+  "size": "wide",
+  "accent": "96 196 158",
+  "icon": "mdi:database-outline",
+  "order": 29
+}
