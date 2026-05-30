@@ -3888,6 +3888,10 @@ Claude Code 源码在 2026 年 3 月 31 日因 npm 打包事故泄露后，社�
 └─────────────────────────────────────┘
 ```
 
+Layer 1: System prompt / tool definitions / output style
+Layer 2: Project context / CLAUDE.md / memory / rules
+Layer 3: Conversation messages / tool results / latest user message
+
 Anthropic 的 prompt cache 按前缀匹配。如果动态内容放在静态内容前面，每次对话变化都会导致整个缓存失效。CC 把**永不变化的内容放在最前面**（身份定义、安全规则），确保它们在 prompt cache 中始终命中。动态内容（当前目录、git 分支、MCP 服务器列表）放在后面。
 
 还有两个细节：
